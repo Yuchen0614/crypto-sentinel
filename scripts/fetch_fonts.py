@@ -53,10 +53,19 @@ def get(url, timeout=120):
 
 
 def used_chars():
-    """Every non-ASCII character that appears in the shipped HTML/JS."""
+    """Every non-ASCII character the UI can display.
+
+    Scans the shipped HTML/JS **and data/*.json** — the data files carry UI
+    strings too (e.g. the whale list's 「資金規模最大」/「月獲利最高」labels), and
+    a character missing here silently falls back to a system CJK face.
+    scripts/check_fonts.py verifies this stays true.
+    """
     chars = set("0123456789")
-    files = ["index.html"] + ["js/" + f for f in sorted(os.listdir(os.path.join(BASE, "js")))
-                              if f.endswith(".js")]
+    files = ["index.html"]
+    files += ["js/" + f for f in sorted(os.listdir(os.path.join(BASE, "js"))) if f.endswith(".js")]
+    ddir = os.path.join(BASE, "data")
+    if os.path.isdir(ddir):
+        files += ["data/" + f for f in sorted(os.listdir(ddir)) if f.endswith(".json")]
     for name in files:
         with open(os.path.join(BASE, name), encoding="utf-8") as fh:
             for ch in fh.read():

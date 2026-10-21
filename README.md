@@ -160,6 +160,8 @@ js/app.js                      啟動流程、事件編排、定時任務
 js/fx.js                       動畫特效：toast、浮動金額、開場資料雨、聲納雷達、背景
 data/whales.json               鏈上大戶追蹤名單（Actions 每日更新）
 scripts/fetch_whales.py        名單產生腳本
+scripts/fetch_fonts.py         重產字型（latin 子集 + 中文子集化）
+scripts/check_fonts.py         檢查介面用到的中文字是否都在子集內（缺字會回退成別套字）
 .github/workflows/refresh-whales.yml
 ```
 
