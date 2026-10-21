@@ -238,9 +238,17 @@
         const on = wrap.classList.toggle('full');
         btn.textContent = on ? '收合' : '展開';
         btn.classList.toggle('on', on);
-        /* 高度用 inline + important 指定：外面的 flex/媒體查詢都不會蓋掉它 */
-        if (on) wrap.style.setProperty('height', 'min(62vh, calc(100vh - 118px))', 'important');
-        else wrap.style.removeProperty('height');
+        /* 高度用 inline + important 指定（外面的 flex 與媒體查詢都蓋不掉），
+           並在 JS 裡先算成 px：CSS 的 min()/calc() 混用在 inline style 不一定被接受。
+           上限 62vh：矮螢幕展開時仍要留空間給上面的三欄，否則三欄會被壓成幾十 px。 */
+        const fit = () => Math.round(Math.max(300, Math.min(innerHeight * 0.62, innerHeight - 118)));
+        if (on) {
+          wrap.style.setProperty('height', fit() + 'px', 'important');
+          if (!wrap.__fitBound) {
+            wrap.__fitBound = true;
+            w.addEventListener('resize', () => { if (wrap.classList.contains('full')) wrap.style.setProperty('height', fit() + 'px', 'important'); });
+          }
+        } else wrap.style.removeProperty('height');
         try { localStorage.setItem('cs.chainFull', on ? '1' : '0'); } catch (e) { }
         requestAnimationFrame(() => {
           w.dispatchEvent(new Event('resize'));

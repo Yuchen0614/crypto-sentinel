@@ -156,3 +156,55 @@ table, .book td, .kv b, .agg-stats b, .mini-stats b, .liq-sum b, .chart-stats b,
   .pills { flex-direction: row; flex-wrap: wrap; align-items: center }
   .chart-stats { grid-template-columns: repeat(2, 1fr) }
 }
+
+/* ══ 中文字排版修正（2026-10-21，依視覺複核的量測結果）══════════════
+   量測到的問題：
+   1) 9.5~10px 的中文在深色底只有 1~1.5px 筆畫、峰值亮度 111~120（幾乎讀不到）
+   2) 拉丁字距（.05~.16em）套在方塊字上，中文看起來被拆散
+   3) 換幣流的時間欄只有 44px，11px 等寬字放不下 → 隔壁「鏈」欄的內容壓在時間上
+   4) 次要文字色 #5d7d94 對比不足
+   修正：中文不吃字距、小字抬到 11px、次要色提亮、CJK 行高拉到 1.6 */
+:root { --tx-3: #7b93a8 }
+
+body { line-height: 1.6 }
+
+/* 1) 中文元素不吃拉丁字距（純數字/英文的標籤維持原樣） */
+.stat label, .clock small, .panel-foot, .note, .disc, .ticker,
+.scan thead th, .chart-stats label, .mini-stats label, .agg-stats label, .liq-sum label,
+.band label, .comp label, .kv label, .sub-head b, .seg button, .vtab, .heat-legend,
+.chk, .ghost, .heat-axis, .mini, .chain-tape-head, .hle .t, .ctrow, .agg-labels { letter-spacing: normal }
+
+/* 2) 中文最小 11px（原 9~10px 會糊成一團） */
+.stat label, .chart-stats label, .mini-stats label, .agg-stats label, .liq-sum label,
+.band label, .mini, .panel-foot, .note, .disc { font-size: 11px }
+.scan thead th { font-size: 10.5px; }
+.scan .sym em, .scan .rk { font-size: 10.5px }
+.agg-stats label, .mini-stats label, .liq-sum label { font-size: 10.5px }
+
+/* 3) 換幣流欄寬：時間欄 44px→58px，11px 等寬的 HH:MM:SS 才不會被「鏈」欄蓋過去 */
+.chain-tape-head, .ctrow { grid-template-columns: 58px 40px minmax(0, 1fr) 30px minmax(0, 1fr) 62px }
+.ctrow { font-size: 10.5px }
+
+/* 4) 全市場掃描的「資金動能」欄會被切掉（實測 5 欄 nowrap 總寬 358px > 欄寬 322px，
+      而 .table-wrap 是 overflow-x:hidden → 最後一欄直接看不到）。
+      改成固定表格佈局、各欄分配寬度、文字過長用省略號，最後一欄保證完整。 */
+table.scan { table-layout: fixed; width: 100% }
+table.scan { font-size: 11px }          /* 11.5px 時欄寬加總會超過欄位寬度，24H 會被截成 +2.0… */
+.scan th:nth-child(1), .scan td:nth-child(1) { width: 29% }
+.scan th:nth-child(2), .scan td:nth-child(2) { width: 23% }
+.scan th:nth-child(3), .scan td:nth-child(3) { width: 17% }
+.scan th:nth-child(4), .scan td:nth-child(4) { width: 16% }
+.scan th:nth-child(5), .scan td:nth-child(5) { width: 15% }
+.scan tbody td { padding: 4px 6px }
+.scan thead th { padding: 5px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.scan tbody td:nth-child(-n+4) { overflow: hidden; text-overflow: ellipsis }
+.scan tbody td:nth-child(5) { text-align: center; overflow: visible; padding-left: 2px; padding-right: 2px }
+/* 窄視窗（1220~1400px 時左欄只有 248~262px）放不下五欄 → 先收起「成交額」，
+   讓價格與 24H 這兩個最常看的數字保持完整不被省略號截掉。 */
+@media (max-width: 1400px) {
+  .scan th:nth-child(4), .scan td:nth-child(4) { display: none }
+  .scan th:nth-child(1), .scan td:nth-child(1) { width: 33% }
+  .scan th:nth-child(2), .scan td:nth-child(2) { width: 27% }
+  .scan th:nth-child(3), .scan td:nth-child(3) { width: 20% }
+  .scan th:nth-child(5), .scan td:nth-child(5) { width: 20% }
+}
