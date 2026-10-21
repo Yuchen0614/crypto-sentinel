@@ -79,14 +79,17 @@
     if (tb.__key !== key) {
       tb.__key = key;
       tb.innerHTML = rows.map(r => {
-        const name = r.wl.name || OC.short(r.wl.addr);
+        const shortA = OC.short(r.wl.addr);
+        const hasName = !!(r.wl.name && r.wl.name.length);
+        const name = hasName ? r.wl.name : shortA;
+        const sub = (r.wl.why || '') + (hasName ? ' · ' + shortA : '');
         const t = r.top;
         const posTxt = t ? `<span class="sidechip ${t.side}">${t.side === 'long' ? '多' : '空'}</span> ${t.coin} ${isFinite(t.lev) ? t.lev + '×' : ''}`
           : (r.st ? '<span class="mini">目前無持倉</span>' : '<span class="mini">掃描中…</span>');
         const upnlCls = r.upnl >= 0 ? 'up' : 'down';
         const roi = r.wl.roi30;
         return `<tr data-addr="${r.wl.addr}">` +
-          `<td><div class="nm">${name}</div><div class="why">${r.wl.why || ''} · ${OC.short(r.wl.addr)}</div></td>` +
+          `<td><div class="nm">${name}</div><div class="why">${sub}</div></td>` +
           `<td>${posTxt}${r.pos && r.pos.length > 1 ? `<span class="mini"> +${r.pos.length - 1}</span>` : ''}</td>` +
           `<td class="ta-r">${r.st ? '$' + U.money(r.notional) : '—'}</td>` +
           `<td class="ta-r ${upnlCls}">${r.st ? U.signed(r.upnl, v => '$' + U.money(Math.abs(v))) : '—'}</td>` +
