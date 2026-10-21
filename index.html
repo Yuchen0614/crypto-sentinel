@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRYPTO SENTINEL · 加密貨幣即時監控與聰明錢追蹤</title>
+<meta name="description" content="即時加密貨幣市場監控：全市場掃描、訂單簿深度追蹤、巨鯨大額成交、持倉異常偵測與聰明錢流向分析。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305070e'/%3E%3Cpath d='M6 22 L12 10 L18 20 L26 6' stroke='%2338f6ff' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+<canvas id="starfield"></canvas>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+<div class="corner-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+<!-- ── 開機動畫 ───────────────────────────────────────── -->
+<div id="boot" class="boot">
+  <div class="boot-inner">
+    <div class="boot-logo">CRYPTO<b>SENTINEL</b></div>
+    <div class="boot-sub">MARKET INTELLIGENCE TERMINAL · v1.0</div>
+    <pre id="bootlog" class="bootlog"></pre>
+    <div class="boot-bar"><i id="bootbar"></i></div>
+    <div class="boot-hint" id="boothint">正在連線全球交易所資料流…</div>
+  </div>
+</div>
+
+<!-- ── 頂部 HUD ───────────────────────────────────────── -->
+<header class="hud">
+  <div class="hud-brand">
+    <span class="dot"></span>
+    <div>
+      <h1>CRYPTO<b>SENTINEL</b></h1>
+      <p>即時市場監控 · 聰明錢追蹤 · 訂單簿深度情報</p>
+    </div>
+  </div>
+  <div class="hud-stats" id="globalStats">
+    <div class="stat"><label>總市值</label><b id="gMcap">—</b></div>
+    <div class="stat"><label>24H 成交量</label><b id="gVol">—</b></div>
+    <div class="stat"><label>漲 / 跌</label><b id="gBreadth">—</b></div>
+    <div class="stat"><label>BTC 市佔率</label><b id="gDom">—</b></div>
+    <div class="stat"><label>市場情緒</label><b id="gFng">—</b></div>
+  </div>
+  <div class="hud-right">
+    <div class="clock">
+      <span id="clock">--:--:--</span>
+      <small id="clockSub">台北 · UTC+08</small>
+    </div>
+    <div class="pills">
+      <span class="pill" id="pillWs" data-state="wait"><i></i>資料流</span>
+      <span class="pill" id="pillRest" data-state="wait"><i></i>行情</span>
+      <span class="pill" id="pillVer">SPOT</span>
+      <span class="pill" id="pillFut" data-state="wait"><i></i>合約/清算</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── 主體 ───────────────────────────────────────────── -->
+<main class="layout">
+
+  <!-- 左：全市場掃描 -->
+  <aside class="col col-a">
+    <section class="panel panel-grow">
+      <div class="panel-head">
+        <h2><i class="ic ic-scan"></i>全市場掃描<span class="count" id="scanCount">0</span></h2>
+        <div class="seg" id="scanSort">
+          <button class="on" data-sort="quoteVolume">成交量</button>
+          <button data-sort="priceChangePercent">漲幅</button>
+          <button data-sort="absChange">波動</button>
+          <button data-sort="smart" title="依資金動能排序">資金動能</button>
+        </div>
+      </div>
+      <div class="scan-filter">
+        <input id="scanSearch" type="search" placeholder="搜尋幣種 / BTC ETH SOL …" spellcheck="false">
+        <label class="chk"><input type="checkbox" id="onlyFutures"> 僅合約</label>
+      </div>
+      <div class="breadth" id="breadthBar"></div>
+      <div class="table-wrap">
+        <table class="scan">
+          <thead>
+            <tr>
+              <th class="ta-l">幣種</th>
+              <th class="ta-r">價格</th>
+              <th class="ta-r">24H</th>
+              <th class="ta-r">量(USDT)</th>
+              <th class="ta-c" title="資金動能 = 24H 漲跌動能 × 週轉率(量/市值) × 24H 區間位置 × 資金費率偏向，全市場輕量指標；選定幣種會在同一欄顯示完整的聰明錢壓力分數">資金動能</th>
+            </tr>
+          </thead>
+          <tbody id="scanBody"></tbody>
+        </table>
+      </div>
+      <div class="panel-foot" id="scanFoot">載入中…</div>
+      <div class="panel-foot" style="border-top:0;padding-top:0">資金動能＝24H 動能 × 週轉率 × 區間位置 × 資金費率；右側面板為選定幣種的完整聰明錢分析。方向鍵切換幣種，/ 搜尋。</div>
+    </section>
+  </aside>
+
+  <!-- 中：主圖表 + 訂單簿 -->
+  <section class="col col-b">
+    <section class="panel chart-panel">
+      <div class="panel-head">
+        <div class="sym-block">
+          <h2 id="symName">BTC/USDT</h2>
+          <span class="sym-tag" id="symTag">SPOT</span>
+        </div>
+        <div class="price-block">
+          <b id="symPrice">—</b>
+          <span id="symChange" class="chg">—</span>
+        </div>
+        <div class="seg" id="tfSeg">
+          <button data-tf="1m">1m</button>
+          <button data-tf="5m" class="on">5m</button>
+          <button data-tf="15m">15m</button>
+          <button data-tf="1h">1H</button>
+          <button data-tf="4h">4H</button>
+        </div>
+        <div class="seg" id="ovSeg">
+          <button data-ov="cvd" class="on">CVD</button>
+          <button data-ov="vol" class="on">量能</button>
+          <button data-ov="vwap">VWAP</button>
+          <button data-ov="walls">牆</button>
+        </div>
+      </div>
+      <div class="chart-stats" id="chartStats">
+        <div><label>24H 高</label><b id="sHigh">—</b></div>
+        <div><label>24H 低</label><b id="sLow">—</b></div>
+        <div><label>24H 量</label><b id="sVol">—</b></div>
+        <div><label>成交筆數</label><b id="sTrades">—</b></div>
+        <div><label>均價 VWAP</label><b id="sVwap">—</b></div>
+        <div><label>波動率 ATR%</label><b id="sAtr">—</b></div>
+        <div><label>買賣壓力 CVD</label><b id="sCvd">—</b></div>
+        <div><label>主力成本帶</label><b id="sPoc">—</b></div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="chart"></canvas>
+        <div class="chart-hover" id="chartHover"></div>
+        <div class="chart-badge" id="chartBadge">LIVE</div>
+      </div>
+      <div class="chart-legend" id="chartLegend">
+        <span class="lg lg-c">CVD 累積買賣差</span>
+        <span class="lg lg-v">成交量</span>
+        <span class="lg lg-w">VWAP</span>
+        <span class="lg lg-x">大額掛單牆</span>
+        <span class="lg-right" id="klineMeta">—</span>
+      </div>
+    </section>
+
+    <div class="row2">
+      <section class="panel book-panel">
+        <div class="panel-head">
+          <h2><i class="ic ic-book"></i>訂單簿追蹤</h2>
+          <span class="mini" id="bookMeta">深度快照載入中…</span>
+        </div>
+        <div class="imb-wrap">
+          <div class="imb-bar"><i id="imbFill"></i></div>
+          <div class="imb-labels"><span id="imbBid">買 —</span><span id="imbRatio">—</span><span id="imbAsk">賣 —</span></div>
+        </div>
+        <div class="imb-bands" id="imbBands"></div>
+        <div class="book-cols">
+          <table class="book">
+            <thead><tr><th class="ta-r">價格</th><th class="ta-r">數量</th><th class="ta-r">金額</th><th class="ta-r">累計</th></tr></thead>
+            <tbody id="bookAsks"></tbody>
+          </table>
+          <div class="spread" id="bookSpread">—</div>
+          <table class="book">
+            <tbody id="bookBids"></tbody>
+          </table>
+        </div>
+        <div class="walls" id="wallList"></div>
+      </section>
+
+      <section class="panel heat-panel">
+        <div class="panel-head">
+          <h2><i class="ic ic-heat"></i>深度熱圖</h2>
+          <span class="mini" id="heatSpan">掛單密度 × 時間</span>
+        </div>
+        <div class="canvas-wrap heat-wrap">
+          <canvas id="heat"></canvas>
+          <div class="heat-axis" id="heatAxis"></div>
+        </div>
+        <div class="heat-legend"><span>低密度</span><i></i><span>高密度</span></div>
+        <div class="mini-stats" id="heatStats">
+          <div><label>累積時間</label><b id="hFrames">0 格</b></div>
+          <div><label>最大掛單</label><b id="hMax">—</b></div>
+          <div><label>掛單重心</label><b id="hSkew">—</b></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel alert-panel">
+      <div class="panel-head">
+        <h2><i class="ic ic-alert"></i>異常事件偵測 <span class="count" id="alertCount">0</span></h2>
+        <button class="ghost" id="clearAlerts">清除</button>
+      </div>
+      <div class="alert-list" id="alertList"><div class="empty">尚未偵測到異常事件 — 系統持續掃描中</div></div>
+    </section>
+  </section>
+
+  <!-- 右：聰明錢 / 巨鯨 / 持倉 -->
+  <aside class="col col-c">
+    <section class="panel smart-panel">
+      <div class="panel-head">
+        <h2><i class="ic ic-brain"></i>聰明錢壓力計</h2>
+        <span class="mini" id="smWindow">綜合 6 項即時指標</span>
+      </div>
+      <div class="gauge-wrap">
+        <canvas id="gauge"></canvas>
+        <div class="gauge-center">
+          <b id="smScore">—</b>
+          <small>PRESSURE SCORE</small>
+          <span id="smVerdict" class="verdict">分析中…</span>
+        </div>
+      </div>
+      <div class="comp-list" id="smComps"></div>
+      <p class="note" id="smNote">以即時成交、訂單簿、持倉與資金費率計算的量化壓力分數，非投資建議。</p>
+    </section>
+
+    <section class="panel whale-panel">
+      <div class="panel-head">
+        <h2><i class="ic ic-whale"></i>巨鯨即時動向</h2>
+        <div class="seg seg-sm" id="whaleFilter">
+          <button data-min="50000" class="on">≥5萬</button>
+          <button data-min="250000">≥25萬</button>
+          <button data-min="1000000">≥100萬</button>
+        </div>
+      </div>
+      <div class="netflow">
+        <div class="nf-item"><label>1 分鐘淨流向</label><b id="nf1">—</b></div>
+        <div class="nf-item"><label>5 分鐘淨流向</label><b id="nf5">—</b></div>
+        <div class="nf-item"><label>15 分鐘淨流向</label><b id="nf15">—</b></div>
+        <div class="nf-bar"><i id="nfBar"></i></div>
+      </div>
+      <div class="tape-head"><span>時間</span><span>方向</span><span class="ta-r">價格</span><span class="ta-r">數量</span><span class="ta-r">金額</span></div>
+      <div class="tape" id="whaleTape"><div class="empty">等待大額成交…</div></div>
+      <div class="panel-foot" id="whaleFoot">累計 <b>0</b> 筆大額成交</div>
+    </section>
+
+    <section class="panel pos-panel">
+      <div class="panel-head">
+        <h2><i class="ic ic-pos"></i>持倉結構 · 異常偵測</h2>
+        <span class="mini" id="posPair">—</span>
+      </div>
+      <div class="kv" id="posGrid">
+        <div><label>未平倉 OI</label><b id="pOi">—</b><i id="pOiChg">—</i></div>
+        <div><label>資金費率</label><b id="pFund">—</b><i id="pFundNext">—</i></div>
+        <div><label>大戶持倉比 多/空</label><b id="pTop">—</b><i id="pTopChg">—</i></div>
+        <div><label>大戶帳戶比</label><b id="pAcct">—</b><i id="pAcctChg">—</i></div>
+        <div><label>散戶帳戶比</label><b id="pGlobal">—</b><i id="pGlobalChg">—</i></div>
+        <div><label>主動買賣比</label><b id="pTaker">—</b><i id="pTakerChg">—</i></div>
+      </div>
+      <div class="oi-chart"><canvas id="oiChart"></canvas></div>
+      <div class="signal-box" id="posSignals"><div class="empty">分析中…</div></div>
+    </section>
+
+    <section class="panel liq-panel">
+      <div class="panel-head">
+        <h2><i class="ic ic-liq"></i>爆倉清算流</h2>
+        <span class="mini" id="liqMeta">Bybit 線性合約 · 即時</span>
+      </div>
+      <div class="liq-sum">
+        <div><label>近 1 分鐘</label><b id="liq1">—</b></div>
+        <div><label>近 15 分鐘</label><b id="liq15">—</b></div>
+        <div><label>多空比</label><b id="liqRatio">—</b></div>
+      </div>
+      <div class="tape tape-sm" id="liqTape"><div class="empty">等待清算事件…</div></div>
+    </section>
+  </aside>
+</main>
+
+<div class="statusbar">
+  <div class="ticker" id="statusTicker"><span>系統啟動中…</span></div>
+  <div class="disc">資料來源：Binance 公開行情 API · 本工具僅供研究與視覺化，不構成投資建議</div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/api.js"></script>
+<script src="js/stream.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/book.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
