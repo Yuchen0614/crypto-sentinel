@@ -135,6 +135,10 @@ Bybit 線性合約清算事件（涵蓋成交量前 100 個幣種），近 1 分
 | `index.html` — **行情主控台** | HUD、全市場掃描、主圖表與訂單簿／深度熱圖、巨鯨與清算、壓力計、異常事件，以及頁籤式的**鏈上情報入口卡** |
 | `onchain.html` — **鏈上聰明錢追蹤（獨立頁）** | Hyperliquid 大戶錢包即時持倉與倉位變化偵測、DEX 大額換幣即時流＋雷達（以太坊／Solana／Base／BNB）、協同買入、大戶最擁擠倉位、聰明錢錢包評分榜 |
 
+![行情主控台](docs/screenshot-main.png)
+
+![鏈上聰明錢追蹤（獨立頁）](docs/screenshot-onchain.png)
+
 為什麼拆成兩頁：主控台與鏈上追蹤的資料來源、更新節奏完全不同（行情是每秒級的 WebSocket，
 鏈上是每 5 秒輪詢 Hyperliquid、每 14 秒掃一個 GeckoTerminal 熱門池）。拆開之後——
 
