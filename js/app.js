@@ -327,9 +327,12 @@
       if (d && A.Book) { A.Book.setRest(d); S.bookUI.render(A.Book); }
     }, 2200);
 
-    // 全市場輕量行情套用
+    // 全市場輕量行情套用（背景分頁降頻，但不停止：切回來時清單必須是新的）
+    let scanTick = 0;
     setInterval(() => {
-      if (document.hidden || !S.state.tickMap) return;
+      scanTick++;
+      if (!S.state.tickMap) return;
+      if (document.hidden && scanTick % 6 !== 0) return;
       S.ui.scan.patch(S.state.tickMap);
       const up = S.state.universe.filter(x => x.changePct > 0).length;
       S.ui.hud.breadth(up, S.state.universe.length - up, S.state.universe.length);

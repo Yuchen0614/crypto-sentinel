@@ -148,6 +148,7 @@
 
     setTimeout(() => CB.dexScan(), 1500);
 
+    let renderTick = 0;
     CB.timers.push(
       // 每 5 秒：鏈上大戶錢包（每輪 6 個；背景分頁降為 2 個）
       setInterval(() => { if (!document.hidden) CB.hlPoll(6); else CB.hlPoll(2); }, 5000),
@@ -155,8 +156,11 @@
       setInterval(() => CB.dexScan(), 14000),
       setInterval(() => { if (!document.hidden) S.chainUI.dexMeta(); }, 3000),
       // 每 1.2 秒：鏈上面板渲染
+      // 背景分頁只降頻、不停止：否則使用者切走再切回來，面板會停在舊資料或空狀態。
+      // （畫布動畫（雷達、熱圖）由各自的 rAF 迴圈處理，瀏覽器本來就會自動節流。）
       setInterval(() => {
-        if (document.hidden) return;
+        renderTick++;
+        if (document.hidden && renderTick % 5 !== 0) return;
         S.chainUI.agg();
         if (CB.hlDirty) { CB.hlDirty = false; S.chainUI.hlTable(); S.chainUI.coinBars(); }
         S.chainUI.wallets();
