@@ -1,0 +1,283 @@
+/* ══════════════════════════════════════════════════════════════
+   v3.css — 視覺減法：沉穩終端配色、移除裝飾性光暈與動畫
+   必須最後載入（覆寫 main / fx / v2）
+   設計原則：
+     1. 只有三種顏色有意義：漲（綠）、跌（紅）、強調（藍）；其餘一律灰階。
+     2. 光暈、漸層、掃描線、粒子背景全部移除，改為 1px 邊框 + 平面色塊。
+     3. 動畫只保留「資料本身在動」的：雷達、時間軸熱圖、數字跳動。
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #0b0e13;
+  --panel: #151a21;
+  --panel-solid: #151a21;
+  --line: rgba(255, 255, 255, .07);
+  --line-2: rgba(255, 255, 255, .14);
+  --cy: #4d8dff;          /* 主強調色（藍） */
+  --cy-2: #8ab4ff;
+  --cy-dim: #2e4a78;
+  --gn: #0ecb81;          /* 漲 */
+  --gn-dim: #0a925d;
+  --rd: #f6465d;          /* 跌 */
+  --mg: #a78bfa;          /* 極端事件（淡紫，少量使用） */
+  --am: #f5a524;          /* 警示 */
+  --tx: #e8ecf2;
+  --tx-2: #98a2b3;
+  --tx-3: #6b7480;
+  --r: 6px;
+}
+
+/* ── 移除裝飾：背景粒子、掃描線、角落框、開機特效 ─────────── */
+#starfield, .scanlines, .corner-frame, .glitch-veil, .boot-ring, #bootrain { display: none !important }
+body::before {
+  background: radial-gradient(900px 480px at 50% -10%, rgba(77, 141, 255, .07), transparent 65%),
+              linear-gradient(180deg, #0b0e13 0%, #0b0e13 100%) !important;
+}
+body, .panel, .hud, .statusbar, .boot, .toasts, .overlay, .overlay-card, .seg, .stat, .pill,
+.book tr td, .trow, .ctrow, .lrow, .wall, .hle, .sig, .alert, .wl, .coin-bar, .band { backdrop-filter: none !important }
+
+/* 文字發光全部關掉（只留即時連線指示點） */
+* { text-shadow: none !important }
+.panel, .panel::before, .panel::after, .stat, .pill, .seg button, .seg button.on, .ghost,
+.wall, .hle, .sig, .alert, .toast, .overlay-card, .wl, .coin-bar, .chart-badge,
+.price-block b, .clock span, .verdict, .smbadge, .sidechip, .cobuy .chip {
+  box-shadow: none !important;
+}
+.panel::before, .panel::after { display: none !important }
+
+/* 裝飾性動畫關閉：掃光、閃爍、脈動、旋轉、流動 */
+.imb-bar i, .agg-bar i, .coin-bar .cb-long, .coin-bar .cb-short,
+.trow.big::after, .trow.mega::after, .ctrow.big::after, .ctrow.mega::after, .lrow::after,
+.wall::after, .cobuy .chip::after, .boot-logo, .stream-line, .ticker span::after { animation: none !important }
+.trow.mega, .trow.big, .ctrow.big, .ctrow.mega { animation: none !important }
+.boot-logo { animation: none !important }
+
+/* ── 面板：扁平卡片 ───────────────────────────────────────── */
+.panel {
+  background: var(--panel) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r) !important;
+  box-shadow: none !important;
+}
+.panel:hover { border-color: rgba(255, 255, 255, .11) !important; box-shadow: none !important }
+.panel-head {
+  padding: 9px 12px !important; min-height: 34px !important;
+  background: none !important; border-bottom: 1px solid var(--line) !important;
+}
+.panel-head h2 { font-size: 12.5px !important; font-weight: 600 !important; letter-spacing: .01em !important; color: var(--tx) !important }
+.panel-head h2 .count {
+  font-size: 10.5px !important; font-weight: 500; color: var(--tx-2) !important;
+  background: rgba(255, 255, 255, .05) !important; border: 0 !important; padding: 1px 6px !important; border-radius: 999px !important;
+}
+.ic { background: var(--tx-2) !important; opacity: 1 !important; width: 11px; height: 11px }
+.mini { color: var(--tx-3) !important; font-size: 10px !important }
+.panel-foot { padding: 7px 12px !important; border-top: 1px solid var(--line) !important; color: var(--tx-3) !important }
+.panel-foot b { color: var(--tx-2) !important }
+
+/* ── 頂部 HUD：去掉方框，改成單純的標籤／數值 ───────────────── */
+.hud {
+  background: #0e1218 !important; border-bottom: 1px solid var(--line) !important;
+  min-height: 52px !important; padding: 7px 16px !important; gap: 16px !important;
+}
+.hud-brand h1 { font-size: 15px !important; letter-spacing: .02em !important; color: var(--tx) !important }
+.hud-brand h1 b { color: var(--tx-2) !important; font-weight: 600 }
+.hud-brand .dot { background: var(--gn) !important; box-shadow: none !important; animation: none !important }
+.hud-brand p { display: none !important }
+.hud-stats { gap: 0 !important }
+.stat {
+  background: none !important; border: 0 !important; border-left: 1px solid var(--line) !important;
+  border-radius: 0 !important; padding: 2px 14px !important;
+}
+.stat:first-child { border-left: 0 !important; padding-left: 0 !important }
+.stat label { font-size: 9.5px !important; color: var(--tx-3) !important; letter-spacing: .04em !important; text-transform: uppercase }
+.stat b { font-size: 13px !important; color: var(--tx) !important; font-weight: 600 !important }
+.clock span { font-size: 16px !important; color: var(--tx) !important; font-weight: 600 }
+.clock small { color: var(--tx-3) !important }
+.pill {
+  background: none !important; border: 0 !important; padding: 0 !important;
+  color: var(--tx-3) !important; font-size: 10px !important; letter-spacing: .02em !important;
+}
+.pill i { width: 6px !important; height: 6px !important; box-shadow: none !important }
+.pill[data-state="ok"] { color: var(--tx-2) !important }
+.pill[data-state="off"] { color: var(--rd) !important }
+.pill[data-state="wait"] { color: var(--am) !important }
+#pillVer { display: none !important }
+
+/* ── 分段控制項：選取狀態改為底色淡藍，不再是亮色漸層 ────────── */
+.seg { background: rgba(255, 255, 255, .03) !important; border: 1px solid var(--line) !important; border-radius: 5px !important }
+.seg button { font-size: 11px !important; color: var(--tx-2) !important; border-right: 0 !important; padding: 3px 10px !important; border-radius: 4px !important }
+.seg button:hover { color: var(--tx) !important; background: rgba(255, 255, 255, .05) !important }
+.seg button.on { color: #cfe0ff !important; background: rgba(77, 141, 255, .18) !important; font-weight: 600 !important }
+.ghost { color: var(--tx-3) !important; border-color: var(--line) !important }
+.ghost:hover { color: var(--tx) !important; border-color: var(--line-2) !important }
+
+/* ── 表格與清單：細分隔線、單一 hover 色 ───────────────────── */
+.scan thead th, table.hl thead th, .book thead th, .tape-head, .chain-tape-head {
+  background: transparent !important; color: var(--tx-3) !important; border-bottom: 1px solid var(--line) !important;
+  font-weight: 500 !important; letter-spacing: .04em !important;
+}
+.scan thead th { background: #151a21 !important }
+.scan tbody tr:hover, table.hl tbody tr:hover, .ctrow:hover, .wl:hover { background: rgba(255, 255, 255, .035) !important }
+.scan tbody tr.sel { background: rgba(77, 141, 255, .12) !important; box-shadow: none !important }
+.scan tbody td, table.hl td, .ctrow, .trow, .lrow { border-bottom: 1px solid rgba(255, 255, 255, .045) !important }
+.scan .sym b { color: var(--tx) !important; font-weight: 600 }
+.scan .sym em { color: var(--tx-3) !important }
+.book tr::before { display: none !important }
+.book td { color: var(--tx-2) }
+.book .bid-px { color: var(--gn) !important } .book .ask-px { color: var(--rd) !important }
+
+/* ── 狀態／標籤：一律淡底、無邊框 ─────────────────────────── */
+.smbadge, .sidechip, .verdict, .hle, .sig, .alert, .band, .wall, .wl, .coin-bar, .nle {
+  background: rgba(255, 255, 255, .035) !important; border: 0 !important; border-left: 2px solid var(--tx-3) !important;
+  border-radius: 0 4px 4px 0 !important;
+}
+.smbadge { border-left: 0 !important; border-radius: 999px !important; padding: 1px 7px !important; background: rgba(255, 255, 255, .06) !important }
+.smbadge.bull { color: var(--gn) !important; background: rgba(14, 203, 129, .12) !important }
+.smbadge.bear { color: var(--rd) !important; background: rgba(246, 70, 93, .12) !important }
+.smbadge.neu { color: var(--tx-2) !important }
+.verdict { border-left: 2px solid var(--cy) !important; background: rgba(77, 141, 255, .1) !important; color: var(--cy-2) !important; border-radius: 0 4px 4px 0 !important; padding: 1px 9px !important }
+.verdict.bull { border-left-color: var(--gn) !important; background: rgba(14, 203, 129, .1) !important; color: var(--gn) !important }
+.verdict.bear { border-left-color: var(--rd) !important; background: rgba(246, 70, 93, .1) !important; color: var(--rd) !important }
+.sidechip { border-left-width: 2px !important; padding: 0 5px !important }
+.sidechip.long { border-left-color: var(--gn) !important; color: var(--gn) !important; background: rgba(14, 203, 129, .08) !important }
+.sidechip.short { border-left-color: var(--rd) !important; color: var(--rd) !important; background: rgba(246, 70, 93, .08) !important }
+.hle, .sig, .alert { border-left-color: var(--cy) !important; padding: 5px 9px !important }
+.hle.ADD, .hle.OPEN, .sig.bull { border-left-color: var(--gn) !important; background: rgba(14, 203, 129, .06) !important }
+.hle.CUT, .hle.CLOSE, .sig.bear { border-left-color: var(--rd) !important; background: rgba(246, 70, 93, .06) !important }
+.hle.FLIP { border-left-color: var(--mg) !important; background: rgba(167, 139, 250, .07) !important }
+.hle.PNL, .sig.warn, .alert.mid { border-left-color: var(--am) !important; background: rgba(245, 165, 36, .06) !important }
+.alert.high { border-left-color: var(--rd) !important; background: rgba(246, 70, 93, .06) !important }
+.alert .sev { background: none !important; border: 0 !important; font-weight: 600 }
+.alert.high .sev { color: var(--rd) !important } .alert.mid .sev { color: var(--am) !important } .alert.low .sev { color: var(--tx-3) !important }
+.wall.bid { border-left-color: var(--gn) !important } .wall.ask { border-left-color: var(--rd) !important }
+.wall .tag { background: none !important; border: 0 !important; padding: 0 !important }
+.cobuy .chip { background: rgba(167, 139, 250, .1) !important; border: 0 !important; border-left: 2px solid var(--mg) !important; border-radius: 0 4px 4px 0 !important }
+
+/* ── 巨鯨／鏈上列：移除漸層底，改用左側色條 ───────────────── */
+.trow.big, .trow.mega, .ctrow.big, .ctrow.mega {
+  background: none !important; box-shadow: none !important;
+  border-left: 2px solid var(--am) !important; padding-left: 6px !important;
+}
+.trow.mega, .ctrow.mega { border-left-color: var(--mg) !important }
+.trow.buy .amt, .ctrow.buy .amt { color: var(--gn) !important }
+.trow.sell .amt, .ctrow.sell .amt { color: var(--rd) !important }
+.lrow.long .amt { color: var(--rd) !important } .lrow.short .amt { color: var(--gn) !important }
+
+/* ── 圖表／訂單簿：淡化深度條與輔助線 ─────────────────────── */
+.imb-bar { border-color: var(--line) !important; background: rgba(246, 70, 93, .1) !important }
+.imb-bar i { background: rgba(14, 203, 129, .35) !important }
+.chart-badge { background: #0e1218 !important; border: 1px solid var(--line) !important; color: var(--tx-2) !important }
+.chart-legend { color: var(--tx-3) !important }
+.heat-legend i { opacity: .85 }
+.spread { background: none !important; border-color: var(--line) !important; color: var(--tx-2) !important }
+
+/* ── 壓力計：細一點、去掉外圈殘影 ─────────────────────────── */
+.gauge-center b { font-size: 30px !important; color: var(--tx) !important; font-weight: 700 !important }
+.gauge-center small { color: var(--tx-3) !important }
+.comp label { color: var(--tx-2) !important }
+.comp label i.d { color: var(--tx-3) !important }
+.comp-bar { background: rgba(255, 255, 255, .07) !important }
+.note { color: var(--tx-3) !important }
+
+/* ── 雷達（唯一的裝飾性動畫，收斂到最低限度）──────────────── */
+.radar-wrap { background: #10151b !important; border-color: var(--line) !important }
+#radar { opacity: .9 }
+
+/* ── 通知／明節：扁平、無光暈 ─────────────────────────────── */
+.toast {
+  background: #171c24 !important; border: 1px solid var(--line) !important; border-left: 3px solid var(--cy) !important;
+  border-radius: 6px !important; box-shadow: 0 8px 24px -16px rgba(0, 0, 0, .9) !important;
+}
+.toast.high { border-left-color: var(--rd) !important } .toast.mid { border-left-color: var(--am) !important }
+.toast::after { display: none !important }
+.toast b { color: var(--tx) !important } .toast span { color: var(--tx-2) !important } .toast .tk { color: var(--tx-3) !important }
+.overlay { background: rgba(6, 8, 12, .72) !important }
+.overlay-card { background: #141920 !important; border: 1px solid var(--line-2) !important; border-radius: 8px !important; box-shadow: 0 24px 60px -30px #000 !important }
+.overlay-card h3 { color: var(--tx) !important; letter-spacing: .01em !important }
+.overlay-card .addr { color: var(--tx-2) !important }
+.ov-grid > div, .cv-grid > div { background: #171c24 !important; border: 0 !important }
+.ov-grid label { color: var(--tx-3) !important }
+.ov-actions a, .ov-actions button { background: rgba(77, 141, 255, .1) !important; border: 1px solid var(--line) !important; color: var(--cy-2) !important; border-radius: 5px !important }
+.ov-actions a:hover, .ov-actions button:hover { background: rgba(77, 141, 255, .2) !important }
+.ov-sub { border-left: 0 !important; padding-left: 0 !important; color: var(--tx-2) !important; margin-top: 14px !important }
+.float-tag { background: #171c24 !important; border: 1px solid var(--line) !important; box-shadow: none !important }
+
+/* ── 開機畫面：極簡 ───────────────────────────────────────── */
+.boot { background: #0b0e13 !important }
+.boot-logo { font-size: clamp(22px, 3vw, 30px) !important; color: var(--tx) !important; font-weight: 600 !important }
+.boot-logo b { color: var(--tx-3) !important; font-weight: 600 }
+.boot-sub { color: var(--tx-3) !important; letter-spacing: .12em !important; margin: 4px 0 18px !important }
+.bootlog { border-left: 1px solid var(--line) !important; background: none !important; height: 148px !important; color: var(--tx-2) !important }
+.boot-bar { background: rgba(255, 255, 255, .07) !important; height: 1px !important }
+.boot-bar i { background: var(--cy) !important }
+.boot-hint { color: var(--tx-3) !important }
+
+/* ── 捲軸：中性灰 ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 9px; height: 9px }
+::-webkit-scrollbar-track { background: transparent }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .13) !important; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .22) !important }
+
+/* ── 狀態列 ───────────────────────────────────────────────── */
+.statusbar { background: #0e1218 !important; border-top: 1px solid var(--line) !important }
+.ticker { color: var(--tx-2) !important } .ticker b { color: var(--tx) !important }
+.disc { color: var(--tx-3) !important }
+
+/* ── 降低整體彩度：把「用顏色」限縮到真正需要的地方 ─────────
+   （.up/.down 只保留文字色，不再連背景一起上色）*/
+.up { color: var(--gn) !important } .down { color: var(--rd) !important }
+.flash-up { animation: none !important } .flash-down { animation: none !important }
+tbody tr td.flash-up, tbody tr td.flash-down { background: none !important }
+.scan tbody td.flash-up { color: var(--gn) !important } .scan tbody td.flash-down { color: var(--rd) !important }
+
+/* 熱圖圖例與 mini 統計淡化 */
+.heat-legend, .mini-stats label, .agg-stats label, .liq-sum label, .kv label { color: var(--tx-3) !important }
+.agg-stats b, .mini-stats b, .liq-sum b, .kv b { color: var(--tx) !important }
+.kv, .agg-stats, .mini-stats, .liq-sum { background: var(--line) !important; gap: 1px !important }
+.kv > div, .agg-stats > div, .mini-stats > div, .liq-sum > div { background: #151a21 !important }
+
+/* 掃描表的資金動能欄位寬度收斂（原本太寬顯得凌亂） */
+.scan td:last-child, .scan th:last-child { width: 54px }
+
+/* ── HUD 數值完整顯示（原本會被截成「$754.26…」）─────────────── */
+.hud-stats { flex-wrap: wrap !important; row-gap: 4px !important; overflow: visible !important }
+.stat { flex: 0 1 auto !important; min-width: max-content !important; padding: 2px 12px !important }
+.stat b { font-size: 12.5px !important; overflow: visible !important; text-overflow: clip !important }
+.stat label { font-size: 9px !important }
+.clock span { font-size: 15px !important }
+
+/* ── 爆倉清算列：只留左側色條，不再整片紅／綠底 ─────────────── */
+.lrow {
+  background: rgba(255, 255, 255, .028) !important; border: 0 !important;
+  border-left: 2px solid var(--tx-3) !important; border-radius: 0 4px 4px 0 !important;
+  padding: 1px 4px 1px 6px !important;
+}
+.lrow.long { border-left-color: var(--rd) !important } .lrow.short { border-left-color: var(--gn) !important }
+.lrow .sym { color: var(--tx-2) !important } .lrow .amt { color: var(--tx) !important }
+.lrow.long .amt { color: var(--rd) !important } .lrow.short .amt { color: var(--gn) !important }
+.lrow .t { color: var(--tx-3) !important }
+
+/* ── 巨鯨列同理：小額成交不加底色，只有大額才給色條 ──────────── */
+.trow, .ctrow { background: none !important; border-left: 2px solid transparent !important; padding-left: 6px !important }
+.trow.big, .ctrow.big { border-left-color: var(--am) !important }
+.trow.mega, .ctrow.mega { border-left-color: var(--mg) !important }
+
+/* ── 列表不再整片紅綠底（只保留數字顏色）─────────────────────
+   原本漲跌幣種的整列底色讓清單看起來花；改為只有百分比上色。 */
+.scan tbody tr.up, .scan tbody tr.down { background: none !important }
+.scan tbody tr.sel { background: rgba(77, 141, 255, .12) !important }
+.scan tbody tr.sel td { color: var(--tx) !important }
+
+/* ── 壓力計面板不被壓扁（矮螢幕時原本會把弧形切掉）─────────── */
+.panel:has(.gauge-wrap) { flex: 0 0 auto !important }
+.gauge-wrap { min-height: 138px !important }
+@media (max-height: 900px) { #gauge { height: 150px !important } }
+@media (max-height: 800px) { #gauge { height: 142px !important } }
+
+/* ── 淨流向三格：還沒資料時不要留大空框 ─────────────────────── */
+.flow-grid > div { min-height: 34px }
+
+/* ── 圖表統計：3 欄 × 2 列（6 項填滿，不留空格灰塊）─────────── */
+.chart-stats { grid-template-columns: repeat(3, 1fr) !important }
+.chart-stats > div { background: #141920 !important; padding: 6px 11px !important }
+@media (max-width: 1500px) { .chart-stats { grid-template-columns: repeat(3, 1fr) !important } }

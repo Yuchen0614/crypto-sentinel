@@ -35,8 +35,8 @@
         const pct = U.clamp(notional / maxN * 100, 2, 100);
         // 深度條：以背景漸層表現相對掛單量（相容性優於偽元素）
         tr.style.backgroundImage = side === 'ask'
-          ? `linear-gradient(90deg, rgba(255,77,109,0) 0%, rgba(255,77,109,.22) ${pct}%, transparent ${pct}%)`
-          : `linear-gradient(90deg, rgba(38,255,168,0) 0%, rgba(38,255,168,.22) ${pct}%, transparent ${pct}%)`;
+          ? `linear-gradient(90deg, rgba(246,70,93,0) 0%, rgba(246,70,93,.14) ${pct}%, transparent ${pct}%)`
+          : `linear-gradient(90deg, rgba(14,203,129,0) 0%, rgba(14,203,129,.14) ${pct}%, transparent ${pct}%)`;
         tr.style.backgroundSize = '100% 100%';
         tr.style.backgroundRepeat = 'no-repeat';
         const qtyTxt = U.qty(d[1]);
@@ -56,7 +56,7 @@
         tds[2].textContent = U.money(notional);
         const pctStr = ((d[0] / (S.analytics.Book.mid || d[0]) - 1) * 100);
         tds[3].textContent = (side === 'ask' ? '+' : '') + pctStr.toFixed(2) + '%';
-        tds[3].style.color = side === 'ask' ? 'rgba(255,77,109,.65)' : 'rgba(38,255,168,.65)';
+        tds[3].style.color = side === 'ask' ? 'rgba(246,70,93,.5)' : 'rgba(14,203,129,.5)';
       }
     },
     render(b) {

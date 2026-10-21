@@ -137,7 +137,7 @@
   // 熱圖色帶（低→高）
   U.heatColor = t => {
     t = U.clamp(t, 0, 1);
-    const stops = [[10, 26, 46], [18, 74, 99], [28, 159, 184], [79, 240, 255], [255, 200, 87], [255, 62, 165]];
+    const stops = [[20, 26, 34], [30, 58, 96], [52, 110, 160], [92, 170, 215], [150, 215, 235], [245, 165, 36]];
     const k = t * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(k)), f = k - i;
     const a = stops[i], b = stops[i + 1];
     return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];

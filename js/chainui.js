@@ -265,7 +265,7 @@
           `<td>$${U.pxSym(t.tokenPrice)}</td><td><a href="https://${t.chain === 'solana' ? 'solscan.io/tx/' : (t.chain === 'bsc' ? 'bscscan.com/tx/' : t.chain === 'base' ? 'basescan.org/tx/' : 'etherscan.io/tx/') + t.tx}" target="_blank" rel="noopener" style="color:var(--cy)">${(t.tx || '').slice(0, 10)}…</a></td></tr>`;
       });
       html += '</tbody></table>';
-      const tokens = pr.tokens.map(t => `<span class="chip" style="border-color:var(--line-2);color:var(--cy);background:rgba(56,246,255,.08)">${t.sym} $${U.money(t.usd)}</span>`).join(' ');
+      const tokens = pr.tokens.map(t => `<span class="chip" style="border-color:var(--line-2);color:var(--cy);background:rgba(77,141,255,.08)">${t.sym} $${U.money(t.usd)}</span>`).join(' ');
       html += `<div class="ov-sub">主要交易代幣</div><div class="cobuy">${tokens}</div>`;
       const ch = chain || (pr.chains[0] || 'eth');
       html += `<div class="ov-actions"><a href="${OC.explorer(ch, addr)}" target="_blank" rel="noopener">${OC.chainLabel(ch)} 區塊瀏覽器 ↗</a>

@@ -15,7 +15,7 @@
 /* 面板 hover：角落標記張開 + 霓虹光暈 */
 .panel { transition: box-shadow .35s ease, border-color .35s ease }
 .panel::before, .panel::after { transition: width .35s cubic-bezier(.16,.84,.34,1), height .35s cubic-bezier(.16,.84,.34,1), border-color .35s }
-.panel:hover { border-color: rgba(56,246,255,.28); box-shadow: 0 0 0 1px rgba(56,246,255,.12) inset, 0 0 34px -12px rgba(56,246,255,.75) }
+.panel:hover { border-color: rgba(77,141,255,.28); box-shadow: 0 0 0 1px rgba(77,141,255,.12) inset, 0 0 34px -12px rgba(77,141,255,.75) }
 .panel:hover::before, .panel:hover::after { width: 26px; height: 26px }
 
 /* ── 數字跳動 ─────────────────────────────────────────────── */
@@ -24,12 +24,12 @@
 .stat b { transition: color .3s }
 .price-block b.pulse-up { animation: pulseUp .55s cubic-bezier(.2,.9,.3,1) }
 .price-block b.pulse-down { animation: pulseDown .55s cubic-bezier(.2,.9,.3,1) }
-@keyframes pulseUp { 0% { text-shadow: 0 0 0 rgba(38,255,168,0) } 30% { color: var(--gn); text-shadow: 0 0 26px rgba(38,255,168,.95) } 100% { text-shadow: none } }
-@keyframes pulseDown { 0% { text-shadow: 0 0 0 rgba(255,77,109,0) } 30% { color: var(--rd); text-shadow: 0 0 26px rgba(255,77,109,.95) } 100% { text-shadow: none } }
+@keyframes pulseUp { 0% { text-shadow: 0 0 0 rgba(14,203,129,0) } 30% { color: var(--gn); text-shadow: 0 0 26px rgba(14,203,129,.95) } 100% { text-shadow: none } }
+@keyframes pulseDown { 0% { text-shadow: 0 0 0 rgba(246,70,93,0) } 30% { color: var(--rd); text-shadow: 0 0 26px rgba(246,70,93,.95) } 100% { text-shadow: none } }
 
 /* ── 訂單簿：命中閃光 + 牆體掃光 ───────────────────────────── */
-@keyframes bookHitBid { 0% { background-color: rgba(38,255,168,.5) } 100% { background-color: transparent } }
-@keyframes bookHitAsk { 0% { background-color: rgba(255,77,109,.5) } 100% { background-color: transparent } }
+@keyframes bookHitBid { 0% { background-color: rgba(14,203,129,.5) } 100% { background-color: transparent } }
+@keyframes bookHitAsk { 0% { background-color: rgba(246,70,93,.5) } 100% { background-color: transparent } }
 .book tr.hit-bid td { animation: bookHitBid .75s ease-out }
 .book tr.hit-ask td { animation: bookHitAsk .75s ease-out }
 .wall { position: relative; overflow: hidden }
@@ -46,16 +46,16 @@
   background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
   transform: translateX(-100%); animation: sweep 1.1s ease-out .05s
 }
-.lrow::after { background: linear-gradient(90deg, transparent, rgba(255,77,109,.2), transparent) }
+.lrow::after { background: linear-gradient(90deg, transparent, rgba(246,70,93,.2), transparent) }
 .float-tag { position: fixed; z-index: 60; pointer-events: none; font-family: var(--mono); font-size: 12px; font-weight: 700;
-  padding: 1px 7px; border-radius: 2px; border: 1px solid currentColor; background: rgba(4,10,18,.85);
+  padding: 1px 7px; border-radius: 2px; border: 1px solid currentColor; background: rgba(10,13,18,.85);
   animation: floatUp 1.9s cubic-bezier(.2,.9,.3,1) forwards }
 @keyframes floatUp { 0% { opacity: 0; transform: translateY(6px) scale(.9) } 18% { opacity: 1; transform: translateY(-2px) scale(1) } 100% { opacity: 0; transform: translateY(-48px) scale(1) } }
 
 .liq-panel.hit-long { animation: liqLong .9s ease-out }
 .liq-panel.hit-short { animation: liqShort .9s ease-out }
-@keyframes liqLong { 0% { box-shadow: inset 0 0 90px -20px rgba(255,77,109,.85); border-color: rgba(255,77,109,.7) } 100% { box-shadow: none } }
-@keyframes liqShort { 0% { box-shadow: inset 0 0 90px -20px rgba(38,255,168,.8); border-color: rgba(38,255,168,.7) } 100% { box-shadow: none } }
+@keyframes liqLong { 0% { box-shadow: inset 0 0 90px -20px rgba(246,70,93,.85); border-color: rgba(246,70,93,.7) } 100% { box-shadow: none } }
+@keyframes liqShort { 0% { box-shadow: inset 0 0 90px -20px rgba(14,203,129,.8); border-color: rgba(14,203,129,.7) } 100% { box-shadow: none } }
 
 /* ── 狀態列打字游標 ───────────────────────────────────────── */
 .ticker span::after { content: '▌'; margin-left: 4px; color: var(--cy); animation: caret 1.1s steps(1) infinite }
@@ -64,82 +64,82 @@
 /* ── 通知 toast ───────────────────────────────────────────── */
 .toasts { position: fixed; top: 74px; right: 16px; z-index: 70; display: flex; flex-direction: column; gap: 8px; width: 336px; pointer-events: none }
 .toast { pointer-events: auto; border: 1px solid var(--line-2); border-left-width: 3px; border-radius: 3px;
-  background: linear-gradient(100deg, rgba(8,16,28,.97), rgba(8,16,28,.84)); padding: 8px 11px;
-  box-shadow: 0 14px 40px -16px #000, 0 0 30px -14px rgba(56,246,255,.7); backdrop-filter: blur(6px);
+  background: linear-gradient(100deg, rgba(14,17,23,.97), rgba(14,17,23,.84)); padding: 8px 11px;
+  box-shadow: 0 14px 40px -16px #000, 0 0 30px -14px rgba(77,141,255,.7); backdrop-filter: blur(6px);
   animation: toastIn .45s cubic-bezier(.16,.84,.34,1) both; position: relative; overflow: hidden }
 .toast::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: currentColor; opacity: .45; animation: toastLife 6s linear forwards }
 @keyframes toastLife { from { width: 100% } to { width: 0 } }
 @keyframes toastIn { from { opacity: 0; transform: translateX(40px) scale(.96) } to { opacity: 1; transform: none } }
 .toast.out { animation: toastOut .4s ease-in forwards }
 @keyframes toastOut { to { opacity: 0; transform: translateX(40px) scale(.96) } }
-.toast b { display: block; font-size: 12px; color: #eafcff }
+.toast b { display: block; font-size: 12px; color: #f2f5fa }
 .toast span { font-size: 10.5px; color: var(--tx-2); line-height: 1.45; display: block; margin-top: 2px }
 .toast .tk { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; color: var(--tx-3) }
-.toast.high { color: var(--rd); border-color: rgba(255,77,109,.45) }
-.toast.mid { color: var(--am); border-color: rgba(255,200,87,.4) }
+.toast.high { color: var(--rd); border-color: rgba(246,70,93,.45) }
+.toast.mid { color: var(--am); border-color: rgba(245,165,36,.4) }
 .toast.low { color: var(--cy) }
 
 /* ── 錢包明細節面 ─────────────────────────────────────────── */
 .overlay { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center;
-  background: rgba(2,5,10,.62); backdrop-filter: blur(4px); animation: fadeIn .25s ease-out }
+  background: rgba(7,9,12,.62); backdrop-filter: blur(4px); animation: fadeIn .25s ease-out }
 .overlay[hidden] { display: none }
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 .overlay-card { width: min(700px, 92vw); max-height: 86vh; overflow-y: auto; border: 1px solid var(--line-2); border-radius: 3px;
-  background: linear-gradient(160deg, rgba(9,17,30,.98), rgba(5,9,16,.98)); padding: 16px 18px; position: relative;
-  box-shadow: 0 30px 90px -30px #000, 0 0 60px -24px rgba(56,246,255,.8); animation: cardIn .4s cubic-bezier(.16,.84,.34,1) }
+  background: linear-gradient(160deg, rgba(15,18,24,.98), rgba(11,13,18,.98)); padding: 16px 18px; position: relative;
+  box-shadow: 0 30px 90px -30px #000, 0 0 60px -24px rgba(77,141,255,.8); animation: cardIn .4s cubic-bezier(.16,.84,.34,1) }
 @keyframes cardIn { from { opacity: 0; transform: translateY(18px) scale(.97) } to { opacity: 1; transform: none } }
-.overlay-card h3 { font-family: var(--disp); font-size: 14px; letter-spacing: .1em; color: #eafcff; margin-bottom: 3px }
+.overlay-card h3 { font-family: var(--disp); font-size: 14px; letter-spacing: .1em; color: #f2f5fa; margin-bottom: 3px }
 .overlay-card .addr { font-family: var(--mono); font-size: 11px; color: var(--cy); word-break: break-all }
 .ov-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); margin: 12px 0 }
-.ov-grid > div { background: rgba(6,11,20,.9); padding: 6px 9px }
+.ov-grid > div { background: rgba(12,15,20,.9); padding: 6px 9px }
 .ov-grid label { display: block; font-size: 9.5px; color: var(--tx-3) }
 .ov-grid b { font-family: var(--mono); font-size: 12.5px }
 .ov-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 }
 .ov-actions a, .ov-actions button { font-family: var(--ui); font-size: 11px; padding: 3px 10px; border-radius: 2px;
-  border: 1px solid var(--line-2); color: var(--cy); background: rgba(56,246,255,.07); text-decoration: none; cursor: pointer }
-.ov-actions a:hover, .ov-actions button:hover { background: rgba(56,246,255,.18) }
+  border: 1px solid var(--line-2); color: var(--cy); background: rgba(77,141,255,.07); text-decoration: none; cursor: pointer }
+.ov-actions a:hover, .ov-actions button:hover { background: rgba(77,141,255,.18) }
 .ov-table { width: 100%; font-size: 11px; font-family: var(--mono) }
 .ov-table th { text-align: left; color: var(--tx-3); font-family: var(--ui); font-weight: 600; font-size: 9.5px; padding: 3px 5px; border-bottom: 1px solid var(--line) }
-.ov-table td { padding: 2.5px 5px; border-bottom: 1px solid rgba(56,246,255,.06) }
-.ov-sub { font-family: var(--ui); font-size: 11px; font-weight: 700; color: #dff6ff; margin: 12px 0 4px; border-left: 2px solid var(--cy); padding-left: 7px }
+.ov-table td { padding: 2.5px 5px; border-bottom: 1px solid rgba(77,141,255,.06) }
+.ov-sub { font-family: var(--ui); font-size: 11px; font-weight: 700; color: #e6ebf2; margin: 12px 0 4px; border-left: 2px solid var(--cy); padding-left: 7px }
 
 /* ── 鏈上情報版面 ─────────────────────────────────────────── */
 .chain-body { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr); gap: 12px; padding: 9px 11px 11px }
 .chain-col { display: flex; flex-direction: column; gap: 6px; min-width: 0 }
 .sub-head { display: flex; align-items: baseline; gap: 8px; border-left: 2px solid var(--cy); padding-left: 7px; margin-top: 2px }
-.sub-head b { font-size: 11.5px; font-weight: 700; color: #dff6ff; letter-spacing: .04em; white-space: nowrap }
+.sub-head b { font-size: 11.5px; font-weight: 700; color: #e6ebf2; letter-spacing: .04em; white-space: nowrap }
 .agg-wrap { border: 1px solid var(--line); border-radius: 2px; padding: 8px 10px 1px; background: rgba(0,0,0,.3) }
-.agg-bar { position: relative; height: 14px; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; background: linear-gradient(90deg, rgba(255,77,109,.2), rgba(255,77,109,.1)) }
+.agg-bar { position: relative; height: 14px; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; background: linear-gradient(90deg, rgba(246,70,93,.2), rgba(246,70,93,.1)) }
 .agg-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; transition: width .7s cubic-bezier(.2,.9,.3,1);
-  background: linear-gradient(90deg, rgba(38,255,168,.6), rgba(38,255,168,.24)); background-size: 220% 100%; animation: shimmer 3.4s linear infinite }
+  background: linear-gradient(90deg, rgba(14,203,129,.6), rgba(14,203,129,.24)); background-size: 220% 100%; animation: shimmer 3.4s linear infinite }
 /* 多空比要同時顯示「名目加權」與「錢包等權」兩種，字串變長 → 允許換行、中間那格自己佔一列 */
 .agg-labels { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px;
   font-family: var(--mono); font-size: 10px; color: var(--tx-2); margin: 4px 0 8px; line-height: 1.55 }
 .agg-labels span:nth-child(2) { color: var(--cy); font-size: 10.5px; flex: 1 1 100%; order: 3; text-align: left;
   white-space: normal; overflow-wrap: anywhere }
 .agg-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); margin: 0 -10px; border-top: 1px solid var(--line) }
-.agg-stats > div { background: rgba(6,11,20,.9); padding: 5px 8px }
+.agg-stats > div { background: rgba(12,15,20,.9); padding: 5px 8px }
 .agg-stats label { display: block; font-size: 9px; color: var(--tx-3) }
-.agg-stats b { font-family: var(--mono); font-size: 12px; color: #dcf5ff }
+.agg-stats b { font-family: var(--mono); font-size: 12px; color: #e6ebf2 }
 .hl-table-wrap { max-height: 232px; overflow-y: auto; border: 1px solid var(--line); border-radius: 2px }
 table.hl { font-size: 11px }
 table.hl thead th { position: sticky; top: 0; background: linear-gradient(180deg,#0b1524,#0a1120); z-index: 2;
   color: var(--tx-3); font-family: var(--ui); font-size: 9.5px; font-weight: 600; padding: 4px 7px; border-bottom: 1px solid var(--line) }
-table.hl td { padding: 3.5px 7px; border-bottom: 1px solid rgba(56,246,255,.07); white-space: nowrap }
+table.hl td { padding: 3.5px 7px; border-bottom: 1px solid rgba(77,141,255,.07); white-space: nowrap }
 table.hl tbody tr { cursor: pointer; transition: background .18s }
-table.hl tbody tr:hover { background: rgba(56,246,255,.08) }
-table.hl .nm { color: #e3f6ff; font-family: var(--ui); font-weight: 600 }
+table.hl tbody tr:hover { background: rgba(77,141,255,.08) }
+table.hl .nm { color: #e9edf3; font-family: var(--ui); font-weight: 600 }
 .sidechip { font-family: var(--mono); font-size: 9.5px; padding: 0 4px; border-radius: 2px; border: 1px solid }
-.sidechip.long { color: var(--gn); border-color: rgba(38,255,168,.4); background: rgba(38,255,168,.1) }
-.sidechip.short { color: var(--rd); border-color: rgba(255,77,109,.4); background: rgba(255,77,109,.1) }
+.sidechip.long { color: var(--gn); border-color: rgba(14,203,129,.4); background: rgba(14,203,129,.1) }
+.sidechip.short { color: var(--rd); border-color: rgba(246,70,93,.4); background: rgba(246,70,93,.1) }
 .hl-events { max-height: 158px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px }
 .hle { display: flex; gap: 8px; align-items: baseline; font-size: 10.5px; padding: 4px 8px; border-left: 2px solid var(--cy);
-  background: rgba(56,246,255,.05); animation: alertIn .45s cubic-bezier(.16,.84,.34,1); border-radius: 0 2px 2px 0; cursor: pointer }
-.hle.ADD, .hle.OPEN { border-color: var(--gn); background: rgba(38,255,168,.07) }
-.hle.CUT, .hle.CLOSE { border-color: var(--rd); background: rgba(255,77,109,.07) }
-.hle.FLIP { border-color: var(--mg); background: rgba(255,62,165,.09) }
-.hle.PNL { border-color: var(--am); background: rgba(255,200,87,.06) }
-.hle .w { color: #e8fbff; font-weight: 600; white-space: nowrap }
+  background: rgba(77,141,255,.05); animation: alertIn .45s cubic-bezier(.16,.84,.34,1); border-radius: 0 2px 2px 0; cursor: pointer }
+.hle.ADD, .hle.OPEN { border-color: var(--gn); background: rgba(14,203,129,.07) }
+.hle.CUT, .hle.CLOSE { border-color: var(--rd); background: rgba(246,70,93,.07) }
+.hle.FLIP { border-color: var(--mg); background: rgba(167,139,250,.09) }
+.hle.PNL { border-color: var(--am); background: rgba(245,165,36,.06) }
+.hle .w { color: #eef2f7; font-weight: 600; white-space: nowrap }
 .hle .d { color: var(--tx-2); flex: 1; min-width: 0 }
 .hle .t { font-family: var(--mono); font-size: 9.5px; color: var(--tx-3) }
 
@@ -147,34 +147,34 @@ table.hl .nm { color: #e3f6ff; font-family: var(--ui); font-weight: 600 }
   background: radial-gradient(120% 120% at 50% 60%, rgba(9,32,44,.9), rgba(3,7,13,.95)) }
 #radar { display: block; width: 100%; height: 190px }
 .radar-hud { position: absolute; left: 9px; right: 9px; bottom: 6px; display: flex; justify-content: space-between;
-  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; color: var(--cy); text-shadow: 0 0 12px rgba(56,246,255,.8) }
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; color: var(--cy); text-shadow: 0 0 12px rgba(77,141,255,.8) }
 .chain-tape-head { display: grid; grid-template-columns: 44px 38px minmax(0,1fr) 34px minmax(0,1fr) 62px; gap: 6px; padding: 3px 4px;
   font-family: var(--ui); font-size: 9.5px; color: var(--tx-3); text-transform: uppercase; letter-spacing: .06em;
   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line) }
 .chain-tape { max-height: 212px; overflow-y: auto }
 .ctrow { display: grid; grid-template-columns: 44px 38px minmax(0,1fr) 34px minmax(0,1fr) 62px; gap: 6px; font-family: var(--mono); font-size: 11px;
-  padding: 2.5px 4px; border-bottom: 1px solid rgba(56,246,255,.06); animation: tapeIn .4s cubic-bezier(.16,.84,.34,1); cursor: pointer }
-.ctrow:hover { background: rgba(56,246,255,.08) }
+  padding: 2.5px 4px; border-bottom: 1px solid rgba(77,141,255,.06); animation: tapeIn .4s cubic-bezier(.16,.84,.34,1); cursor: pointer }
+.ctrow:hover { background: rgba(77,141,255,.08) }
 .ctrow .t { color: var(--tx-3) }
-.ctrow .tok { color: #dff6ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ctrow .tok { color: #e6ebf2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .ctrow .side { font-weight: 600 }
 .ctrow.buy .side { color: var(--gn) } .ctrow.sell .side { color: var(--rd) }
-.ctrow .amt { color: #e8fbff } .ctrow.buy .amt { color: var(--gn) } .ctrow.sell .amt { color: var(--rd) }
+.ctrow .amt { color: #eef2f7 } .ctrow.buy .amt { color: var(--gn) } .ctrow.sell .amt { color: var(--rd) }
 .ctrow .wl { color: var(--tx-3); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.ctrow.big { box-shadow: inset 0 0 0 1px rgba(255,200,87,.3); background: linear-gradient(90deg, rgba(255,200,87,.1), transparent) }
-.ctrow.mega { box-shadow: inset 0 0 0 1px rgba(255,62,165,.45); background: linear-gradient(90deg, rgba(255,62,165,.16), transparent) }
+.ctrow.big { box-shadow: inset 0 0 0 1px rgba(245,165,36,.3); background: linear-gradient(90deg, rgba(245,165,36,.1), transparent) }
+.ctrow.mega { box-shadow: inset 0 0 0 1px rgba(167,139,250,.45); background: linear-gradient(90deg, rgba(167,139,250,.16), transparent) }
 
 .wallet-list { display: flex; flex-direction: column; gap: 4px; max-height: 196px; overflow-y: auto }
 .wl { display: grid; grid-template-columns: 20px 1fr 44px; gap: 8px; align-items: center; padding: 4px 7px;
   border: 1px solid var(--line); border-radius: 2px; background: rgba(0,0,0,.3); cursor: pointer;
   animation: alertIn .45s cubic-bezier(.16,.84,.34,1); transition: border-color .25s, background .25s }
-.wl:hover { border-color: var(--line-2); background: rgba(56,246,255,.08) }
+.wl:hover { border-color: var(--line-2); background: rgba(77,141,255,.08) }
 .wl .rk { font-family: var(--mono); font-size: 10px; color: var(--tx-3); text-align: right }
 .wl .info { min-width: 0 }
-.wl .r1 { display: flex; gap: 7px; align-items: baseline; font-family: var(--mono); font-size: 11px; color: #dff6ff }
+.wl .r1 { display: flex; gap: 7px; align-items: baseline; font-family: var(--mono); font-size: 11px; color: #e6ebf2 }
 .wl .r1 em { font-style: normal; font-size: 9.5px; padding: 0 4px; border-radius: 2px; border: 1px solid }
-.wl .r1 em.bull { color: var(--gn); border-color: rgba(38,255,168,.35); background: rgba(38,255,168,.1) }
-.wl .r1 em.bear { color: var(--rd); border-color: rgba(255,77,109,.35); background: rgba(255,77,109,.1) }
+.wl .r1 em.bull { color: var(--gn); border-color: rgba(14,203,129,.35); background: rgba(14,203,129,.1) }
+.wl .r1 em.bear { color: var(--rd); border-color: rgba(246,70,93,.35); background: rgba(246,70,93,.1) }
 .wl .r1 em.neu { color: var(--tx-3); border-color: var(--line) }
 .wl .r2 { display: flex; gap: 9px; font-family: var(--mono); font-size: 9.5px; color: var(--tx-3); margin-top: 2px }
 .wl .sc { font-family: var(--disp); font-size: 15px; font-weight: 900; text-align: right }
@@ -182,24 +182,24 @@ table.hl .nm { color: #e3f6ff; font-family: var(--ui); font-weight: 600 }
 .wl .bar i { display: block; height: 100%; width: 0; transition: width .9s cubic-bezier(.2,.9,.3,1) }
 .cobuy { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px }
 .cobuy .chip { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 2px;
-  border: 1px solid rgba(255,62,165,.45); color: #ffd7ee; background: rgba(255,62,165,.12); cursor: pointer;
+  border: 1px solid rgba(167,139,250,.45); color: #ffd7ee; background: rgba(167,139,250,.12); cursor: pointer;
   animation: alertIn .5s cubic-bezier(.16,.84,.34,1); position: relative; overflow: hidden }
 .cobuy .chip::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent); transform: translateX(-100%); animation: sweep 1.4s ease-out 2 }
-.cobuy .chip:hover { background: rgba(255,62,165,.24) }
+.cobuy .chip:hover { background: rgba(167,139,250,.24) }
 
 /* ── 開機畫面升級：資料雨、掃描環、逐步打勾 ───────────────── */
 .boot::before { content: ''; position: absolute; inset: 0; opacity: .45;
-  background-image: linear-gradient(rgba(56,246,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(56,246,255,.07) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(77,141,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(77,141,255,.07) 1px, transparent 1px);
   background-size: 42px 42px; animation: gridDrift 14s linear infinite }
 @keyframes gridDrift { to { background-position: 42px 42px } }
 #bootrain { position: absolute; inset: 0; opacity: .45 }
 .boot-inner { position: relative; z-index: 2 }
 .boot-logo { animation: logoGlitch 4.5s steps(1) infinite }
 @keyframes logoGlitch {
-  0%, 92% { text-shadow: 0 0 26px rgba(56,246,255,.65) }
+  0%, 92% { text-shadow: 0 0 26px rgba(77,141,255,.65) }
   93% { text-shadow: -3px 0 var(--mg), 3px 0 var(--cy); transform: translateX(1px) }
   94% { text-shadow: 3px 0 var(--mg), -3px 0 var(--cy); transform: translateX(-2px) }
-  95%, 100% { text-shadow: 0 0 26px rgba(56,246,255,.65); transform: none }
+  95%, 100% { text-shadow: 0 0 26px rgba(77,141,255,.65); transform: none }
 }
 .boot-step { font-family: var(--mono); font-size: 11.5px; color: var(--tx-3); display: flex; gap: 8px; align-items: center;
   opacity: .4; transition: opacity .3s, color .3s }
@@ -207,14 +207,14 @@ table.hl .nm { color: #e3f6ff; font-family: var(--ui); font-weight: 600 }
 .boot-step.done { opacity: .85; color: var(--gn) }
 .boot-step .tick { width: 14px; display: inline-block }
 .boot-ring { position: absolute; right: 3%; top: 50%; width: 200px; height: 200px; margin-top: -100px; border-radius: 50%;
-  border: 1px solid rgba(56,246,255,.22); animation: ringSpin 8s linear infinite; pointer-events: none }
-.boot-ring::before, .boot-ring::after { content: ''; position: absolute; inset: 16px; border-radius: 50%; border: 1px dashed rgba(56,246,255,.2) }
-.boot-ring::after { inset: 44px; border-style: solid; border-color: rgba(255,62,165,.28); animation: ringSpin 5s linear infinite reverse }
+  border: 1px solid rgba(77,141,255,.22); animation: ringSpin 8s linear infinite; pointer-events: none }
+.boot-ring::before, .boot-ring::after { content: ''; position: absolute; inset: 16px; border-radius: 50%; border: 1px dashed rgba(77,141,255,.2) }
+.boot-ring::after { inset: 44px; border-style: solid; border-color: rgba(167,139,250,.28); animation: ringSpin 5s linear infinite reverse }
 @keyframes ringSpin { to { transform: rotate(360deg) } }
 
 /* ── 全螢幕切換閃光（換幣／重大事件） ─────────────────────── */
 .glitch-veil { position: fixed; inset: 0; z-index: 65; pointer-events: none; opacity: 0;
-  background: repeating-linear-gradient(0deg, rgba(56,246,255,.16) 0 2px, transparent 2px 5px) }
+  background: repeating-linear-gradient(0deg, rgba(77,141,255,.16) 0 2px, transparent 2px 5px) }
 .glitch-veil.on { animation: glitchFlash .5s steps(3) }
 @keyframes glitchFlash {
   0% { opacity: .85; transform: translateY(0) } 20% { opacity: .35; transform: translateY(-6px) }
@@ -228,18 +228,18 @@ table.hl .nm { color: #e3f6ff; font-family: var(--ui); font-weight: 600 }
 @keyframes lineGo { 0% { top: 0; opacity: .95 } 100% { top: 100%; opacity: 0 } }
 
 /* 雷達 ping 文字 */
-.radar-ping-label { position: absolute; font-family: var(--mono); font-size: 9px; color: var(--cy); text-shadow: 0 0 10px rgba(56,246,255,.9); pointer-events: none }
+.radar-ping-label { position: absolute; font-family: var(--mono); font-size: 9px; color: var(--cy); text-shadow: 0 0 10px rgba(77,141,255,.9); pointer-events: none }
 
 /* 大戶最擁擠倉位 */
 .coin-bars { display: flex; flex-direction: column; gap: 3px; max-height: 168px; overflow-y: auto }
 .coin-bar { display: grid; grid-template-columns: 46px minmax(90px,1fr) 104px 176px; gap: 8px; align-items: center;
   font-family: var(--mono); font-size: 10.5px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 2px;
   background: rgba(0,0,0,.28); animation: alertIn .45s cubic-bezier(.16,.84,.34,1) }
-.coin-bar .cb-sym { color: #e3f6ff; font-weight: 600 }
+.coin-bar .cb-sym { color: #e9edf3; font-weight: 600 }
 .coin-bar .cb-track { position: relative; height: 8px; background: rgba(255,255,255,.06); border-radius: 2px; overflow: hidden; display: block }
 .coin-bar .cb-track i { position: absolute; top: 0; bottom: 0; display: block; transition: width .8s cubic-bezier(.2,.9,.3,1), left .8s cubic-bezier(.2,.9,.3,1) }
-.coin-bar .cb-long { left: 0; background: linear-gradient(90deg, rgba(38,255,168,.75), rgba(38,255,168,.35)); background-size: 220% 100%; animation: shimmer 3.6s linear infinite }
-.coin-bar .cb-short { background: linear-gradient(90deg, rgba(255,77,109,.35), rgba(255,77,109,.75)); background-size: 220% 100%; animation: shimmer 3.6s linear infinite reverse }
+.coin-bar .cb-long { left: 0; background: linear-gradient(90deg, rgba(14,203,129,.75), rgba(14,203,129,.35)); background-size: 220% 100%; animation: shimmer 3.6s linear infinite }
+.coin-bar .cb-short { background: linear-gradient(90deg, rgba(246,70,93,.35), rgba(246,70,93,.75)); background-size: 220% 100%; animation: shimmer 3.6s linear infinite reverse }
 .coin-bar .cb-val { text-align: right }
 .coin-bar .cb-val.bull { color: var(--gn) } .coin-bar .cb-val.bear { color: var(--rd) }
 .coin-bar .cb-tot { color: var(--tx-3); text-align: right; font-size: 9.5px }

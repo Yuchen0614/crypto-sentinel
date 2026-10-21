@@ -82,8 +82,8 @@
 
       // 背景網格
       c.save();
-      c.strokeStyle = 'rgba(56,246,255,.09)'; c.lineWidth = 1;
-      c.font = '10px "JetBrains Mono", monospace'; c.fillStyle = 'rgba(143,178,201,.75)';
+      c.strokeStyle = 'rgba(77,141,255,.09)'; c.lineWidth = 1;
+      c.font = '10px "JetBrains Mono", monospace'; c.fillStyle = 'rgba(152,162,179,.75)';
       for (let i = 0; i <= 5; i++) {
         const p = mn + (mx - mn) * i / 5, y = Math.round(Y(p)) + .5;
         c.beginPath(); c.moveTo(x0, y); c.lineTo(xr, y); c.stroke();
@@ -93,9 +93,9 @@
       const step = Math.max(1, Math.round(vis.length / 7));
       for (let i = 0; i < vis.length; i += step) {
         const x = Math.round(X(i)) + .5;
-        c.strokeStyle = 'rgba(56,246,255,.05)';
+        c.strokeStyle = 'rgba(77,141,255,.05)';
         c.beginPath(); c.moveTo(x, y0); c.lineTo(x, vy1); c.stroke();
-        c.fillStyle = 'rgba(93,125,148,.9)';
+        c.fillStyle = 'rgba(107,116,128,.9)';
         c.fillText(U.timeShort(vis[i].t), x, H - 5);
       }
       c.restore();
@@ -109,8 +109,8 @@
           const h = (k.q / vm) * (vy1 - vy0);
           const up = k.c >= k.o;
           const g = c.createLinearGradient(0, vy1 - h, 0, vy1);
-          g.addColorStop(0, up ? 'rgba(38,255,168,.55)' : 'rgba(255,77,109,.55)');
-          g.addColorStop(1, up ? 'rgba(38,255,168,.06)' : 'rgba(255,77,109,.06)');
+          g.addColorStop(0, up ? 'rgba(14,203,129,.55)' : 'rgba(246,70,93,.55)');
+          g.addColorStop(1, up ? 'rgba(14,203,129,.06)' : 'rgba(246,70,93,.06)');
           c.fillStyle = g;
           c.fillRect(X(i) - bw / 2, vy1 - h, bw, h);
         });
@@ -120,13 +120,13 @@
       const bw = Math.max(1.5, (xr - x0) / vis.length * .62);
       vis.forEach((k, i) => {
         const up = k.c >= k.o, x = X(i);
-        const col = up ? '#26ffa8' : '#ff4d6b';
-        c.strokeStyle = up ? 'rgba(38,255,168,.75)' : 'rgba(255,77,109,.75)';
+        const col = up ? '#0ecb81' : '#f6465d';
+        c.strokeStyle = up ? 'rgba(14,203,129,.75)' : 'rgba(246,70,93,.75)';
         c.lineWidth = 1;
         c.beginPath(); c.moveTo(x, Y(k.h)); c.lineTo(x, Y(k.l)); c.stroke();
         const yA = Y(Math.max(k.o, k.c)), yB = Y(Math.min(k.o, k.c));
         const hgt = Math.max(1.2, yB - yA);
-        c.fillStyle = up ? 'rgba(38,255,168,.30)' : 'rgba(255,77,109,.30)';
+        c.fillStyle = up ? 'rgba(14,203,129,.30)' : 'rgba(246,70,93,.30)';
         c.fillRect(x - bw / 2, yA, bw, hgt);
         c.strokeStyle = col; c.lineWidth = 1;
         c.strokeRect(x - bw / 2 + .5, yA + .5, Math.max(1, bw - 1), Math.max(1, hgt - 1));
@@ -140,11 +140,11 @@
         const CY = v => vy1 - (v - cmn) / (cmx - cmn) * (vy1 - vy0) * .92 - 2;
         c.beginPath();
         cv.forEach((v, i) => i ? c.lineTo(X(i), CY(v)) : c.moveTo(X(i), CY(v)));
-        c.strokeStyle = '#38f6ff'; c.lineWidth = 1.6;
-        c.shadowColor = 'rgba(56,246,255,.85)'; c.shadowBlur = 8;
+        c.strokeStyle = '#4d8dff'; c.lineWidth = 1.6;
+        c.shadowColor = 'rgba(77,141,255,.85)'; c.shadowBlur = 8;
         c.stroke(); c.shadowBlur = 0;
         // CVD 零軸參考
-        c.fillStyle = 'rgba(56,246,255,.85)'; c.font = '9px "JetBrains Mono",monospace'; c.textAlign = 'left';
+        c.fillStyle = 'rgba(77,141,255,.85)'; c.font = '9px "JetBrains Mono",monospace'; c.textAlign = 'left';
         c.fillText('CVD ' + U.signed(cv[cv.length - 1], v => U.money(v)), x0 + 2, vy0 + 10);
       }
 
@@ -153,44 +153,35 @@
         const vw = S.analytics.Trades.vwap(1800e3);
         if (isFinite(vw) && vw > mn && vw < mx) {
           const y = Y(vw);
-          c.save(); c.setLineDash([5, 4]); c.strokeStyle = '#ffc857'; c.lineWidth = 1.1;
+          c.save(); c.setLineDash([5, 4]); c.strokeStyle = '#f5a524'; c.lineWidth = 1.1;
           c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); c.restore();
-          c.fillStyle = '#ffc857'; c.font = '9px "JetBrains Mono",monospace'; c.textAlign = 'left';
+          c.fillStyle = '#f5a524'; c.font = '9px "JetBrains Mono",monospace'; c.textAlign = 'left';
           c.fillText('VWAP 30M ' + U.px(vw), x0 + 2, y - 4);
         }
       }
 
       // 掛單牆水平線
       if (this.ov.walls) {
-        this.walls.slice(0, 6).forEach(wl => {
+        this.walls.slice(0, 3).forEach(wl => {
           if (!isFinite(wl.px) || wl.px < mn || wl.px > mx) return;
           const y = Math.round(Y(wl.px)) + .5;
           const bid = wl.side === 'bid';
           c.save();
-          c.setLineDash([2, 3]); c.lineWidth = 1.2;
-          c.strokeStyle = bid ? 'rgba(38,255,168,.75)' : 'rgba(255,77,109,.75)';
+          c.setLineDash([2, 4]); c.lineWidth = 1;
+          c.strokeStyle = bid ? 'rgba(14,203,129,.40)' : 'rgba(246,70,93,.40)';
           c.beginPath(); c.moveTo(x0, y); c.lineTo(xr, y); c.stroke();
           c.restore();
           const label = `${bid ? 'BID' : 'ASK'} ${U.pxSym(wl.px)} · ${U.usd(wl.notional)}`;
-          c.font = '9px "Share Tech Mono",monospace';
+          c.font = '9px "JetBrains Mono",monospace';
           const tw = c.measureText(label).width + 6;
-          c.fillStyle = bid ? 'rgba(6,32,24,.92)' : 'rgba(38,6,16,.92)';
+          c.fillStyle = bid ? 'rgba(12,24,20,.85)' : 'rgba(28,14,17,.85)';
           c.fillRect(x0 + 2, y - 11, tw, 11);
-          c.fillStyle = bid ? '#26ffa8' : '#ff4d6b';
+          c.fillStyle = bid ? 'rgba(14,203,129,.85)' : 'rgba(246,70,93,.85)';
           c.textAlign = 'left'; c.fillText(label, x0 + 5, y - 2.5);
         });
       }
 
-      // 掃描光束（緩慢掃過圖面）
-      if (!w.matchMedia || !w.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        const sp = ((performance.now() % 7200) / 7200);
-        const sx = x0 + (xr - x0) * sp;
-        const gs = c.createLinearGradient(sx - 76, 0, sx, 0);
-        gs.addColorStop(0, 'rgba(56,246,255,0)'); gs.addColorStop(1, 'rgba(56,246,255,.10)');
-        c.fillStyle = gs; c.fillRect(sx - 76, y0, 76, vy1 - y0);
-        c.strokeStyle = 'rgba(127,249,255,.30)'; c.lineWidth = 1;
-        c.beginPath(); c.moveTo(sx, y0); c.lineTo(sx, vy1); c.stroke();
-      }
+      // （視覺減法：原本的掃描光束已移除）
 
       // 巨鯨成交標記（脈動 + 新事件漣漪）
       const t0 = vis[0].t, nowT = Date.now();
@@ -201,15 +192,14 @@
         const x = X(idx), y = Y(m.price);
         const age = (nowT - m.t) / 1000;
         const base = Math.min(7, 2.5 + Math.log10(m.notional / 50000 + 1) * 2);
-        const pulse = 1 + (age < 14 ? Math.sin(age * 3.4) * 0.22 : 0);
-        c.beginPath(); c.arc(x, y, base * pulse, 0, 6.2832);
-        c.fillStyle = m.side === 'buy' ? 'rgba(38,255,168,.30)' : 'rgba(255,62,165,.30)';
-        c.strokeStyle = m.side === 'buy' ? '#26ffa8' : '#ff3ea5';
+        c.beginPath(); c.arc(x, y, base, 0, 6.2832);
+        c.fillStyle = m.side === 'buy' ? 'rgba(14,203,129,.28)' : 'rgba(246,70,93,.28)';
+        c.strokeStyle = m.side === 'buy' ? '#0ecb81' : '#f6465d';
         c.lineWidth = 1.2; c.fill(); c.stroke();
-        if (age < 10) {
-          const rr = base + age * 4.5, al = Math.max(0, .55 * (1 - age / 10));
+        if (age < 4) {
+          const rr = base + age * 4.5, al = Math.max(0, .40 * (1 - age / 4));
           c.beginPath(); c.arc(x, y, rr, 0, 6.2832);
-          c.strokeStyle = m.side === 'buy' ? `rgba(38,255,168,${al})` : `rgba(255,62,165,${al})`;
+          c.strokeStyle = m.side === 'buy' ? `rgba(14,203,129,${al})` : `rgba(246,70,93,${al})`;
           c.lineWidth = 1.1; c.stroke();
         }
       });
@@ -218,20 +208,20 @@
       if (isFinite(this.price)) {
         const y = Y(this.price);
         c.save();
-        c.setLineDash([4, 3]); c.strokeStyle = 'rgba(234,252,255,.65)'; c.lineWidth = 1;
+        c.setLineDash([4, 3]); c.strokeStyle = 'rgba(242,245,250,.65)'; c.lineWidth = 1;
         c.beginPath(); c.moveTo(x0, y); c.lineTo(xr, y); c.stroke(); c.restore();
         const lbl = U.pxSym(this.price);
-        c.font = 'bold 11px "Share Tech Mono",monospace';
+        c.font = 'bold 11px "JetBrains Mono",monospace';
         const tw = c.measureText(lbl).width + 8;
-        c.fillStyle = '#38f6ff'; c.fillRect(x1 + 2, y - 8, tw, 16);
-        c.fillStyle = '#04121a'; c.textAlign = 'left'; c.fillText(lbl, x1 + 6, y + 4);
+        c.fillStyle = '#4d8dff'; c.fillRect(x1 + 2, y - 8, tw, 16);
+        c.fillStyle = '#0b0e13'; c.textAlign = 'left'; c.fillText(lbl, x1 + 6, y + 4);
       }
 
       // 十字準線與浮動提示
       if (this.hover && this.hover.x > x0 && this.hover.x < x1) {
         const i = U.clamp(Math.round((this.hover.x - x0) / (x1 - x0) * (vis.length - 1)), 0, vis.length - 1);
         const k = vis[i], x = X(i);
-        c.save(); c.setLineDash([3, 3]); c.strokeStyle = 'rgba(56,246,255,.55)';
+        c.save(); c.setLineDash([3, 3]); c.strokeStyle = 'rgba(77,141,255,.55)';
         c.beginPath(); c.moveTo(x, y0); c.lineTo(x, vy1); c.stroke();
         if (this.hover.y > y0 && this.hover.y < y1) { c.beginPath(); c.moveTo(x0, this.hover.y); c.lineTo(x1, this.hover.y); c.stroke(); }
         c.restore();
@@ -292,35 +282,35 @@
 
       // 刻度：以「距現價的相對距離」為座標系，換算成當前價位標示
       const cd = S.analytics.Book, span = cd.span || 0.01, cmid = isFinite(cd.mid) ? cd.mid : frames[frames.length - 1].mid;
-      c.font = '9px "Share Tech Mono",monospace'; c.textAlign = 'left'; c.fillStyle = 'rgba(143,178,201,.8)';
+      c.font = '9px "JetBrains Mono",monospace'; c.textAlign = 'left'; c.fillStyle = 'rgba(152,162,179,.8)';
       for (let i = 0; i <= 4; i++) {
         const off = span * (1 - 2 * i / 4), y = padT + dh * i / 4;
         c.fillText(U.pxSym(cmid * (1 + off)), 4 + dw + 6, y + 3);
       }
       // 深度範圍標示
-      c.fillStyle = 'rgba(93,125,148,.95)';
+      c.fillStyle = 'rgba(107,116,128,.95)';
       c.fillText('±' + (span * 100).toFixed(3) + '%', 4 + dw + 6, padT + dh - 4);
       const mn = -span, mx = span;
       // 現價線
       const live = S.analytics.Book.mid;
       if (isFinite(live) && live >= mn && live <= mx) {
         const y = padT + dh * (1 - (live - mn) / (mx - mn));
-        c.save(); c.setLineDash([3, 3]); c.strokeStyle = 'rgba(234,252,255,.8)'; c.lineWidth = 1;
+        c.save(); c.setLineDash([3, 3]); c.strokeStyle = 'rgba(242,245,250,.8)'; c.lineWidth = 1;
         c.beginPath(); c.moveTo(4, y); c.lineTo(4 + dw, y); c.stroke(); c.restore();
       }
-      c.textAlign = 'left'; c.fillStyle = 'rgba(93,125,148,.9)';
+      c.textAlign = 'left'; c.fillStyle = 'rgba(107,116,128,.9)';
       c.fillText('← 較早', 6, H - 3);
       c.textAlign = 'right'; c.fillText('最新 →', 4 + dw, H - 3);
-      c.textAlign = 'left'; c.fillStyle = 'rgba(93,125,148,.8)';
+      c.textAlign = 'left'; c.fillStyle = 'rgba(107,116,128,.8)';
       c.fillText('掛單密度熱圖 · 縱軸為距現價距離（自適應深度範圍）', 6, padT + 11);
 
       // 最新一格的前緣光暈（脈動，強調資料正在寫入）
       if (!w.matchMedia || !w.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         const lx = 4 + dw, pulse = 0.30 + 0.28 * (0.5 + 0.5 * Math.sin(performance.now() / 430));
         const g2 = c.createLinearGradient(lx - 34, 0, lx, 0);
-        g2.addColorStop(0, 'rgba(56,246,255,0)'); g2.addColorStop(1, 'rgba(127,249,255,' + pulse.toFixed(2) + ')');
+        g2.addColorStop(0, 'rgba(77,141,255,0)'); g2.addColorStop(1, 'rgba(138,180,255,' + pulse.toFixed(2) + ')');
         c.fillStyle = g2; c.fillRect(lx - 34, padT, 34, dh);
-        c.strokeStyle = 'rgba(234,252,255,' + (pulse + .2).toFixed(2) + ')';
+        c.strokeStyle = 'rgba(242,245,250,' + (pulse + .2).toFixed(2) + ')';
         c.lineWidth = 1; c.beginPath(); c.moveTo(lx - .5, padT); c.lineTo(lx - .5, padT + dh); c.stroke();
       }
 
@@ -350,14 +340,14 @@
       const A0 = Math.PI * 0.86, A1 = Math.PI * 2.14;
       // 弧帶底
       const grad = c.createLinearGradient(cx - R, 0, cx + R, 0);
-      grad.addColorStop(0, 'rgba(255,77,109,.85)');
-      grad.addColorStop(.35, 'rgba(255,200,87,.7)');
-      grad.addColorStop(.5, 'rgba(143,178,201,.5)');
-      grad.addColorStop(.7, 'rgba(56,246,255,.8)');
-      grad.addColorStop(1, 'rgba(38,255,168,.95)');
+      grad.addColorStop(0, 'rgba(246,70,93,.85)');
+      grad.addColorStop(.35, 'rgba(245,165,36,.7)');
+      grad.addColorStop(.5, 'rgba(152,162,179,.5)');
+      grad.addColorStop(.7, 'rgba(77,141,255,.8)');
+      grad.addColorStop(1, 'rgba(14,203,129,.95)');
       c.beginPath(); c.arc(cx, cy, R, A0, A1); c.arc(cx, cy, R - 12, A1, A0, true); c.closePath();
       c.fillStyle = 'rgba(255,255,255,.07)'; c.fill();
-      c.strokeStyle = 'rgba(56,246,255,.18)'; c.lineWidth = 1; c.stroke();
+      c.strokeStyle = 'rgba(77,141,255,.18)'; c.lineWidth = 1; c.stroke();
 
       // 刻度
       for (let i = 0; i <= 10; i++) {
@@ -366,7 +356,7 @@
         c.beginPath();
         c.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
         c.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
-        c.strokeStyle = i % 5 === 0 ? 'rgba(56,246,255,.55)' : 'rgba(56,246,255,.22)';
+        c.strokeStyle = i % 5 === 0 ? 'rgba(77,141,255,.55)' : 'rgba(77,141,255,.22)';
         c.lineWidth = i % 5 === 0 ? 1.6 : 1; c.stroke();
       }
       // 已達分數弧
@@ -375,7 +365,7 @@
       c.beginPath(); c.arc(cx, cy, R, A0, aEnd); c.arc(cx, cy, R - 12, aEnd, A0, true); c.closePath();
       c.fillStyle = grad; c.globalAlpha = .95; c.fill(); c.globalAlpha = 1;
       c.save();
-      c.shadowColor = k > .55 ? 'rgba(38,255,168,.8)' : (k < .45 ? 'rgba(255,77,109,.8)' : 'rgba(56,246,255,.8)');
+      c.shadowColor = k > .55 ? 'rgba(14,203,129,.8)' : (k < .45 ? 'rgba(246,70,93,.8)' : 'rgba(77,141,255,.8)');
       c.shadowBlur = 18;
       c.beginPath(); c.arc(cx, cy, R - 6, A0, aEnd);
       c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 2; c.stroke();
@@ -393,10 +383,10 @@
       c.save();
       c.translate(cx, cy); c.rotate(aEnd);
       c.beginPath(); c.moveTo(R - 26, 0); c.lineTo(-6, -3.2); c.lineTo(-6, 3.2); c.closePath();
-      c.fillStyle = '#eafcff'; c.shadowColor = '#38f6ff'; c.shadowBlur = 12; c.fill();
+      c.fillStyle = '#f2f5fa'; c.shadowColor = '#4d8dff'; c.shadowBlur = 12; c.fill();
       c.restore();
-      c.beginPath(); c.arc(cx, cy, 4.5, 0, 6.2832); c.fillStyle = '#38f6ff'; c.fill();
-      c.beginPath(); c.arc(cx, cy, 8.5, 0, 6.2832); c.strokeStyle = 'rgba(56,246,255,.5)'; c.lineWidth = 1; c.stroke();
+      c.beginPath(); c.arc(cx, cy, 4.5, 0, 6.2832); c.fillStyle = '#4d8dff'; c.fill();
+      c.beginPath(); c.arc(cx, cy, 8.5, 0, 6.2832); c.strokeStyle = 'rgba(77,141,255,.5)'; c.lineWidth = 1; c.stroke();
 
       // 中軸文字位置留給 DOM（gauge-center）
     }
@@ -420,20 +410,20 @@
       const Y = v => H - 6 - (v - mn) / (mx - mn || 1) * (H - 14);
       // 面積
       const g = c.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, 'rgba(56,246,255,.35)'); g.addColorStop(1, 'rgba(56,246,255,0)');
+      g.addColorStop(0, 'rgba(77,141,255,.35)'); g.addColorStop(1, 'rgba(77,141,255,0)');
       c.beginPath(); c.moveTo(X(0), Y(s[0]));
       s.forEach((v, i) => c.lineTo(X(i), Y(v)));
       c.lineTo(X(s.length - 1), H); c.lineTo(X(0), H); c.closePath(); c.fillStyle = g; c.fill();
       c.beginPath(); s.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v)));
-      c.strokeStyle = '#38f6ff'; c.lineWidth = 1.5;
-      c.shadowColor = 'rgba(56,246,255,.7)'; c.shadowBlur = 6; c.stroke(); c.shadowBlur = 0;
+      c.strokeStyle = '#4d8dff'; c.lineWidth = 1.5;
+      c.shadowColor = 'rgba(77,141,255,.7)'; c.shadowBlur = 6; c.stroke(); c.shadowBlur = 0;
       // 最新點
       const lx = X(s.length - 1), ly = Y(s[s.length - 1]);
-      c.beginPath(); c.arc(lx, ly, 2.6, 0, 6.2832); c.fillStyle = '#eafcff'; c.fill();
-      c.font = '9px "Share Tech Mono",monospace'; c.fillStyle = 'rgba(143,178,201,.85)'; c.textAlign = 'left';
+      c.beginPath(); c.arc(lx, ly, 2.6, 0, 6.2832); c.fillStyle = '#f2f5fa'; c.fill();
+      c.font = '9px "JetBrains Mono",monospace'; c.fillStyle = 'rgba(152,162,179,.85)'; c.textAlign = 'left';
       c.fillText('OI ' + U.money(s[s.length - 1]), 5, 10);
       const chg = (s[s.length - 1] / s[0] - 1) * 100;
-      c.fillStyle = chg >= 0 ? '#26ffa8' : '#ff4d6b'; c.textAlign = 'right';
+      c.fillStyle = chg >= 0 ? '#0ecb81' : '#f6465d'; c.textAlign = 'right';
       c.fillText(U.pct(chg), W - 5, 10);
     }
   };

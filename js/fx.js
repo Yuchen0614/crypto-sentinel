@@ -70,15 +70,15 @@
     (function loop(t) {
       if (t - last < 60) return requestAnimationFrame(loop);
       last = t;
-      c.fillStyle = 'rgba(4,6,13,.30)'; c.fillRect(0, 0, W, H);
+      c.fillStyle = 'rgba(9,11,15,.30)'; c.fillRect(0, 0, W, H);
       c.font = '13px "JetBrains Mono",monospace';
       cols.forEach((col, i) => {
         col.y += col.v;
         if (col.y > H + 40) { col.y = -20 - Math.random() * 200; col.v = 3 + Math.random() * 9; }
         const x = i * 16 + 4;
-        c.fillStyle = 'rgba(56,246,255,.55)';
+        c.fillStyle = 'rgba(77,141,255,.55)';
         c.fillText(CH[(Math.random() * CH.length) | 0], x, col.y);
-        c.fillStyle = 'rgba(56,246,255,.16)';
+        c.fillStyle = 'rgba(77,141,255,.16)';
         c.fillText(CH[(Math.random() * CH.length) | 0], x, col.y - 14);
       });
       if (!document.getElementById('boot').classList.contains('done')) requestAnimationFrame(loop);
@@ -104,11 +104,11 @@
 
       // 格線與同心圓
       c.save();
-      c.strokeStyle = 'rgba(56,246,255,.18)'; c.lineWidth = 1;
+      c.strokeStyle = 'rgba(77,141,255,.18)'; c.lineWidth = 1;
       [0.33, 0.66, 1].forEach(k => { c.beginPath(); c.arc(cx, cy, Rr * k, 0, 6.2832); c.stroke(); });
-      c.strokeStyle = 'rgba(56,246,255,.10)';
+      c.strokeStyle = 'rgba(77,141,255,.10)';
       c.beginPath(); c.moveTo(cx - Rr, cy); c.lineTo(cx + Rr, cy); c.moveTo(cx, cy - Rr); c.lineTo(cx, cy + Rr); c.stroke();
-      c.setLineDash([3, 4]); c.strokeStyle = 'rgba(56,246,255,.08)';
+      c.setLineDash([3, 4]); c.strokeStyle = 'rgba(77,141,255,.08)';
       c.beginPath(); c.moveTo(cx - Rr * .7, cy - Rr * .7); c.lineTo(cx + Rr * .7, cy + Rr * .7);
       c.moveTo(cx + Rr * .7, cy - Rr * .7); c.lineTo(cx - Rr * .7, cy + Rr * .7); c.stroke();
       c.setLineDash([]);
@@ -119,18 +119,18 @@
       const N = 40;
       for (let i = 0; i < N; i++) {
         const a = sweep - i * 0.035;
-        c.strokeStyle = 'rgba(56,246,255,' + (0.30 * (1 - i / N)) + ')';
+        c.strokeStyle = 'rgba(77,141,255,' + (0.30 * (1 - i / N)) + ')';
         c.beginPath(); c.moveTo(cx, cy);
         c.lineTo(cx + Math.cos(a) * Rr, cy + Math.sin(a) * Rr); c.stroke();
       }
-      c.strokeStyle = 'rgba(127,249,255,.85)'; c.lineWidth = 1.4;
+      c.strokeStyle = 'rgba(138,180,255,.85)'; c.lineWidth = 1.4;
       c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(sweep) * Rr, cy + Math.sin(sweep) * Rr); c.stroke();
       c.lineWidth = 1;
 
       // 新 ping → 產生漣漪
       if (R.pings.length > prevCount) {
         const p = R.pings[R.pings.length - 1];
-        ripples.push({ x: cx + Math.cos(p.ang) * Rr * p.r, y: cy + Math.sin(p.ang) * Rr * p.r, r: 2, max: 26, col: p.side === 'buy' ? '38,255,168' : '255,62,165', t: Date.now(), label: p.sym, usd: p.usd });
+        ripples.push({ x: cx + Math.cos(p.ang) * Rr * p.r, y: cy + Math.sin(p.ang) * Rr * p.r, r: 2, max: 26, col: p.side === 'buy' ? '14,203,129' : '246,70,93', t: Date.now(), label: p.sym, usd: p.usd });
         prevCount = R.pings.length;
       } else if (R.pings.length < prevCount) prevCount = R.pings.length;
 
@@ -142,7 +142,7 @@
         const x = cx + Math.cos(p.ang) * Rr * p.r, y = cy + Math.sin(p.ang) * Rr * p.r;
         const sz = U.clamp(1.4 + Math.log10(p.usd / 5000 + 1) * 1.9, 1.6, 6);
         c.beginPath(); c.arc(x, y, sz, 0, 6.2832);
-        c.fillStyle = p.side === 'buy' ? `rgba(38,255,168,${a})` : `rgba(255,62,165,${a})`;
+        c.fillStyle = p.side === 'buy' ? `rgba(14,203,129,${a})` : `rgba(167,139,250,${a})`;
         c.shadowColor = c.fillStyle; c.shadowBlur = 12; c.fill(); c.shadowBlur = 0;
       });
 
@@ -157,12 +157,12 @@
         c.beginPath(); c.arc(rp.x, rp.y, rp.r * 0.55, 0, 6.2832);
         c.strokeStyle = `rgba(${rp.col},${0.30 * life})`; c.stroke();
         if (rp.label && life > 0.55) {
-          c.font = '9px "JetBrains Mono",monospace'; c.fillStyle = `rgba(234,252,255,${life})`;
+          c.font = '9px "JetBrains Mono",monospace'; c.fillStyle = `rgba(242,245,250,${life})`;
           c.textAlign = 'left'; c.fillText(rp.label + ' $' + U.money(rp.usd), rp.x + 7, rp.y - 5);
         }
       }
       // 中心
-      c.beginPath(); c.arc(cx, cy, 3, 0, 6.2832); c.fillStyle = 'rgba(127,249,255,.9)'; c.fill();
+      c.beginPath(); c.arc(cx, cy, 3, 0, 6.2832); c.fillStyle = 'rgba(138,180,255,.9)'; c.fill();
       c.restore();
 
       const st = document.getElementById('radarStatus');
@@ -177,8 +177,10 @@
     requestAnimationFrame(loop);
   };
 
-  /* ── 背景：透視地板 + 隨機雜訊條 ──────────────────── */
+  /* ── 背景：改由 v3.css 的靜態漸層呈現（不再有粒子動畫）── */
   FX.initBackground = function () {
+    return;   // 視覺減法：星空／透視地板／雜訊條全部移除，改由 CSS 漸層
+    /* eslint-disable no-unreachable */
     const cv = document.getElementById('starfield'); if (!cv) return;
     const c = cv.getContext('2d');
     let W, H, dots = [], bars = [], scan = 0;
@@ -202,13 +204,13 @@
         d.y -= d.z * .35;
         if (d.y < 0) { d.y = H; d.x = Math.random() * W; }
         const a = .12 + d.z * .5;
-        c.fillStyle = d.z > .7 ? `rgba(56,246,255,${a})` : `rgba(143,178,201,${a * .7})`;
+        c.fillStyle = d.z > .7 ? `rgba(77,141,255,${a})` : `rgba(152,162,179,${a * .7})`;
         c.fillRect(d.x, d.y, d.s, d.s);
       }
       // 透視地板格線（緩慢逼近，科幻感）
       if (!reduced()) {
         floor = (floor + 0.6) % 60;
-        c.strokeStyle = 'rgba(56,246,255,.055)';
+        c.strokeStyle = 'rgba(77,141,255,.055)';
         for (let i = 0; i < 12; i++) {
           const y = H * 0.62 + Math.pow((i * 60 - floor) / 720, 2) * H * 2.1;
           if (y > H) continue;
@@ -224,7 +226,7 @@
       if (!scanGrad || Math.abs(scan - scanGradY) > 24) {
         scanGradY = scan;
         scanGrad = c.createLinearGradient(0, scan - 120, 0, scan);
-        scanGrad.addColorStop(0, 'rgba(56,246,255,0)'); scanGrad.addColorStop(1, 'rgba(56,246,255,.055)');
+        scanGrad.addColorStop(0, 'rgba(77,141,255,0)'); scanGrad.addColorStop(1, 'rgba(77,141,255,.055)');
       }
       c.fillStyle = scanGrad; c.fillRect(0, scan - 120, W, 120);
       // 雜訊條（極低機率）
@@ -234,7 +236,7 @@
       for (let i = bars.length - 1; i >= 0; i--) {
         const b = bars[i], life = 1 - (Date.now() - b.t) / 240;
         if (life <= 0) { bars.splice(i, 1); continue; }
-        c.fillStyle = `rgba(255,62,165,${0.10 * life})`;
+        c.fillStyle = `rgba(167,139,250,${0.10 * life})`;
         c.fillRect(0, b.y, W, b.h);
       }
     })(0);

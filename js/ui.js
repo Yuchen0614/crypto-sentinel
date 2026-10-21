@@ -278,7 +278,7 @@
     if (!res) return;
     U.animateNum(document.getElementById('smScore'), res.score, v => Math.round(v), 500);
     const sc = document.getElementById('smScore');
-    if (sc) sc.style.color = res.cls === 'bull' ? 'var(--gn)' : res.cls === 'bear' ? 'var(--rd)' : '#eafcff';
+    if (sc) sc.style.color = res.cls === 'bull' ? 'var(--gn)' : res.cls === 'bear' ? 'var(--rd)' : '#f2f5fa';
     const v = document.getElementById('smVerdict');
     if (v) { v.textContent = res.verdict; v.className = 'verdict ' + res.cls; }
     S.gauge.set(res.score, res.cls);
