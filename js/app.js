@@ -217,7 +217,8 @@
     document.getElementById('whaleFilter').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
-      S.ui.whale.min = +b.dataset.min;
+      S.ui.whale.min = b.dataset.min === 'auto' ? 'auto' : +b.dataset.min;
+      S.ui.whale.thrNow = S.ui.whale.threshold();
       S.ui.whale.renderNetflow();
     });
     document.getElementById('clearAlerts').addEventListener('click', () => A.anomaly.clear());
@@ -276,6 +277,9 @@
     setInterval(() => {
       // 分析（背景分頁也持續運算，只是不更新畫面）
       const ps = priceStats();
+      // 巨鯨淨流向的門檻也依市場規模自適應（最低 2.5 萬美元）
+      const medN = A.Trades.medianNotional(600e3);
+      if (isFinite(medN) && medN > 0) A.Trades.WHALE = U.clamp(Math.max(25000, medN * 8), 25000, 5e6);
       A.anomaly.scanPrice(S.state.cur ? S.state.cur.price : NaN, oneMin);
       A.anomaly.scanBook(A.Book);
       const res = A.smart({ trades: A.Trades, book: A.Book, pos: A.Pos, liq: A.Liq, price: S.state.cur ? S.state.cur.price : NaN, klines: S.chart.k, priceStats: ps });

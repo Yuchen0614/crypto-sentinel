@@ -45,6 +45,15 @@
       return { buy: b, sell: s, delta: b - s, total: b + s, buyCount: bc, sellCount: sc, whaleBuy: bn, whaleSell: sn, whaleDelta: bn - sn, ratio: (b + s) ? b / (b + s) : 0.5, n: arr.length };
     },
     vwap(ms) { const a = this.window(ms === undefined ? 3600e3 : ms); let pv = 0, v = 0; for (const t of a) { pv += t.price * t.qty; v += t.qty; } return v ? pv / v : NaN; },
+    // 近期成交金額中位數（用來決定「大額」的相對門檻，讓不同價位的幣種都合理）
+    medianNotional(ms) {
+      const a = this.window(ms === undefined ? 300e3 : ms);
+      if (a.length < 8) return NaN;
+      const s = [];
+      const step = Math.max(1, Math.floor(a.length / 1200));
+      for (let i = 0; i < a.length; i += step) s.push(a[i].notional);
+      return U.median(s);
+    },
     large(minN, ms) {
       const a = this.window(ms === undefined ? 900e3 : ms);
       const o = a.filter(t => t.notional >= minN);

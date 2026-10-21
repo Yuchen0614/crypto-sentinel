@@ -96,10 +96,20 @@
 
   /* ══════ 巨鯨動向 ══════ */
   const Whale = UI.whale = {
-    min: 25000, count: 0, els: [],
+    min: 'auto', count: 0, els: [], thrNow: 25000,
+    // 自動門檻：近期成交金額中位數的 10 倍，最低 8 千美元（不同幣種自動調整規模）
+    threshold() {
+      if (this.min !== 'auto') return this.min;
+      const m = S.analytics.Trades.medianNotional(600e3);
+      if (!isFinite(m) || m <= 0) return 25000;
+      const t = Math.max(8000, m * 10);
+      const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(t)) - 1));
+      return Math.round(t / p) * p;
+    },
     add(t) {
       const tape = document.getElementById('whaleTape'); if (!tape) return;
-      if (t.notional < this.min) return;
+      this.thrNow = this.threshold();
+      if (t.notional < this.thrNow) return;
       this.count++;
       const empty = tape.querySelector('.empty'); if (empty) empty.remove();
       const row = document.createElement('div');
@@ -129,7 +139,8 @@
       const n5 = T.netflow(300e3);
       const bar = document.getElementById('nfBar');
       if (bar) bar.style.left = (U.clamp((n5.whaleDelta / Math.max(200000, Math.abs(n5.whaleBuy) + Math.abs(n5.whaleSell))) / 2 + 0.5, 0, 1) * 100).toFixed(1) + '%';
-      U.html('#whaleFoot', `累計 <b>${this.count}</b> 筆大額成交 · 現行門檻 ≥ $${U.money(this.min)} · 大小單以金額自動分級（≥$250K 大型、≥$1M 巨鯨）`);
+      this.thrNow = this.threshold();
+      U.html('#whaleFoot', `累計 <b>${this.count}</b> 筆大額成交 · 現行門檻 ≥ $${U.money(this.thrNow)}${this.min === 'auto' ? '（自動：近 10 分鐘成交金額中位數 ×10）' : ''} · 分級：≥$250K 大型、≥$1M 巨鯨`);
     }
   };
 
