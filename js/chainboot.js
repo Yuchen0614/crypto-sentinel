@@ -12,7 +12,7 @@
   /* ── 大戶名單 ─────────────────────────────────────────── */
   CB.loadWhales = async function () {
     const d = await S.api.hlWhales();
-    if (d) { OC.hl.setWallets(d); S.chainUI.render(); }
+    if (d) { OC.hl.setWallets(d); if (S.chainUI) S.chainUI.render(); }
   };
 
   /* 首輪快速預掃：不照輪詢順序，先把名單前段（最大的錢包）一次補齊，
@@ -23,11 +23,11 @@
     for (let i = 0; i < list.length; i += chunk) {
       await Promise.all(list.slice(i, i + chunk).map(wl =>
         S.api.hlState(wl.addr).then(st => { if (st) OC.hl.ingest(wl.addr, st); })));
-      S.chainUI.agg();
+      if (S.chainUI) S.chainUI.agg();
       await new Promise(r => setTimeout(r, 250));
     }
     OC.hl.pollIdx = list.length % Math.max(1, OC.hl.wallets.length);   // 接續輪詢，不重掃同一批
-    S.chainUI.render();
+    if (S.chainUI) S.chainUI.render();
   };
 
   CB.hlPoll = function (batchSize) {
@@ -42,25 +42,25 @@
     dexBusy = true;
     try { await OC.dex.scan(); } catch (e) { S.errors.push('dexScan: ' + e.message); }
     dexBusy = false;
-    S.chainUI.dexMeta();
+    if (S.chainUI) S.chainUI.dexMeta();
   };
 
   /* ── 事件綁定 ─────────────────────────────────────────── */
   CB.wire = function () {
     S.on('hl-wallets', () => {
-      S.chainUI.render();
+      if (S.chainUI) S.chainUI.render();
       // 主控台才有 HUD 狀態燈；獨立頁沒有 S.ui / S.stream，這裡必須容錯
       if (S.ui && S.ui.hud && S.ui.hud.pills && S.stream) S.ui.hud.pills(S.stream.state);
     });
     S.on('hl-state', () => { CB.hlDirty = true; });
     S.on('hl-event', e => {
-      S.chainUI.hlEvent(e);
+      if (S.chainUI) S.chainUI.hlEvent(e);
       if (e.sev === 'high' || e.kind === 'FLIP') {
         FX.toast({ title: e.name + ' ' + e.title, text: e.text, sev: e.sev === 'high' ? 'high' : 'mid', tag: '鏈上大戶' });
       }
     });
     S.on('dex-trade', t => {
-      S.chainUI.dexTrade(t);
+      if (S.chainUI) S.chainUI.dexTrade(t);
       if (t.usd >= 1000000) {
         FX.toast({
           title: '鏈上大額' + (t.side === 'buy' ? '買入' : '賣出') + ' ' + (t.tokenSym || '') + ' $' + U.money(t.usd),
@@ -69,7 +69,7 @@
         });
       }
     });
-    S.on('dex-scan', () => S.chainUI.dexMeta());
+    S.on('dex-scan', () => { if (S.chainUI) S.chainUI.dexMeta(); });
   };
 
   /* ── DOM 互動：鏈別、門檻、展開／收合 ─────────────────── */
@@ -133,6 +133,7 @@
     if (CB.started) return;
     CB.started = true;
     const o = opts || {};
+    const wantDex = o.dex !== false;     // 帶單頁只要持倉輪詢，不佔 GeckoTerminal 額度
 
     await CB.loadWhales();
     CB.primeWallets(o.prime || 24);
@@ -146,21 +147,26 @@
       }
     }, 25000);
 
-    setTimeout(() => CB.dexScan(), 1500);
+    if (wantDex) {
+      setTimeout(() => CB.dexScan(), 1500);
+      CB.timers.push(
+        // 每 14 秒：DEX 大額換幣掃描（每輪 1 個高流量池；GeckoTerminal 免費層約 5 次/分即被擋）
+        setInterval(() => CB.dexScan(), 14000),
+        setInterval(() => { if (!document.hidden && S.chainUI) S.chainUI.dexMeta(); }, 3000)
+      );
+    }
 
     let renderTick = 0;
     CB.timers.push(
       // 每 5 秒：鏈上大戶錢包（每輪 6 個；背景分頁降為 2 個）
       setInterval(() => { if (!document.hidden) CB.hlPoll(6); else CB.hlPoll(2); }, 5000),
-      // 每 14 秒：DEX 大額換幣掃描（每輪 1 個高流量池；GeckoTerminal 免費層約 5 次/分即被擋）
-      setInterval(() => CB.dexScan(), 14000),
-      setInterval(() => { if (!document.hidden) S.chainUI.dexMeta(); }, 3000),
       // 每 1.2 秒：鏈上面板渲染
       // 背景分頁只降頻、不停止：否則使用者切走再切回來，面板會停在舊資料或空狀態。
       // （畫布動畫（雷達、熱圖）由各自的 rAF 迴圈處理，瀏覽器本來就會自動節流。）
       setInterval(() => {
         renderTick++;
         if (document.hidden && renderTick % 5 !== 0) return;
+        if (!S.chainUI) return;          // 帶單頁不載入 chainui（只需持倉事件）
         S.chainUI.agg();
         if (CB.hlDirty) { CB.hlDirty = false; S.chainUI.hlTable(); S.chainUI.coinBars(); }
         S.chainUI.wallets();

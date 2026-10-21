@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>開倉平倉帶單記錄 · CRYPTO SENTINEL</title>
+<meta name="description" content="追蹤 Hyperliquid 大戶錢包的開倉與平倉，記錄錢包實際已實現盈虧，並計算固定名目模擬跟單的損益，供參考。">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/fx.css">
+<link rel="stylesheet" href="assets/css/v2.css">
+<link rel="stylesheet" href="assets/css/v3.css">
+<link rel="stylesheet" href="assets/css/signals.css">
+</head>
+<body>
+
+<!-- ── 頁首 ─────────────────────────────────────────────── -->
+<div class="hud oc-hud sg-hud">
+  <div class="hud-brand">
+    <h1><span class="dot"></span>CRYPTO SENTINEL <b>／ 開倉平倉帶單記錄</b></h1>
+  </div>
+  <div class="oc-status" id="sgListMeta">大戶名單載入中…</div>
+  <div class="oc-actions">
+    <div class="clock"><span id="sgClock">--:--:--</span><small id="sgDate">台北</small></div>
+    <a class="oc-back" href="onchain.html">鏈上聰明錢</a>
+    <a class="oc-back" href="index.html">← 回主控台</a>
+  </div>
+</div>
+
+<div class="oc-note">
+  <b>這一頁記錄什麼：</b>
+  ① 追蹤中的大戶錢包一有<b>開倉</b>（新開多／空單）、<b>加碼、減碼、翻倉、平倉</b>就記一筆流水；
+  ② 每一筆平倉都算出<b>錢包自己的實際已實現盈虧</b>（取自 Hyperliquid 成交紀錄的 <code>closedPnl</code>，是真實數字）；
+  ③ 同時計算<b>「若固定名目跟單」的損益</b>——你要的「參考用盈虧」，扣掉雙邊估算手續費。
+  <b>模擬跟單是紙上計算，不會下任何單，也不構成投資建議。</b>
+  記錄存在這台裝置的瀏覽器（可匯出 CSV）；每日績效快照由 GitHub Actions 寫入 repo，較耐久。
+</div>
+
+<!-- ── 主體 ─────────────────────────────────────────────── -->
+<main class="sg-page">
+
+  <!-- 績效總覽 -->
+  <div class="sg-kpi">
+    <div class="kpi"><label>已記錄回合</label><b id="sgRounds">—</b><span class="mini" id="sgRoundsSub">—</span></div>
+    <div class="kpi"><label>模擬跟單累計盈虧</label><b id="sgSim">—</b><span class="mini" id="sgSimSub">—</span></div>
+    <div class="kpi"><label>錢包實際已實現累計</label><b id="sgReal">—</b><span class="mini" id="sgRealSub">—</span></div>
+    <div class="kpi"><label>實際勝率</label><b id="sgWin">—</b><span class="mini" id="sgWinSub">—</span></div>
+    <div class="kpi"><label>平均持有時間</label><b id="sgHold">—</b><span class="mini">以模擬跟單樣本計算</span></div>
+    <div class="kpi"><label>最佳單</label><b id="sgBest">—</b><span class="mini" id="sgWorst">—</span></div>
+  </div>
+
+  <section class="panel sg-eq-panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-smart"></i>累計盈虧曲線</h2>
+      <span class="mini" id="sgEqMeta">—</span>
+    </div>
+    <canvas id="sgEquity"></canvas>
+    <div class="sg-legend">
+      <span class="lg sim">模擬跟單（固定名目）</span>
+      <span class="lg real">錢包實際已實現</span>
+    </div>
+  </section>
+
+  <div class="sg-cols">
+    <!-- 左：持倉中 + 帳本 -->
+    <div class="sg-col sg-main">
+      <section class="panel">
+        <div class="panel-head">
+          <h2><i class="ic ic-book"></i>開倉中 · 未實現</h2>
+          <span class="mini" id="sgOpenMeta">—</span>
+        </div>
+        <div class="sg-table-wrap">
+          <table class="sg">
+            <thead><tr>
+              <th>錢包</th><th>幣種</th><th>方向</th><th class="ta-r">進場</th><th class="ta-r">標記</th>
+              <th class="ta-r">名目</th><th class="ta-r">未實現(錢包)</th><th class="ta-r">模擬跟單</th><th class="ta-r">報酬</th><th class="ta-r">已持有</th>
+            </tr></thead>
+            <tbody id="sgOpenBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2><i class="ic ic-chain"></i>平倉記錄（帳本）</h2>
+          <span class="mini" id="sgLedgerMeta">—</span>
+          <button class="ghost" id="sgExport" title="匯出目前畫面上的平倉記錄為 CSV">匯出 CSV</button>
+          <button class="ghost" id="sgClear" title="清除這台裝置上的帶單帳本（不影響伺服器快照）">清除記錄</button>
+        </div>
+        <div class="sg-table-wrap">
+          <table class="sg">
+            <thead><tr>
+              <th>平倉時間</th><th>錢包</th><th>幣種</th><th>方向</th><th class="ta-r">進場</th><th class="ta-r">出場</th>
+              <th class="ta-r">名目</th><th class="ta-r">實際盈虧</th><th class="ta-r">模擬跟單</th><th class="ta-r">報酬</th><th class="ta-r">持有</th><th>來源</th>
+            </tr></thead>
+            <tbody id="sgLedgerBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- 右：流水 + 排行 + 快照 + 設定 -->
+    <div class="sg-col sg-side">
+      <section class="panel">
+        <div class="panel-head"><h2><i class="ic ic-alert"></i>帶單流水</h2><span class="mini" id="sgFeedMeta">—</span></div>
+        <div class="sg-feed" id="sgFeed"><div class="empty">等待大戶開倉／平倉…</div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2><i class="ic ic-smart"></i>錢包績效排行</h2><span class="mini">依實際已實現盈虧</span></div>
+        <div class="sg-wallets" id="sgWalletPerf"><div class="empty">累積記錄中…</div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2><i class="ic ic-book"></i>每日績效快照</h2><span class="mini" id="sgDailyMeta">由 GitHub Actions 每日寫入</span></div>
+        <div class="sg-daily" id="sgDaily"><div class="empty">載入中…</div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2><i class="ic ic-sys"></i>跟單設定</h2></div>
+        <div class="sg-settings">
+          <label>模擬跟單名目（每筆）<b id="sgCopyVal">—</b></label>
+          <div class="seg seg-sm" id="sgCopySeg">
+            <button data-copy="1000">$1千</button>
+            <button data-copy="10000" class="on">$1萬</button>
+            <button data-copy="100000">$10萬</button>
+          </div>
+          <label>記錄門檻（回合名目）<b id="sgMinVal">—</b></label>
+          <div class="seg seg-sm" id="sgMinSeg">
+            <button data-min="100000">≥10萬</button>
+            <button data-min="250000" class="on">≥25萬</button>
+            <button data-min="1000000">≥100萬</button>
+          </div>
+          <p class="mini" id="sgNote">—</p>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div class="statusbar">
+  <div class="ticker" id="sgTicker"><span>帶單記錄啟動中…</span></div>
+  <div class="disc">資料來源：Hyperliquid 公開持倉與成交 API · 模擬跟單為紙上計算，未執行任何交易，不構成投資建議</div>
+</div>
+
+<div class="overlay" id="sgOverlay" hidden><div class="overlay-card sg-ov" id="sgOverlayCard"></div></div>
+
+<script src="js/util.js"></script>
+<script src="js/api.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/onchain.js"></script>
+<script src="js/signals.js"></script>
+<script src="js/signalui.js"></script>
+<script src="js/signalsboot.js"></script>
+</body>
+</html>

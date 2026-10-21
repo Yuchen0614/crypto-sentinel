@@ -1,0 +1,147 @@
+/* ══════════════════════════════════════════════════════════════
+   signals.css — 開倉平倉帶單記錄頁
+   類別一律以 sg- 開頭：main.css 有通用 .kpi/.tape/.cobuy 這類名字，
+   撞名會讓面板高度被別頁的規則鎖死（實際踩過 .tape max-height 的坑）。
+   ══════════════════════════════════════════════════════════════ */
+
+.sg-page {
+  flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 2px 10px 6px;
+  display: grid; gap: 10px; grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+/* ── 上方績效卡 ───────────────────────────────────────── */
+.sg-kpi { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px }
+.sg-kpi .kpi {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 9px 12px; min-width: 0;
+}
+.sg-kpi .kpi label { display: block; font-size: 9.5px; color: var(--tx-3); letter-spacing: .05em; margin-bottom: 3px }
+.sg-kpi .kpi b {
+  display: block; font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--tx);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sg-kpi .kpi b.up { color: var(--gn) } .sg-kpi .kpi b.down { color: var(--rd) }
+.sg-kpi .kpi span { display: block; font-size: 10px; color: var(--tx-3); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+
+/* ── 累計盈虧曲線 ─────────────────────────────────────── */
+.sg-eq-panel { display: flex; flex-direction: column; flex: 0 0 auto }
+#sgEquity { display: block; width: 100%; height: 148px }
+.sg-legend { display: flex; gap: 18px; padding: 2px 12px 8px; font-size: 10.5px; color: var(--tx-3) }
+.sg-legend .lg::before {
+  content: ''; display: inline-block; width: 14px; height: 2px; background: currentColor;
+  margin-right: 6px; vertical-align: middle;
+}
+.sg-legend .lg.sim { color: var(--cy) } .sg-legend .lg.real { color: var(--gn) }
+
+/* ── 兩欄主體 ─────────────────────────────────────────── */
+.sg-cols { display: grid; grid-template-columns: 1.55fr 1fr; gap: 10px; min-height: 0 }
+.sg-col { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden }
+.sg-col > .panel { display: flex; flex-direction: column; min-height: 0 }
+.sg-main > .panel:first-child { flex: 0 1 34% }
+.sg-main > .panel:last-child { flex: 1 1 auto }
+.sg-side > .panel:nth-child(1) { flex: 0 1 30% }
+.sg-side > .panel:nth-child(2) { flex: 0 1 26% }
+.sg-side > .panel:nth-child(3) { flex: 0 1 22% }
+.sg-side > .panel:nth-child(4) { flex: 0 0 auto }
+
+.sg-table-wrap { flex: 1 1 auto; min-height: 0; overflow: auto }
+
+/* ── 表格 ─────────────────────────────────────────────── */
+table.sg { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px }
+table.sg thead th {
+  position: sticky; top: 0; z-index: 2; background: #151a21; text-align: left;
+  font-size: 10px; font-weight: 500; letter-spacing: .04em; color: var(--tx-3);
+  padding: 6px 9px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+table.sg td { padding: 5px 9px; border-bottom: 1px solid rgba(255, 255, 255, .045); color: var(--tx-2); white-space: nowrap }
+table.sg tbody tr:hover { background: rgba(255, 255, 255, .035) }
+table.sg tr.sg-row { cursor: pointer }
+table.sg td.w { max-width: 130px; overflow: hidden; text-overflow: ellipsis }
+table.sg td.w .nm { display: block; color: var(--tx); font-family: var(--font, inherit) }
+table.sg .ta-r, table.sg th.ta-r { text-align: right }
+table.sg .up { color: var(--gn) } table.sg .down { color: var(--rd) }
+table.sg .mini { font-size: 9.5px; color: var(--tx-3) }
+.srcT, .srcF {
+  font-size: 9.5px; padding: 1px 5px; border-radius: 3px;
+  background: rgba(255, 255, 255, .06); color: var(--tx-2);
+}
+.srcT { background: rgba(77, 141, 255, .16); color: var(--cy-2) }
+
+/* ── 帶單流水 ─────────────────────────────────────────── */
+.sg-feed { flex: 1 1 auto; min-height: 120px; overflow-y: auto; padding: 5px 10px 8px }
+.sge {
+  display: grid; grid-template-columns: 50px 40px 1fr; gap: 6px; align-items: center;
+  padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, .04); font-size: 11px; cursor: pointer;
+}
+.sge:hover { background: rgba(255, 255, 255, .03) }
+.sge .t { color: var(--tx-3); font-family: var(--mono); font-size: 10px }
+.sge .k { font-size: 10px; padding: 1px 5px; border-radius: 3px; text-align: center; background: rgba(255, 255, 255, .06); color: var(--tx-2) }
+.sge.k-OPEN .k { background: rgba(14, 203, 129, .16); color: var(--gn) }
+.sge.k-CLOSE .k { background: rgba(246, 70, 93, .14); color: var(--rd) }
+.sge.k-ADD .k { background: rgba(77, 141, 255, .16); color: var(--cy-2) }
+.sge.k-CUT .k { background: rgba(245, 165, 36, .14); color: var(--am) }
+.sge.k-FLIP .k { background: rgba(167, 139, 250, .16); color: var(--mg) }
+.sge .w { color: var(--tx); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.sge .c { font-family: var(--mono); font-size: 10.5px }
+.sge .d { grid-column: 2 / -1; color: var(--tx-2); font-size: 10.5px; line-height: 1.45 }
+.sge .d b { font-family: var(--mono) }
+
+/* ── 錢包績效 ─────────────────────────────────────────── */
+.sg-wallets { flex: 1 1 auto; min-height: 110px; overflow-y: auto; padding: 5px 10px 8px }
+.wl-perf { display: grid; grid-template-columns: 16px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, .04); cursor: pointer }
+.wl-perf:hover { background: rgba(255, 255, 255, .03) }
+.wl-perf .rk { color: var(--tx-3); font-family: var(--mono); font-size: 10px; text-align: right }
+.wl-perf .r1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline }
+.wl-perf .nm { color: var(--tx); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.wl-perf .r2 { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10.5px; color: var(--tx-3); margin-top: 2px }
+.wl-perf .bar { height: 3px; background: rgba(255, 255, 255, .06); border-radius: 2px; margin: 4px 0 3px; overflow: hidden }
+.wl-perf .bar i { display: block; height: 100%; background: var(--gn) }
+.wl-perf .bar i.neg { background: var(--rd) }
+.wl-perf .up { color: var(--gn) } .wl-perf .down { color: var(--rd) }
+
+/* ── 每日快照 ─────────────────────────────────────────── */
+.sg-daily { flex: 0 1 auto; min-height: 90px; max-height: 210px; overflow-y: auto }
+.sg-daily .dh, .sg-daily .dr {
+  display: grid; grid-template-columns: 1fr 92px 44px 46px; gap: 6px;
+  padding: 4px 11px; font-size: 11px; font-family: var(--mono);
+}
+.sg-daily .dh { color: var(--tx-3); font-size: 9.5px; letter-spacing: .04em; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #151a21 }
+.sg-daily .dr { border-bottom: 1px solid rgba(255, 255, 255, .04); cursor: pointer }
+.sg-daily .dr:hover { background: rgba(255, 255, 255, .035) }
+.sg-daily .nm { color: var(--tx); display: flex; flex-direction: column; overflow: hidden }
+.sg-daily .nm .mini { font-size: 9.5px; color: var(--tx-3) }
+
+/* ── 設定 ─────────────────────────────────────────────── */
+.sg-settings { padding: 8px 11px 10px; display: flex; flex-direction: column; gap: 7px }
+.sg-settings label { font-size: 10.5px; color: var(--tx-3); display: flex; justify-content: space-between; gap: 8px }
+.sg-settings label b { color: var(--tx); font-family: var(--mono) }
+.sg-settings p.mini { margin: 2px 0 0; line-height: 1.6 }
+.sg-settings b { color: var(--tx-2) }
+
+/* ── 明細彈窗 ─────────────────────────────────────────── */
+.sg-ov { max-width: min(1040px, 94vw); max-height: 88vh; overflow-y: auto }
+.sg-ov h4 { margin: 14px 0 6px; font-size: 12px; color: var(--tx) }
+.sg-ov .ov-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px }
+.sg-ov-kv { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--line); margin: 12px 0 4px; border-radius: 4px; overflow: hidden }
+.sg-ov-kv > div { background: #171c24; padding: 7px 10px }
+.sg-ov-kv label { display: block; font-size: 9.5px; color: var(--tx-3); margin-bottom: 2px }
+.sg-ov-kv b { font-family: var(--mono); font-size: 13px; color: var(--tx) }
+.sg-ov-kv b.up { color: var(--gn) } .sg-ov-kv b.down { color: var(--rd) }
+.sg-ov .ov-actions { display: flex; gap: 10px; margin-top: 14px }
+.sg-hud .oc-back { font-size: 11px }
+
+/* ── 窄螢幕 ───────────────────────────────────────────── */
+@media (max-width: 1560px) {
+  .sg-page { grid-template-rows: auto auto auto; overflow-y: auto; align-content: start }
+  .sg-kpi { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .sg-cols { grid-template-columns: 1fr }
+  .sg-col { overflow: visible }
+  .sg-main > .panel, .sg-side > .panel { flex: 0 0 auto }
+  .sg-table-wrap { max-height: 340px }
+  .sg-feed, .sg-wallets { max-height: 280px }
+  .sg-daily { max-height: 240px }
+}
+@media (max-width: 900px) {
+  .sg-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .sg-ov-kv { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+}

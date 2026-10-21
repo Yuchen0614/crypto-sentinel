@@ -1,0 +1,42 @@
+name: refresh pnl snapshot
+
+# 每日產生 data/pnl-daily.json：追蹤錢包近 24 小時的已實現盈虧（Hyperliquid closedPnl）。
+# 這是「帶單頁」的耐久記錄 —— 瀏覽器端帳本會因清快取而消失，這份快照不會。
+
+on:
+  schedule:
+    - cron: "47 2 * * *"      # 每日 UTC 02:47（台北 10:47）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-pnl
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 抓取近 24 小時已實現盈虧
+        run: python3 scripts/fetch_pnl.py --hours 24
+
+      - name: 有變更才提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/pnl-daily.json
+          if git diff --cached --quiet; then
+            echo "沒有變更，略過提交"
+          else
+            git commit -m "chore: refresh daily pnl snapshot"
+            git push
+          fi

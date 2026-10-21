@@ -283,7 +283,11 @@ tbody tr td.flash-up, tbody tr td.flash-down { background: none !important }
 @media (max-width: 1500px) { .chart-stats { grid-template-columns: repeat(3, 1fr) !important } }
 
 /* ══ 鏈上情報入口卡（完整即時內容在獨立頁 onchain.html）══════════ */
-.entry-wrap { flex: 0 0 auto; padding: 0 10px 10px }
+.entry-wrap {
+  flex: 0 0 auto; padding: 0 10px 10px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch;
+}
+@media (max-width: 1240px) { .entry-wrap { grid-template-columns: 1fr } }
 .chain-entry { display: flex; flex-direction: column }
 .chain-entry .panel-head { gap: 12px }
 .chain-entry .panel-head h2 .ic { background: var(--cy) !important }

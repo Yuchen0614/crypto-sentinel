@@ -128,16 +128,30 @@ Bybit 線性合約清算事件（涵蓋成交量前 100 個幣種），近 1 分
 
 ---
 
-## 兩個頁面
+## 三個頁面
 
 | 頁面 | 內容 |
 |---|---|
-| `index.html` — **行情主控台** | HUD、全市場掃描、主圖表與訂單簿／深度熱圖、巨鯨與清算、壓力計、異常事件，以及頁籤式的**鏈上情報入口卡** |
-| `onchain.html` — **鏈上聰明錢追蹤（獨立頁）** | Hyperliquid 大戶錢包即時持倉與倉位變化偵測、DEX 大額換幣即時流＋雷達（以太坊／Solana／Base／BNB）、協同買入、大戶最擁擠倉位、聰明錢錢包評分榜 |
+| `index.html` — **行情主控台** | HUD、全市場掃描、主圖表與訂單簿／深度熱圖、巨鯨與清算、壓力計、異常事件，以及**兩張入口卡**（鏈上情報、開倉平倉帶單記錄） |
+| `onchain.html` — **鏈上聰明錢追蹤** | Hyperliquid 大戶錢包即時持倉與倉位變化偵測、DEX 大額換幣即時流＋雷達（以太坊／Solana／Base／BNB）、協同買入、大戶最擁擠倉位、聰明錢錢包評分榜 |
+| `signals.html` — **開倉平倉帶單記錄** | 大戶開倉／加碼／減碼／翻倉／平倉流水、開倉與平倉配對成回合、**錢包實際已實現盈虧**（成交 `closedPnl`）與**固定名目模擬跟單損益**、累計盈虧曲線、錢包績效排行、每日伺服器快照、CSV 匯出 |
 
 ![行情主控台](docs/screenshot-main.png)
 
 ![鏈上聰明錢追蹤（獨立頁）](docs/screenshot-onchain.png)
+
+### 帶單頁怎麼算盈虧（重要）
+
+* **錢包實際已實現盈虧**：Hyperliquid 每一筆平倉成交都帶 `closedPnl`，這是錢包自己的真實損益，
+  也是排行榜的主要依據（不是我們推算的）。
+* **模擬跟單盈虧**：假設以固定名目（預設 $10,000，可切 $1千／$1萬／$10萬）同方向跟進、
+  在該錢包平倉時出場，扣掉雙邊估算手續費（預設 0.045%）。**純紙上計算，不會下任何單。**
+* 進場價來自 FIFO 配對（開倉成交 → 平倉成交），所以每一列都有進場／出場／持有時間；
+  配不到進場資料時會標 ⚠ 並且不顯示報酬率。
+* 這些大戶把單子切成上百筆小成交（單筆常見數百至數千美元），所以「帶單」一律**以回合／批次聚合**；
+  單筆成交本身不是訊號。
+* 限制（畫面上也標示）：單一錢包單次最多回 2000 筆成交，成交極頻繁的錢包在長窗期可能被截斷；
+  逐筆的長期完整性以伺服器端每日快照（分段抓取）為準。
 
 為什麼拆成兩頁：主控台與鏈上追蹤的資料來源、更新節奏完全不同（行情是每秒級的 WebSocket，
 鏈上是每 5 秒輪詢 Hyperliquid、每 14 秒掃一個 GeckoTerminal 熱門池）。拆開之後——
@@ -146,9 +160,9 @@ Bybit 線性合約清算事件（涵蓋成交量前 100 個幣種），近 1 分
 * 獨立頁可以把三欄全部給鏈上用（持倉表一次看十幾列、雷達放大到 300px），主控台則回到乾淨的行情版面。
 * 入口卡只讀 `data/whales.json`（約 10 KB，每日由 GitHub Actions 更新），顯示名單檔數、更新日與最大持倉錢包。
 
-兩個頁面共用同一份鏈上邏輯（`js/chainboot.js` 的排程 + `js/chainboot.js                鏈上子系統啟動與排程（兩個頁面共用；主控台已不再輪詢鏈上資料）
-js/onchain.js` 的資料層 + `js/chainui.js` 的渲染），
-所以行為不會分岔；`chainboot.js` 由主控台（可選）與獨立頁呼叫同一組 `S.chainBoot.start()`。
+三個頁面共用同一份鏈上／帶單邏輯（`js/chainboot.js` 的排程 + `js/onchain.js` 的資料層 +
+`js/chainui.js`／`js/signalui.js` 的渲染 + `js/signals.js` 的帶單引擎），
+所以行為不會分岔；帶單頁以 `S.chainBoot.start({ dex: false })` 只跑持倉輪詢，不佔 GeckoTerminal 額度。
 
 ## 版面
 
@@ -170,12 +184,14 @@ js/onchain.js` 的資料層 + `js/chainui.js` 的渲染），
 
 ```
 index.html                     行情主控台（HUD、三欄主體、鏈上情報入口卡、狀態列）
-onchain.html                   鏈上聰明錢追蹤獨立頁（三欄：大戶即時持倉／大額換幣＋雷達／擁擠倉位＋錢包榜）
+onchain.html                   鏈上聰明錢追蹤頁（三欄：大戶即時持倉／大額換幣＋雷達／擁擠倉位＋錢包榜）
+signals.html                   開倉平倉帶單記錄頁（績效卡＋盈虧曲線／開倉中＋帳本／流水＋排行＋快照＋設定）
 assets/css/main.css            基礎主題與元件樣式（配色由 v3.css 覆寫）
 assets/css/fx.css              動畫層與鏈上面板樣式
 assets/css/v2.css              版面系統（單頁三欄 + 鏈上全寬常駐、響應式、密度調整）
 assets/css/v3.css              視覺減法：最終配色規範、移除裝飾性光暈與動畫（最後載入）
-assets/css/onchain.css         獨立頁版面（整頁三欄、可捲動的持倉表／錢包榜、放大雷達）
+assets/css/onchain.css         鏈上頁版面（整頁三欄、可捲動的持倉表／錢包榜、放大雷達）
+assets/css/signals.css         帶單頁版面（績效卡、盈虧曲線、帳本表格、流水、排行榜）
 assets/css/fonts.css           自帶字型宣告（離線可用，執行期不連 CDN）
 assets/fonts/*.woff2           Inter / Space Grotesk / JetBrains Mono（latin 子集）
                                + Noto Sans TC（中文，只打包介面用到的字，約 210 KB）
@@ -183,6 +199,10 @@ js/util.js                     格式化、統計、事件匯流排、sparkline
 js/api.js                      REST 資料層（容錯、快取、限流佇列、備援）
 js/stream.js                   WebSocket 管理（重連、看門狗、多來源）
 js/analytics.js                量化核心：成交流、訂單簿、持倉、清算、壓力分數、異常偵測
+js/chainboot.js                鏈上子系統啟動與排程（鏈上頁與帶單頁共用；{dex:false} = 只跑持倉輪詢）
+js/signals.js                  帶單引擎：持倉回合差分、成交 FIFO 配對、真實 closedPnl、模擬跟單損益、統計與 CSV
+js/signalui.js                 帶單頁渲染（績效卡、盈虧曲線、開倉中／帳本表格、流水、排行、錢包明細）
+js/signalsboot.js              帶單頁啟動（名單、成交增量輪詢、標記價、設定、本機保存）
 js/onchain.js                  鏈上核心：大戶錢包持倉與倉位變化、DEX 大額換幣、錢包評分、協同買入
 js/chart.js                    Canvas 繪圖：主圖表、深度熱圖、壓力計、OI 走勢
 js/book.js                     訂單簿 DOM 渲染
@@ -192,7 +212,10 @@ js/chainui.js                  鏈上情報面板：大戶持倉表、倉位分�
 js/app.js                      啟動流程、事件編排、定時任務
 js/fx.js                       動畫特效：toast、浮動金額、開場資料雨、聲納雷達、背景
 data/whales.json               鏈上大戶追蹤名單（Actions 每日更新）
+data/pnl-daily.json            每日已實現盈虧快照（Actions 每日更新；帶單頁的耐久記錄）
 scripts/fetch_whales.py        名單產生腳本
+scripts/fetch_pnl.py           每日盈虧快照腳本（分段抓成交 closedPnl，避開 2000 筆上限）
+.github/workflows/refresh-pnl.yml   每日 02:47 UTC 產生 data/pnl-daily.json
 scripts/fetch_fonts.py         重產字型（latin 子集 + 中文子集化）
 scripts/check_fonts.py         檢查介面用到的中文字是否都在子集內（缺字會回退成別套字）
 .github/workflows/refresh-whales.yml

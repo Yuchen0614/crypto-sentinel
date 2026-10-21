@@ -461,6 +461,8 @@
       U.text('#entryDate', String(d.generated_at || '').slice(0, 10).replace(/-/g, '/') || '—');
       U.text('#entryTop', top ? short(top.addr) + ' · $' + U.money(top.av) : '—');
       U.text('#entryMeta', '名單 ' + n + ' 檔 · 每日自動更新 · 即時持倉請開啟獨立頁 →');
+      U.text('#entrySigWallets', n + ' 檔');
+      U.text('#entrySigMeta', '記錄 ' + n + ' 個大戶的開倉／平倉與盈虧 · 每日快照');
     });
 
     setTimeout(() => S.boot.finish(), 7000);

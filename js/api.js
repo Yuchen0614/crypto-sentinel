@@ -401,6 +401,45 @@
   };
 
   /* Hyperliquid：單一錢包的即時持倉與保證金摘要 */
+  /* 逐筆成交：dir（Open/Close Long｜Short）與 closedPnl 是「開倉平倉＋真實盈虧」的來源。
+     注意 Hyperliquid 單次最多回 2000 筆，大戶會把單子切成上百筆小成交，
+     所以呼叫端一律用「時間窗」控制回傳量（增量輪詢時只問最後幾分鐘）。 */
+  api.hlFills = async function (addr, sinceMs) {
+    const k = 'hlfills:' + addr + ':' + Math.floor((sinceMs || 0) / 60000);
+    return cached(k, 20e3, async () => {
+      const ac = new AbortController();
+      const to = setTimeout(() => ac.abort(), 10000);
+      try {
+        const r = await fetch(B.HL, {
+          method: 'POST', signal: ac.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'userFillsByTime', user: addr, startTime: Math.max(0, sinceMs || 0), aggregateByTime: true })
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        return Array.isArray(d) ? d : [];
+      } catch (e) {
+        S.errors.push('hlFills: ' + e.message);
+        return null;
+      } finally { clearTimeout(to); }
+    });
+  };
+
+  /* 全市場標記價（一次 24 KB）：用來算開倉中的未實現盈虧 */
+  api.hlMids = async function () {
+    return cached('hlmids', 4000, async () => {
+      try {
+        const r = await fetch(B.HL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'allMids' })
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        return (d && typeof d === 'object') ? d : null;
+      } catch (e) { S.errors.push('hlMids: ' + e.message); return null; }
+    });
+  };
+
   api.hlState = async function (addr) {
     const ac = new AbortController();
     const to = setTimeout(() => ac.abort(), 10000);

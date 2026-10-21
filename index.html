@@ -292,6 +292,26 @@
       </p>
     </div>
   </section>
+
+  <section class="panel chain-entry">
+    <div class="panel-head">
+      <h2><i class="ic ic-smart"></i>開倉平倉帶單記錄</h2>
+      <span class="mini" id="entrySigMeta">大戶開倉／平倉與盈虧</span>
+      <a class="entry-btn" href="signals.html" target="_blank" rel="noopener">開啟獨立頁面 ↗</a>
+    </div>
+    <div class="entry-body">
+      <div class="entry-stats">
+        <div><label>追蹤錢包</label><b id="entrySigWallets">—</b></div>
+        <div><label>盈虧來源</label><b>成交 closedPnl</b></div>
+        <div><label>長期保存</label><b>CSV · 每日快照</b></div>
+      </div>
+      <p class="entry-desc">
+        大戶一開倉、加碼、減碼、翻倉、平倉就記一筆流水，並把開倉與平倉配對成回合：
+        <b>錢包自己的實際已實現盈虧</b>（Hyperliquid 成交紀錄）與<b>固定名目模擬跟單的損益</b>同時記錄，
+        附勝率、持有時間、累計盈虧曲線與錢包績效排行，可匯出 CSV。
+      </p>
+    </div>
+  </section>
 </div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
