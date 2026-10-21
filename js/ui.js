@@ -353,7 +353,7 @@
         pf.title = 'Bybit 線性合約：選定幣種成交明細 + 主要幣種清算事件';
       }
       const pc = document.getElementById('pillChain');
-      if (pc) {
+      if (pc && !pc.dataset.static) {   // 主控台的鏈上狀態燈已改成連往獨立頁的連結，不再更新狀態
         const h = S.api.health.chain, oc = S.onchain;
         pc.dataset.state = h === 'ok' ? 'ok' : h === 'wait' ? 'wait' : 'off';
         pc.innerHTML = `<i></i>鏈上 ${h === 'ok' ? '● ' + (oc.dex.trades.length + oc.hl.states.size) + ' 筆' : '連線中'}`;

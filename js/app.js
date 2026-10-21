@@ -39,7 +39,7 @@
       setTimeout(() => {
         const b = document.getElementById('boot'); if (b) b.classList.add('done');
         FX.glitch();
-        A.anomaly.push({ type: 'SYS', sev: 'low', symbol: '系統', title: '監控上線', text: '已載入 ' + S.state.universe.length + ' 個交易對、' + OC.hl.wallets.length + ' 個鏈上大戶錢包，資料流建立完成' });
+        A.anomaly.push({ type: 'SYS', sev: 'low', symbol: '系統', title: '監控上線', text: '已載入 ' + S.state.universe.length + ' 個交易對，資料流建立完成；鏈上聰明錢追蹤已獨立成頁' });
       }, 420);
     },
     fail(msg) {
@@ -173,20 +173,8 @@
     S.on('ws-state', st => S.ui.hud.pills(st));
 
     /* 鏈上事件 */
-    S.on('hl-wallets', () => { S.chainUI.render(); S.ui.hud.pills(S.stream.state); });
-    S.on('hl-event', e => {
-      S.chainUI.hlEvent(e);
-      if (e.sev === 'high' || e.kind === 'FLIP') FX.toast({ title: e.name + ' ' + e.title, text: e.text, sev: e.sev === 'high' ? 'high' : 'mid', tag: '鏈上大戶' });
-    });
-    S.on('hl-state', () => { hlDirty = true; });
-    S.on('dex-trade', t => {
-      S.chainUI.dexTrade(t);
-      if (t.usd >= 1000000) FX.toast({
-        title: '鏈上大額' + (t.side === 'buy' ? '買入' : '賣出') + ' ' + (t.tokenSym || '') + ' $' + U.money(t.usd),
-        text: '錢包 ' + OC.short(t.wallet) + ' · ' + OC.chainLabel(t.chain) + ' · ' + (t.poolName || t.dex || ''), sev: 'mid', tag: '鏈上換幣'
-      });
-    });
-    S.on('dex-scan', () => S.chainUI.dexMeta());
+    /* 鏈上情報的事件綁定、DOM 互動與排程都搬到 js/chainboot.js，
+       主控台只保留入口卡（連到 onchain.html），不再輪詢鏈上資料。 */
 
     const map = {};
     S.on('miniTicker', arr => {
@@ -228,60 +216,6 @@
       S.ui.whale.renderNetflow();
     });
     document.getElementById('clearAlerts').addEventListener('click', () => A.anomaly.clear());
-    /* 鏈上區塊「展開 / 收合」：預設高度約 32vh，展開後吃掉整個工作區高度，
-       大戶持倉表一次可以看到十幾列（其餘區塊也一併變高）。 */
-    (function () {
-      const btn = document.getElementById('chainExpand');
-      const wrap = document.querySelector('.chain-wrap');
-      if (!btn || !wrap) return;
-      btn.addEventListener('click', () => {
-        const on = wrap.classList.toggle('full');
-        btn.textContent = on ? '收合' : '展開';
-        btn.classList.toggle('on', on);
-        /* 高度用 inline + important 指定（外面的 flex 與媒體查詢都蓋不掉），
-           並在 JS 裡先算成 px：CSS 的 min()/calc() 混用在 inline style 不一定被接受。
-           上限 62vh：矮螢幕展開時仍要留空間給上面的三欄，否則三欄會被壓成幾十 px。 */
-        const fit = () => Math.round(Math.max(300, Math.min(innerHeight * 0.62, innerHeight - 118)));
-        if (on) {
-          wrap.style.setProperty('height', fit() + 'px', 'important');
-          if (!wrap.__fitBound) {
-            wrap.__fitBound = true;
-            w.addEventListener('resize', () => { if (wrap.classList.contains('full')) wrap.style.setProperty('height', fit() + 'px', 'important'); });
-          }
-        } else wrap.style.removeProperty('height');
-        try { localStorage.setItem('cs.chainFull', on ? '1' : '0'); } catch (e) { }
-        requestAnimationFrame(() => {
-          w.dispatchEvent(new Event('resize'));
-          S.chainUI.dexMeta();
-        });
-      });
-      let saved = false;
-      try { saved = localStorage.getItem('cs.chainFull') === '1'; } catch (e) { }
-      if (saved && innerHeight >= 760) btn.click();   // 矮螢幕不自動展開，免得三欄被壓扁
-    })();
-
-    /* 鏈上：鏈別 / 門檻切換 */
-    document.getElementById('chainSeg').addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
-      Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
-      OC.dex.chain = b.dataset.chain;
-      OC.dex.reset();
-      const tape = document.getElementById('chainTape');
-      if (tape) tape.innerHTML = '<div class="empty">切換鏈別，重新掃描中…</div>';
-      const wl = document.getElementById('walletList'); if (wl) { wl.__key = ''; wl.innerHTML = '<div class="empty">累積鏈上錢包資料中…</div>'; }
-      const cb = document.getElementById('coBuyList'); if (cb) { cb.__key = ''; cb.innerHTML = ''; }
-      S.chainUI.dexMeta();
-      FX.glitch();
-      setTimeout(() => dexScan(), 120);
-    });
-    document.getElementById('chainMin').addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
-      Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
-      OC.dex.min = +b.dataset.min;
-      S.chainUI.dexMeta();
-      setTimeout(() => dexScan(), 120);
-    });
-
     /* 鍵盤操作 */
     document.addEventListener('keydown', e => {
       if (e.key === '/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); document.getElementById('scanSearch').focus(); return; }
@@ -317,37 +251,6 @@
     });
     const cur = S.state.bySym.get(S.state.symbol);
     if (cur && S.state.lastSmart) cur.smart = S.state.lastSmart;
-  }
-
-  /* ══════ 鏈上：大戶輪詢與 DEX 掃描 ══════ */
-  let hlDirty = false, dexBusy = false;
-  async function loadWhales() {
-    const d = await S.api.hlWhales();
-    if (d) { OC.hl.setWallets(d); S.chainUI.render(); }
-  }
-  /* 首輪快速預掃：不照輪詢順序，先把名單前段（最大的錢包）一次補齊，
-     讓「大戶持倉」在十幾秒內就有內容，而不是等 80 秒整輪掃完。 */
-  async function primeWallets(n) {
-    const list = OC.hl.wallets.slice(0, n || 24);
-    const chunk = 6;
-    for (let i = 0; i < list.length; i += chunk) {
-      await Promise.all(list.slice(i, i + chunk).map(wl =>
-        S.api.hlState(wl.addr).then(st => { if (st) OC.hl.ingest(wl.addr, st); })));
-      S.chainUI.agg();
-      await new Promise(r => setTimeout(r, 250));
-    }
-    OC.hl.pollIdx = list.length % Math.max(1, OC.hl.wallets.length);   // 接續輪詢，不重掃同一批
-    S.chainUI.render();
-  }
-  function hlPoll(batchSize) {
-    OC.hl.nextBatch(batchSize || 4).forEach(wl => S.api.hlState(wl.addr).then(st => { if (st) OC.hl.ingest(wl.addr, st); }));
-  }
-  async function dexScan() {
-    if (dexBusy) return;
-    dexBusy = true;
-    try { await OC.dex.scan(); } catch (e) { S.errors.push('dexScan: ' + e.message); }
-    dexBusy = false;
-    S.chainUI.dexMeta();
   }
 
   /* ══════ 定時任務 ══════ */
@@ -460,27 +363,6 @@
       S.ui.hud.breadth(up, l.length - up, l.length);
     }, 15000);
 
-    // 每 5 秒：鏈上大戶錢包（每輪 6 個，約 45 秒輪完全部名單；載入時另有 24 檔快速預掃）
-    setInterval(() => { if (!document.hidden) hlPoll(6); else hlPoll(2); }, 5000);
-
-    // 每 14 秒：鏈上 DEX 大額換幣掃描（每輪 1 個高流量池；GeckoTerminal 免費層約 5 次/分即被擋）
-    setInterval(() => dexScan(), 14000);
-    setInterval(() => { if (!document.hidden) S.chainUI.dexMeta(); }, 3000);
-
-    // 每 1.2 秒：鏈上面板渲染
-    setInterval(() => {
-      if (document.hidden) return;
-      S.chainUI.agg();
-      if (hlDirty) { hlDirty = false; S.chainUI.hlTable(); S.chainUI.coinBars(); }
-      S.chainUI.wallets();
-      S.chainUI.coBuy();
-      const cnt = document.getElementById('chainCount');
-      if (cnt) cnt.textContent = String(OC.dex.trades.length + OC.hl.events.length);
-    }, 1200);
-
-    // 每 5 分鐘：重新載入大戶名單
-    setInterval(() => { S.api.hlWhales().then(d => { if (d) { OC.hl.setWallets(d); S.chainUI.render(); } }); }, 300000);
-
     // 每 10 分鐘：確認合約流對應當前幣種
     setInterval(() => {
       if (document.hidden || !S.state.futuresSet) return;
@@ -509,13 +391,11 @@
       ti++;
       const st = S.stream.stats();
       const top = A.Trades.large(250000, 900e3)[0];
-      const a = OC.hl.agg;
       const msgs = [
         '即時流 ' + st.selRate + ' 筆/秒 · 全市場行情 ' + st.globRate + ' 則/秒 · 資料源 ' + (S.api.source || 'Binance'),
         '訂單簿熱圖 ' + A.Book.frames.length + ' 格（每格 2.2 秒）· 掛單牆 ' + A.Book.walls.length + ' 道 · 疑似假掛單 ' + A.Book.spoofs.length + ' 次',
         top ? '近 15 分鐘最大單筆：' + top.symbol + ' ' + (top.side === 'buy' ? '主動買入' : '主動賣出') + ' $' + U.money(top.notional) + ' @ ' + U.px(top.price) : '近 15 分鐘未出現大額單筆',
-        a && a.wallets ? '鏈上大戶追蹤 ' + a.wallets + ' 個錢包 / ' + a.positions + ' 個倉位：多 $' + U.money(a.longUsd) + '、空 $' + U.money(a.shortUsd) + '（Hyperliquid）' : '鏈上大戶錢包資料載入中…',
-        '鏈上換幣：' + OC.chainLabel(OC.dex.chain) + ' 追蹤 ' + OC.dex.pools.length + ' 個熱門池 · 已收 ' + OC.dex.trades.length + ' 筆大額 · ' + OC.dex.wallets.size + ' 個錢包',
+        '鏈上聰明錢追蹤已獨立成頁：大戶即時持倉、倉位變化偵測、鏈上大額換幣即時流（右上「鏈上情報 ↗」）',
         '清算監控中 · 近 15 分鐘清算 $' + U.money(A.Liq.sum(900e3).total) + ' · 壓力分數 ' + (S.state.lastSmart || '—') + ' · 方向鍵切換幣種、/ 搜尋'
       ];
       S.ui.hud.ticker(msgs[ti % msgs.length]);
@@ -567,18 +447,18 @@
       S.boot.finish('系統就緒 · ' + S.state.universe.length + ' 個交易對 · 即時流已連線');
     }).catch(() => S.boot.finish('系統就緒（部分輔助資料暫時無法取得）'));
 
-    // 鏈上情報（獨立於行情）
-    loadWhales().then(() => {
-      primeWallets(24); S.chainUI.render();
-      setTimeout(() => {
-        const m = document.getElementById('hlMeta');
-        if (OC.hl.wallets.length && !OC.hl.states.size) {
-          S.api.health.chain = 'off';
-          if (m) m.innerHTML = '<span style="color:var(--am)">無法取得持倉資料 — 可能是網路阻擋 api.hyperliquid.xyz（此站需要瀏覽器直連該端點）</span>';
-        }
-      }, 25000);
+    /* 鏈上情報入口卡：只讀每日更新的小檔（約 10 KB），完整即時資料在 onchain.html。
+       這樣主控台不佔用 Hyperliquid 輪詢與 GeckoTerminal 掃描的額度。 */
+    S.api.hlWhales().then(d => {
+      if (!d || !d.wallets || !d.wallets.length) return;
+      const n = d.wallets.length;
+      const top = d.wallets.slice().sort((a, b) => b.av - a.av)[0];
+      const short = v => v ? v.slice(0, 6) + '…' + v.slice(-4) : '—';
+      U.text('#entryWallets', n + ' 檔');
+      U.text('#entryDate', String(d.generated_at || '').slice(0, 10).replace(/-/g, '/') || '—');
+      U.text('#entryTop', top ? short(top.addr) + ' · $' + U.money(top.av) : '—');
+      U.text('#entryMeta', '名單 ' + n + ' 檔 · 每日自動更新 · 即時持倉請開啟獨立頁 →');
     });
-    setTimeout(() => dexScan(), 1500);
 
     setTimeout(() => S.boot.finish(), 7000);
     timers();

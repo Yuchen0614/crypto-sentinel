@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>鏈上聰明錢追蹤 · CRYPTO SENTINEL</title>
+<meta name="description" content="鏈上聰明錢獨立監控頁：Hyperliquid 大戶錢包即時持倉與倉位變化偵測、DEX 大額換幣即時流、聰明錢錢包評分榜。">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/fx.css">
+<link rel="stylesheet" href="assets/css/v2.css">
+<link rel="stylesheet" href="assets/css/v3.css">
+<link rel="stylesheet" href="assets/css/onchain.css">
+</head>
+<body>
+
+<!-- ── 頁首 ─────────────────────────────────────────────── -->
+<div class="hud oc-hud">
+  <div class="hud-brand">
+    <h1><span class="dot"></span>CRYPTO SENTINEL <b>／ 鏈上聰明錢</b></h1>
+  </div>
+  <div class="oc-status" id="ocListMeta">名單載入中…</div>
+  <div class="oc-actions">
+    <div class="clock"><span id="ocClock">--:--:--</span><small id="ocDate">台北</small></div>
+    <a class="oc-back" href="index.html">← 回主控台 <b>行情總覽</b></a>
+  </div>
+</div>
+
+<div class="oc-note">
+  <b>這一頁在追蹤什麼：</b>
+  ① Hyperliquid 上大戶錢包的<b>即時持倉</b>（每 5 秒輪詢，倉位增減、平倉、翻倉都會變成事件）；
+  ② 以太坊／Solana／Base／BNB 各鏈的<b>大額換幣即時流</b>（GeckoTerminal 熱門池逐池掃描，附錢包地址）；
+  ③ 在鏈上頻繁操作且交易後價格上漲的<b>聰明錢錢包評分榜</b>。
+  錢包標籤是<b>行為分類</b>（吸籌／派發／追高），不是地址身分認定。
+</div>
+
+<!-- ── 三欄主體 ─────────────────────────────────────────── -->
+<main class="oc-page">
+
+  <!-- 欄 A：大戶即時持倉 + 倉位變化 -->
+  <section class="oc-col a">
+    <div class="panel oc-grow">
+      <div class="panel-head">
+        <h2><i class="ic ic-chain"></i>Hyperliquid 大戶錢包<span class="count" id="chainCount">0</span></h2>
+        <div class="seg seg-sm" id="chainSeg">
+          <button data-chain="eth" class="on">以太坊</button>
+          <button data-chain="solana">Solana</button>
+          <button data-chain="base">Base</button>
+          <button data-chain="bsc">BNB</button>
+        </div>
+        <div class="seg seg-sm" id="chainMin">
+          <button data-min="20000" class="on">≥2萬</button>
+          <button data-min="100000" title="DEX 大型換幣">≥10萬</button>
+          <button data-min="1000000" title="鏈上巨鯨">≥100萬</button>
+        </div>
+      </div>
+      <div class="chain-col">
+        <div class="sub-head">
+          <b>即時持倉</b>
+          <span class="mini" id="hlMeta">—</span>
+        </div>
+        <div class="agg-wrap">
+          <div class="agg-bar"><i id="aggFill"></i></div>
+          <div class="agg-labels"><span id="aggLong">多 —</span><span id="aggRatio">—</span><span id="aggShort">空 —</span></div>
+          <div class="agg-stats">
+            <div><label>已追蹤錢包</label><b id="aggWallets">0</b></div>
+            <div><label>倉位數</label><b id="aggPos">0</b></div>
+            <div><label>總名目規模</label><b id="aggNotional">—</b></div>
+            <div><label>未實現損益</label><b id="aggUpnl">—</b></div>
+          </div>
+        </div>
+        <div class="sub-head"><b>大戶持倉表</b><span class="mini" id="hlTableNote">依持倉名目排序</span></div>
+        <div class="hl-table-wrap">
+          <table class="hl">
+            <thead><tr><th>大戶錢包</th><th>主要持倉</th><th class="ta-r">名目</th><th class="ta-r">未實現</th><th class="ta-r">月報酬</th></tr></thead>
+            <tbody id="hlBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel oc-events">
+      <div class="panel-head">
+        <h2><i class="ic ic-alert"></i>錢包倉位變化偵測</h2>
+        <span class="mini" id="hlEventMeta">—</span>
+      </div>
+      <div class="chain-col">
+        <div class="hl-events" id="hlEvents"><div class="empty">等待錢包倉位變化…（首次比對需兩輪掃描）</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 欄 B：鏈上大額換幣即時流 -->
+  <section class="oc-col b">
+    <div class="panel oc-tape">
+      <div class="panel-head">
+        <h2><i class="ic ic-chain"></i>鏈上大額換幣即時流</h2>
+        <span class="mini" id="dexMeta">掃描中…</span>
+        <span class="mini" id="chainMeta"></span>
+      </div>
+      <div class="chain-col">
+        <div class="radar-wrap">
+          <canvas id="radar"></canvas>
+          <div class="radar-hud">
+            <span id="radarStatus">SCANNING</span>
+            <span id="radarStat">—</span>
+          </div>
+        </div>
+        <div class="chain-tape-head">
+          <span>時間</span><span>鏈</span><span>代幣</span><span>方向</span><span class="ta-r">金額</span><span class="ta-r">錢包</span>
+        </div>
+        <div class="chain-tape" id="chainTape"><div class="empty">正在掃描鏈上大額換幣…</div></div>
+      </div>
+    </div>
+
+    <div class="panel oc-cobuy">
+      <div class="panel-head"><h2><i class="ic ic-smart"></i>協同買入</h2><span class="mini">多個錢包在短時間內同一方向</span></div>
+      <div class="chain-col"><div class="cobuy" id="coBuyList"></div></div>
+    </div>
+  </section>
+
+  <!-- 欄 C：擁擠倉位 + 錢包評分 -->
+  <section class="oc-col c">
+    <div class="panel oc-bars">
+      <div class="panel-head"><h2><i class="ic ic-book"></i>大戶最擁擠倉位</h2><span class="mini" id="coinMeta">依追蹤錢包的持倉名目排序</span></div>
+      <div class="chain-col"><div class="coin-bars" id="coinBars"><div class="empty">載入中…</div></div></div>
+    </div>
+
+    <div class="panel oc-wallets">
+      <div class="panel-head">
+        <h2><i class="ic ic-smart"></i>聰明錢錢包榜</h2>
+        <span class="mini" id="walletMeta" title="分數＝交易規模 28% + 買賣方向 16% + 交易後價格變化 36% + 代幣廣度 20%">評分：規模 28%・方向 16%・交易後走勢 36%・廣度 20%</span>
+      </div>
+      <div class="chain-col"><div class="wallet-list" id="walletList"><div class="empty">累積鏈上錢包資料中…</div></div></div>
+    </div>
+  </section>
+</main>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="overlay" id="walletOverlay" hidden><div class="overlay-card" id="overlayCard"></div></div>
+
+<div class="statusbar">
+  <div class="ticker" id="statusTicker"><span>鏈上情報啟動中…</span></div>
+  <div class="disc">資料來源：Hyperliquid 公開排行榜／持倉 API、GeckoTerminal 公開 API · 僅供研究與視覺化，不構成投資建議</div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/api.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/onchain.js"></script>
+<script src="js/chainui.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/chainboot.js"></script>
+<script>
+/* 獨立頁啟動：只跑鏈上子系統（不連行情 WebSocket、不抓全市場資料） */
+(function () {
+  const S = window.SENTINEL, U = S.util, OC = S.onchain;
+  S.ready(function () {
+    // 時鐘
+    const ck = document.getElementById('ocClock'), dt = document.getElementById('ocDate');
+    const tick = () => {
+      const d = new Date();
+      if (ck) ck.textContent = d.toLocaleTimeString('zh-TW', { hour12: false });
+      if (dt) dt.textContent = '台北 · ' + d.toLocaleDateString('zh-TW');
+    };
+    tick(); setInterval(tick, 1000);
+
+    // 雷達
+    if (S.fx.initRadar) S.fx.initRadar(document.getElementById('radar'));
+
+    // 名單狀態
+    const lm = document.getElementById('ocListMeta');
+    const showList = () => {
+      const w = OC.hl.wallets;
+      if (lm && w.length) lm.innerHTML = '名單 <b>' + w.length + '</b> 個錢包 · 每 5 秒輪詢 6 個 · 名單每日由 GitHub Actions 自動更新';
+    };
+    S.on('hl-wallets', showList);
+
+    // 狀態列
+    const tk = document.getElementById('statusTicker');
+    setInterval(() => {
+      if (!tk) return;
+      const a = OC.hl.agg;
+      const msgs = [
+        a && a.wallets ? '鏈上大戶 ' + a.wallets + ' 個錢包 / ' + a.positions + ' 個倉位：多 $' + U.money(a.longUsd) + '、空 $' + U.money(a.shortUsd) : '大戶持倉載入中…',
+        'DEX ' + OC.chainLabel(OC.dex.chain) + '：追蹤 ' + OC.dex.pools.length + ' 個熱門池 · 已收 ' + OC.dex.trades.length + ' 筆大額 · ' + OC.dex.wallets.size + ' 個錢包',
+        '倉位變化事件 ' + OC.hl.events.length + ' 筆 · 錢包評分樣本 ' + OC.dex.wallets.size + ' 個'
+      ];
+      tk.innerHTML = '<span>' + msgs[Math.floor(Date.now() / 5000) % msgs.length] + '</span>';
+    }, 1000);
+
+    S.chainBoot.wire();
+    S.chainBoot.initDom();
+    S.chainBoot.start();
+  });
+
+  /* 自動化檢查用 */
+  window.__SENTINEL_STATUS = () => ({
+    page: 'onchain',
+    wallets: OC.hl.wallets.length, states: OC.hl.states.size, polled: OC.hl.polled,
+    agg: OC.hl.agg ? { wallets: OC.hl.agg.wallets, positions: OC.hl.agg.positions, longUsd: Math.round(OC.hl.agg.longUsd), shortUsd: Math.round(OC.hl.agg.shortUsd) } : null,
+    hlRows: document.querySelectorAll('#hlBody tr').length,
+    events: OC.hl.events.length, eventRows: document.querySelectorAll('#hlEvents .hle').length,
+    dexChain: OC.dex.chain, dexPools: OC.dex.pools.length, dexTrades: OC.dex.trades.length, dexWallets: OC.dex.wallets.size,
+    tapeRows: document.querySelectorAll('#chainTape .ctrow').length,
+    walletRows: document.querySelectorAll('#walletList .wl').length,
+    coinBars: document.querySelectorAll('#coinBars .coin-bar').length,
+    radarPings: OC.radar.pings.length,
+    hlSource: S.api.hlSource, hlNote: S.api.hlNote,
+    errors: S.errors.slice(-10)
+  });
+})();
+</script>
+</body>
+</html>

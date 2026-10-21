@@ -128,6 +128,24 @@ Bybit 線性合約清算事件（涵蓋成交量前 100 個幣種），近 1 分
 
 ---
 
+## 兩個頁面
+
+| 頁面 | 內容 |
+|---|---|
+| `index.html` — **行情主控台** | HUD、全市場掃描、主圖表與訂單簿／深度熱圖、巨鯨與清算、壓力計、異常事件，以及頁籤式的**鏈上情報入口卡** |
+| `onchain.html` — **鏈上聰明錢追蹤（獨立頁）** | Hyperliquid 大戶錢包即時持倉與倉位變化偵測、DEX 大額換幣即時流＋雷達（以太坊／Solana／Base／BNB）、協同買入、大戶最擁擠倉位、聰明錢錢包評分榜 |
+
+為什麼拆成兩頁：主控台與鏈上追蹤的資料來源、更新節奏完全不同（行情是每秒級的 WebSocket，
+鏈上是每 5 秒輪詢 Hyperliquid、每 14 秒掃一個 GeckoTerminal 熱門池）。拆開之後——
+
+* 主控台不再輪詢鏈上資料，**GeckoTerminal 免費層的額度全部留給獨立頁**，鏈上資料更即時、也不會再出現「API 冷卻中」。
+* 獨立頁可以把三欄全部給鏈上用（持倉表一次看十幾列、雷達放大到 300px），主控台則回到乾淨的行情版面。
+* 入口卡只讀 `data/whales.json`（約 10 KB，每日由 GitHub Actions 更新），顯示名單檔數、更新日與最大持倉錢包。
+
+兩個頁面共用同一份鏈上邏輯（`js/chainboot.js` 的排程 + `js/chainboot.js                鏈上子系統啟動與排程（兩個頁面共用；主控台已不再輪詢鏈上資料）
+js/onchain.js` 的資料層 + `js/chainui.js` 的渲染），
+所以行為不會分岔；`chainboot.js` 由主控台（可選）與獨立頁呼叫同一組 `S.chainBoot.start()`。
+
 ## 版面
 
 單頁三欄儀表板：左側全市場掃描、中間主圖表與訂單簿／熱圖、右側訊號面板，
@@ -147,11 +165,13 @@ Bybit 線性合約清算事件（涵蓋成交量前 100 個幣種），近 1 分
 ## 檔案結構
 
 ```
-index.html                     版面（HUD、三欄主體、鏈上情報、狀態列）
+index.html                     行情主控台（HUD、三欄主體、鏈上情報入口卡、狀態列）
+onchain.html                   鏈上聰明錢追蹤獨立頁（三欄：大戶即時持倉／大額換幣＋雷達／擁擠倉位＋錢包榜）
 assets/css/main.css            基礎主題與元件樣式（配色由 v3.css 覆寫）
 assets/css/fx.css              動畫層與鏈上面板樣式
 assets/css/v2.css              版面系統（單頁三欄 + 鏈上全寬常駐、響應式、密度調整）
 assets/css/v3.css              視覺減法：最終配色規範、移除裝飾性光暈與動畫（最後載入）
+assets/css/onchain.css         獨立頁版面（整頁三欄、可捲動的持倉表／錢包榜、放大雷達）
 assets/css/fonts.css           自帶字型宣告（離線可用，執行期不連 CDN）
 assets/fonts/*.woff2           Inter / Space Grotesk / JetBrains Mono（latin 子集）
                                + Noto Sans TC（中文，只打包介面用到的字，約 210 KB）

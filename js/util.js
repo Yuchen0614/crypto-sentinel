@@ -143,5 +143,19 @@
     return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
   };
 
+  /* Canvas 尺寸適配（DPR 縮放）：繪圖模組共用。
+     原本定義在 chart.js，但獨立頁 onchain.html 只載入 fx.js 畫雷達、不載 chart.js，
+     所以搬到 util 這一層，避免 S.fit 找不到。 */
+  S.fit = function (canvas) {
+    const dpr = Math.min(2, w.devicePixelRatio || 1);
+    const r = canvas.getBoundingClientRect();
+    if (r.width < 20 || r.height < 20) return null;
+    const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    const c = canvas.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { c, w: r.width, h: r.height };
+  };
+
   S.ready = (fn) => document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn();
 })(window);

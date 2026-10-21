@@ -3,17 +3,8 @@
 (function (w) {
   const S = w.SENTINEL, U = S.util;
 
-  function fit(canvas) {
-    const dpr = Math.min(2, w.devicePixelRatio || 1);
-    const r = canvas.getBoundingClientRect();
-    if (r.width < 20 || r.height < 20) return null;
-    const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
-    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
-    const c = canvas.getContext('2d');
-    c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    return { c, w: r.width, h: r.height };
-  }
-  S.fit = fit;
+  /* Canvas 尺寸適配：實作在 util.js（S.fit），本頁直接沿用，避免兩份實作 */
+  const fit = S.fit;
 
   /* ══════════════ 主圖表 ══════════════ */
   const Ch = S.chart = {
