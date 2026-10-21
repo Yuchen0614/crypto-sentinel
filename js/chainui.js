@@ -17,6 +17,7 @@
     if (r) {
       r.textContent = isFinite(a.ratio) ? `多空比 ${(a.ratio * 100).toFixed(1)}% / ${((1 - a.ratio) * 100).toFixed(1)}%` : '—';
       r.style.color = a.ratio > 0.55 ? 'var(--gn)' : a.ratio < 0.45 ? 'var(--rd)' : 'var(--cy)';
+      r.title = '以持倉名目金額加權計算，會受少數超大型帳戶主導；想看個別差異請點下方任一錢包，或用「大戶最擁擠倉位」看各幣別分佈';
     }
     U.text('#aggWallets', String(a.wallets || 0));
     U.text('#aggPos', String(a.positions || 0));
