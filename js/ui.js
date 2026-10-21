@@ -96,7 +96,7 @@
 
   /* ══════ 巨鯨動向 ══════ */
   const Whale = UI.whale = {
-    min: 50000, count: 0, els: [],
+    min: 25000, count: 0, els: [],
     add(t) {
       const tape = document.getElementById('whaleTape'); if (!tape) return;
       if (t.notional < this.min) return;
@@ -129,7 +129,7 @@
       const n5 = T.netflow(300e3);
       const bar = document.getElementById('nfBar');
       if (bar) bar.style.left = (U.clamp((n5.whaleDelta / Math.max(200000, Math.abs(n5.whaleBuy) + Math.abs(n5.whaleSell))) / 2 + 0.5, 0, 1) * 100).toFixed(1) + '%';
-      U.html('#whaleFoot', `累計 <b>${this.count}</b> 筆大額成交 · 現行門檻 ≥ $${U.money(this.min)}`);
+      U.html('#whaleFoot', `累計 <b>${this.count}</b> 筆大額成交 · 現行門檻 ≥ $${U.money(this.min)} · 大小單以金額自動分級（≥$250K 大型、≥$1M 巨鯨）`);
     }
   };
 
