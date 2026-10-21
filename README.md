@@ -125,12 +125,21 @@ Bybit 線性合約清算事件（涵蓋成交量前 100 個幣種），近 1 分
 
 ---
 
+## 版面
+
+單頁三欄儀表板：左側全市場掃描、中間主圖表與訂單簿／熱圖、右側訊號面板，
+**鏈上聰明錢區塊固定在頁面下方、全寬常駐**（不需要切換分頁就看得到大戶持倉）。
+寬度 1760 / 1500 / 1360 / 1220 / 760 各有對應斷點；高度 1050 / 900 / 800 會自動壓縮圖表與面板密度。
+
+字型：Inter（介面）＋ Space Grotesk（標題）＋ JetBrains Mono（數據），中文走系統 CJK 字；數字全部等寬對齊。
+
 ## 檔案結構
 
 ```
 index.html                     版面（HUD、三欄主體、鏈上情報、狀態列）
 assets/css/main.css            科幻風主題、動畫、響應式
 assets/css/fx.css              動畫層與鏈上面板樣式
+assets/css/v2.css              版面系統（單頁三欄 + 鏈上全寬常駐、響應式、密度調整）
 assets/css/fonts.css           內嵌字型（Orbitron / Rajdhani / Share Tech Mono，離線可用）
 assets/fonts/*.woff2
 js/util.js                     格式化、統計、事件匯流排、sparkline
@@ -144,6 +153,7 @@ js/fx.js                       動畫特效：toast、浮動金額、切換閃�
 js/ui.js                       掃描表、巨鯨、清算、持倉、事件面板
 js/chainui.js                  鏈上情報面板：大戶持倉表、倉位分佈、換幣流、錢包榜、明節
 js/app.js                      啟動流程、事件編排、定時任務
+js/fx.js                       動畫特效：toast、浮動金額、開場資料雨、聲納雷達、背景
 data/whales.json               鏈上大戶追蹤名單（Actions 每日更新）
 scripts/fetch_whales.py        名單產生腳本
 .github/workflows/refresh-whales.yml
