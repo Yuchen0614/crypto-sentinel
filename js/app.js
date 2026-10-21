@@ -228,6 +228,29 @@
       S.ui.whale.renderNetflow();
     });
     document.getElementById('clearAlerts').addEventListener('click', () => A.anomaly.clear());
+    /* 鏈上區塊「展開 / 收合」：預設高度約 32vh，展開後吃掉整個工作區高度，
+       大戶持倉表一次可以看到十幾列（其餘區塊也一併變高）。 */
+    (function () {
+      const btn = document.getElementById('chainExpand');
+      const wrap = document.querySelector('.chain-wrap');
+      if (!btn || !wrap) return;
+      btn.addEventListener('click', () => {
+        const on = wrap.classList.toggle('full');
+        btn.textContent = on ? '收合' : '展開';
+        btn.classList.toggle('on', on);
+        /* 高度用 inline + important 指定：外面的 flex/媒體查詢都不會蓋掉它 */
+        if (on) wrap.style.setProperty('height', 'min(62vh, calc(100vh - 118px))', 'important');
+        else wrap.style.removeProperty('height');
+        try { localStorage.setItem('cs.chainFull', on ? '1' : '0'); } catch (e) { }
+        requestAnimationFrame(() => {
+          w.dispatchEvent(new Event('resize'));
+          S.chainUI.dexMeta();
+        });
+      });
+      let saved = false;
+      try { saved = localStorage.getItem('cs.chainFull') === '1'; } catch (e) { }
+      if (saved && innerHeight >= 760) btn.click();   // 矮螢幕不自動展開，免得三欄被壓扁
+    })();
 
     /* 鏈上：鏈別 / 門檻切換 */
     document.getElementById('chainSeg').addEventListener('click', e => {
@@ -293,6 +316,20 @@
   async function loadWhales() {
     const d = await S.api.hlWhales();
     if (d) { OC.hl.setWallets(d); S.chainUI.render(); }
+  }
+  /* 首輪快速預掃：不照輪詢順序，先把名單前段（最大的錢包）一次補齊，
+     讓「大戶持倉」在十幾秒內就有內容，而不是等 80 秒整輪掃完。 */
+  async function primeWallets(n) {
+    const list = OC.hl.wallets.slice(0, n || 24);
+    const chunk = 6;
+    for (let i = 0; i < list.length; i += chunk) {
+      await Promise.all(list.slice(i, i + chunk).map(wl =>
+        S.api.hlState(wl.addr).then(st => { if (st) OC.hl.ingest(wl.addr, st); })));
+      S.chainUI.agg();
+      await new Promise(r => setTimeout(r, 250));
+    }
+    OC.hl.pollIdx = list.length % Math.max(1, OC.hl.wallets.length);   // 接續輪詢，不重掃同一批
+    S.chainUI.render();
   }
   function hlPoll(batchSize) {
     OC.hl.nextBatch(batchSize || 4).forEach(wl => S.api.hlState(wl.addr).then(st => { if (st) OC.hl.ingest(wl.addr, st); }));
@@ -415,8 +452,8 @@
       S.ui.hud.breadth(up, l.length - up, l.length);
     }, 15000);
 
-    // 每 6 秒：鏈上大戶錢包（每輪 4 個，約 80 秒輪完全部名單）
-    setInterval(() => { if (!document.hidden) hlPoll(4); else hlPoll(2); }, 6000);
+    // 每 5 秒：鏈上大戶錢包（每輪 6 個，約 45 秒輪完全部名單；載入時另有 24 檔快速預掃）
+    setInterval(() => { if (!document.hidden) hlPoll(6); else hlPoll(2); }, 5000);
 
     // 每 14 秒：鏈上 DEX 大額換幣掃描（每輪 1 個高流量池；GeckoTerminal 免費層約 5 次/分即被擋）
     setInterval(() => dexScan(), 14000);
@@ -524,7 +561,7 @@
 
     // 鏈上情報（獨立於行情）
     loadWhales().then(() => {
-      hlPoll(6); S.chainUI.render();
+      primeWallets(24); S.chainUI.render();
       setTimeout(() => {
         const m = document.getElementById('hlMeta');
         if (OC.hl.wallets.length && !OC.hl.states.size) {

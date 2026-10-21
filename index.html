@@ -291,6 +291,7 @@
           <button data-min="1000000" title="鏈上巨鯨">≥100萬</button>
         </div>
         <span class="mini" id="chainMeta">鏈上掃描啟動中…</span>
+        <button class="ghost" id="chainExpand" title="把鏈上區塊放大到整個畫面高度（大戶持倉表一次看十幾列）">展開</button>
       </div>
       <div class="chain-body">
         <div class="chain-col">
@@ -308,14 +309,15 @@
               <div><label>未實現損益</label><b id="aggUpnl">—</b></div>
             </div>
           </div>
-          <div class="sub-head"><b>大戶最擁擠倉位</b><span class="mini" id="coinMeta">依追蹤錢包的持倉名目排序</span></div>
-          <div class="coin-bars" id="coinBars"><div class="empty">載入中…</div></div>
+          <div class="sub-head"><b>Hyperliquid 大戶錢包 · 即時持倉表</b><span class="mini" id="hlTableNote">依持倉名目排序 · 表格可捲動（52 檔）</span></div>
           <div class="hl-table-wrap">
             <table class="hl">
               <thead><tr><th>大戶錢包</th><th>主要持倉</th><th class="ta-r">名目</th><th class="ta-r">未實現</th><th class="ta-r">月報酬</th></tr></thead>
               <tbody id="hlBody"></tbody>
             </table>
           </div>
+          <div class="sub-head"><b>大戶最擁擠倉位</b><span class="mini" id="coinMeta">依追蹤錢包的持倉名目排序</span></div>
+          <div class="coin-bars" id="coinBars"><div class="empty">載入中…</div></div>
           <div class="sub-head"><b>錢包倉位變化偵測</b><span class="mini" id="hlEventMeta">—</span></div>
           <div class="hl-events" id="hlEvents"><div class="empty">等待錢包倉位變化…（首次比對需兩輪掃描）</div></div>
         </div>

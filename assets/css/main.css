@@ -20,12 +20,15 @@
   --tx:#c6e4f2;
   --tx-2:#8fb2c9;
   --tx-3:#5d7d94;
-  /* 2026-10-21：換掉 Orbitron/Rajdhani/Share Tech Mono（辨識度差、中英混排不協調），
-     改用 Inter + Space Grotesk + JetBrains Mono，中文字走系統 CJK 字。 */
-  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Consolas,monospace;
-  --disp:'Space Grotesk','Inter',system-ui,sans-serif;
-  --ui:'Inter',system-ui,-apple-system,'Noto Sans TC','PingFang TC','Microsoft JhengHei UI','Microsoft JhengHei',sans-serif;
-  --cjk:'Noto Sans TC','PingFang TC','Microsoft JhengHei UI','Microsoft JhengHei',-apple-system,sans-serif;
+  /* 字型策略（2026-10-21 定案）
+     Inter           英文／數字內文          Space Grotesk  標題
+     JetBrains Mono  數字、表格、價格        Noto Sans TC   中文（已打包子集）
+     中文一定要排在 system-ui 前面：否則中文字元會落到系統字（Windows 微軟正黑體、
+     macOS 蘋方、Linux 文泉驛），中英混排看起來就會像兩套骨架拼起來的。 */
+  --mono:'JetBrains Mono','Noto Sans TC',ui-monospace,'SFMono-Regular',Consolas,monospace;
+  --disp:'Space Grotesk','Inter','Noto Sans TC',system-ui,sans-serif;
+  --ui:'Inter','Noto Sans TC',system-ui,-apple-system,'PingFang TC','Microsoft JhengHei UI',sans-serif;
+  --cjk:'Noto Sans TC','PingFang TC','Microsoft JhengHei UI',-apple-system,sans-serif;
   --r:3px;
 }
 *{box-sizing:border-box;margin:0;padding:0}

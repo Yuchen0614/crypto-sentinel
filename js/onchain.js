@@ -103,24 +103,34 @@
     aggregate() {
       let longUsd = 0, shortUsd = 0, n = 0, upnl = 0, value = 0;
       const byCoin = new Map();
+      const walletRatios = [];                       // 每個錢包自己的多空比（等權，不被巨型帳戶主導）
       this.states.forEach((s, addr) => {
         if (!s.pos || !s.pos.length) return;
         n++; value += s.value || 0;
+        let wl = 0, ws = 0;
         s.pos.forEach(p => {
           upnl += p.upnl || 0;
-          if (p.side === 'long') longUsd += p.notional; else shortUsd += p.notional;
+          if (p.side === 'long') { longUsd += p.notional; wl += p.notional; } else { shortUsd += p.notional; ws += p.notional; }
           const c = byCoin.get(p.coin) || { coin: p.coin, long: 0, short: 0, wallets: new Set() };
           if (p.side === 'long') c.long += p.notional; else c.short += p.notional;
           c.wallets.add(addr);
           byCoin.set(p.coin, c);
         });
+        if (wl + ws > 0) walletRatios.push(wl / (wl + ws));
       });
       const arr = Array.from(byCoin.values()).map(c => ({
         coin: c.coin, long: c.long, short: c.short, net: c.long - c.short, wallets: c.wallets.size
       })).sort((a, b) => (b.long + b.short) - (a.long + a.short));
+      /* 中位數錢包多空比：對少數超大型帳戶不敏感，用來對照名目加權的偏斜 */
+      let medRatio = NaN;
+      if (walletRatios.length) {
+        const sr = walletRatios.slice().sort((a, b) => a - b), m = sr.length >> 1;
+        medRatio = sr.length % 2 ? sr[m] : (sr[m - 1] + sr[m]) / 2;
+      }
       this.agg = {
         longUsd, shortUsd, total: longUsd + shortUsd,
         ratio: (longUsd + shortUsd) ? longUsd / (longUsd + shortUsd) : NaN,
+        medRatio: medRatio, sample: walletRatios.length,
         net: longUsd - shortUsd, wallets: n, positions: byCoin.size, value, upnl, coins: arr
       };
       return this.agg;

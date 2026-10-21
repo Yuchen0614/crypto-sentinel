@@ -19,13 +19,14 @@
     U.text('#aggShort', '空 $' + U.money(a.shortUsd));
     const r = $('#aggRatio');
     if (r) {
-      r.textContent = isFinite(a.ratio)
-        ? `多空比 ${(a.ratio * 100).toFixed(1)}% / ${((1 - a.ratio) * 100).toFixed(1)}%`
-          + (partial ? `（掃描中 ${scanned}/${total}）` : '')
-        : '—';
+      const named = isFinite(a.ratio) ? `名目加權 多 ${(a.ratio * 100).toFixed(0)}% / 空 ${((1 - a.ratio) * 100).toFixed(0)}%` : '—';
+      const eq = isFinite(a.medRatio) ? `錢包等權 多 ${(a.medRatio * 100).toFixed(0)}% / 空 ${((1 - a.medRatio) * 100).toFixed(0)}%（中位數 ${a.sample || 0} 檔）` : '';
+      r.textContent = named + (eq ? '　·　' + eq : '') + (partial ? `　·　取樣 ${scanned}/${total}` : '');
       r.style.color = partial ? 'var(--tx-2)'
         : a.ratio > 0.55 ? 'var(--gn)' : a.ratio < 0.45 ? 'var(--rd)' : 'var(--cy)';
-      r.title = '以持倉名目金額加權計算，會受少數超大型帳戶主導；想看個別差異請點下方任一錢包，或用「大戶最擁擠倉位」看各幣別分佈';
+      r.title = '兩個比例都看才準：名目加權容易被少數超大型帳戶主導（例如一個 $700M 的空單就把整體拉成偏空）；'
+        + '錢包等權取中位數錢包的多空比，代表「一般大戶」的方向。想看個別差異請點下方任一錢包，'
+        + '或用「大戶最擁擠倉位」看各幣別分佈。';
     }
     U.text('#aggWallets', String(a.wallets || 0));
     U.text('#aggPos', String(a.positions || 0));
@@ -120,7 +121,7 @@
     const meta = $('#hlMeta');
     if (meta) {
       const dt = HL.listAt ? new Date(HL.listAt) : null;
-      meta.textContent = `已回報 ${HL.states.size}/${HL.wallets.length} 個錢包 · 每 6 秒輪詢 4 個 · 名單 ${dt ? dt.toLocaleDateString('zh-TW') : '—'}（每日自動更新）`;
+      meta.textContent = `已回報 ${HL.states.size}/${HL.wallets.length} 個錢包 · 每 5 秒輪詢 6 個 · 名單 ${dt ? dt.toLocaleDateString('zh-TW') : '—'}（每日自動更新）`;
     }
   };
 

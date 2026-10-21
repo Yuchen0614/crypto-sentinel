@@ -18,19 +18,30 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden }
 .col-a > .panel-grow { flex: 1 1 auto; min-height: 0 }
 
 /* ── 鏈上聰明錢：全寬常駐區塊 ─────────────────────────────── */
-.chain-wrap { flex: 0 0 auto; display: flex; min-height: 0; padding: 0 10px 10px; height: clamp(228px, 26vh, 336px) }
+.chain-wrap { flex: 0 0 auto; display: flex; min-height: 0; padding: 0 10px 10px; height: clamp(320px, 38vh, 480px) }
+/* 「展開」：鏈上區塊吃掉大部分高度，但最多 62vh —— 否則矮螢幕上方的三欄會被壓到
+   只剩幾十 px（實測 569px 高的視窗會把 .layout 壓成 30px）。 */
+.chain-wrap.full { height: min(62vh, calc(100vh - 118px)) }
+.chain-wrap.full #radar { height: clamp(150px, 18vh, 230px) }
 .chain-wrap .chain-panel { flex: 1 1 auto; min-height: 0 }
 .chain-body { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 8px 11px 10px }
-.chain-col { min-height: 0; overflow: hidden }
+/* 欄位本身要能捲：先前是 overflow:hidden，被 flex 壓縮的區塊（大戶最擁擠倉位、
+   倉位變化偵測）會直接變成 0px 高、整塊看不到 → 這裡保證任何內容都捲得到。 */
+.chain-col { min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 3px }
 .chain-col > * { flex: 0 0 auto }
 .hl-table-wrap, .chain-tape, .wallet-list, .coin-bars, .hl-events { max-height: none }
-.hl-table-wrap { flex: 1 1 auto; min-height: 76px }
-.chain-tape { flex: 1 1 auto; min-height: 72px }
-.wallet-list { flex: 1 1 auto; min-height: 66px }
-.coin-bars { flex: 0 1 auto; max-height: 152px }
-.hl-events { flex: 0 1 auto; max-height: 132px }
+/* 大戶持倉表是主角：吃掉剩下的高度（預設至少約 5 列，展開後十幾列），其餘區塊各有可用上限 */
+/* flex-shrink 必須是 0：欄位變成捲動容器後，可壓縮的區塊會被壓成 0px（大戶最擁擠倉位
+   就是這樣整塊消失的）。不能被壓縮 + 各自的 max-height 才捲得動。 */
+.hl-table-wrap { flex: 1 1 auto; min-height: 158px }
+.coin-bars { flex: 0 0 auto; max-height: 96px; overflow-y: auto }
+.hl-events { flex: 0 0 auto; min-height: 74px; max-height: 108px; overflow-y: auto }
+.chain-tape { flex: 1 1 auto; min-height: 132px }
+.wallet-list { flex: 0 0 auto; min-height: 92px; max-height: 190px; overflow-y: auto }
 .radar-wrap { flex: 0 0 auto }
 #radar { height: clamp(118px, 15vh, 168px) }
+#chainExpand { flex: 0 0 auto }
+#chainExpand.on { color: var(--cy); border-color: var(--line-2) }
 
 /* ── 頂部 HUD：高度自適應、狀態燈橫向排列（原本固定 62px 會被 5 顆燈溢出蓋住內容）── */
 .hud { height: auto; min-height: 54px; padding: 6px 14px; gap: 14px; flex-wrap: wrap }
@@ -93,11 +104,11 @@ table, .book td, .kv b, .agg-stats b, .mini-stats b, .liq-sum b, .chart-stats b,
   .tape { max-height: 168px } .tape-sm { max-height: 132px }
   #oiChart { height: 62px } .signal-box { max-height: 120px }
   .alert-list { max-height: 132px }
-  .hl-table-wrap { min-height: 64px }
+  .hl-table-wrap { min-height: 132px }
 }
 @media (max-height: 800px) {
   #chart { height: 204px } #heat { height: 164px } #gauge { height: 126px }
-  .chain-wrap { height: 226px } .chart-legend { padding: 3px 10px; font-size: 9.5px }
+  .chain-wrap { height: 276px } .chain-wrap.full { height: min(62vh, calc(100vh - 112px)) } .chart-legend { padding: 3px 10px; font-size: 9.5px }
   .mini-stats > div, .liq-sum > div, .agg-stats > div { padding: 4px 7px }
   .panel-foot { padding: 4px 10px }
   .table-wrap { margin-top: 4px }
