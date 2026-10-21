@@ -1,0 +1,37 @@
+name: Refresh on-chain whale watchlist
+
+# 每日更新 data/whales.json（Hyperliquid 公開排行榜 → 精簡大戶追蹤名單）
+# 前端只讀這個小檔案，避免瀏覽器下載 39 MB 的原始排行榜。
+on:
+  schedule:
+    - cron: '17 2 * * *'      # 每天 02:17 UTC
+  workflow_dispatch:          # 也可手動觸發
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch leaderboard and rebuild whale watchlist
+        run: python3 scripts/fetch_whales.py
+
+      - name: Commit if changed
+        run: |
+          if [ -z "$(git status --porcelain data/whales.json)" ]; then
+            echo "no change in watchlist, nothing to commit"
+            exit 0
+          fi
+          git config user.name  "sentinel-bot"
+          git config user.email "sentinel-bot@users.noreply.github.com"
+          git add data/whales.json
+          git commit -m "chore: refresh on-chain whale watchlist ($(date -u +%Y-%m-%d))"
+          git push

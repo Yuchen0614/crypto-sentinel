@@ -1,92 +1,74 @@
-/* app.js — 主控：啟動流程、資料編排、事件綁定、定時任務 */
+/* app.js — 主控：啟動流程、資料編排、事件綁定、定時任務（含鏈上情報排程） */
 'use strict';
 (function (w) {
-  const S = w.SENTINEL, U = S.util, A = S.analytics;
+  const S = w.SENTINEL, U = S.util, A = S.analytics, OC = S.onchain, FX = S.fx;
   S.state = { symbol: 'BTCUSDT', futuresSet: null, fundMap: null, mcapMap: null, universe: [], bySym: new Map(), ready: false, startTs: Date.now() };
 
   const pend = { trades: [] };
-  let oneMin = [], drawDirty = true, lastDraw = 0;
+  let oneMin = [], drawDirty = true, lastDraw = 0, lastPx = NaN;
 
-  /* ══════ 開機動畫 ══════ */
+  /* ══════ 開機動畫（逐步打勾 + 資料雨 + 掃描環）══════ */
   const B = S.boot = {
-    lines: [], el: null, bar: null, timer: null, done: false,
+    steps: [], el: null, bar: null, done: false,
     start() {
       this.el = document.getElementById('bootlog'); this.bar = document.getElementById('bootbar');
-      this.tick('CRYPTO SENTINEL 終端啟動中…', 0);
-      this.tick('載入量化分析模組 · 訂單簿追蹤 · 巨鯨偵測', 140);
-      this.tick('連線 Binance 公開行情 API（現貨 + 合約）', 300);
-      this.tick('訂閱全市場即時資料流 · 清算事件廣播', 470);
-      setTimeout(() => this.prog(45), 900);
+      FX.bootRain();
+      this.add('終端核心初始化 · 建立繪圖與分析管線', 0);
+      this.add('載入量化模組：CVD · 訂單簿 · 掛單牆 · 持倉結構', 200);
+      this.add('連線 Binance 公開行情 API（現貨 + 合約統計）', 430);
+      this.add('訂閱全市場即時資料流與清算事件廣播', 640);
+      this.add('掛載鏈上情報：Hyperliquid 大戶錢包 + 多鏈 DEX 大額換幣', 880);
+      setTimeout(() => this.prog(40), 900);
     },
-    tick(txt, delay) { setTimeout(() => { this.lines.push(txt); if (this.el) this.el.innerHTML = this.lines.map((l, i) => `<span class="${i === this.lines.length - 1 ? 'hi' : 'ok'}">${i === this.lines.length - 1 ? '▶ ' : '✓ '}${l}</span>`).join('\n'); }, delay); },
+    add(txt, delay) {
+      setTimeout(() => {
+        this.steps.push(txt);
+        if (!this.el) return;
+        this.el.innerHTML = this.steps.map((s, i) => {
+          const last = i === this.steps.length - 1;
+          return '<span class="boot-step ' + (last ? 'on' : 'done') + '"><span class="tick">' + (last ? '▶' : '✓') + '</span>' + s + '</span>';
+        }).join('');
+      }, delay);
+    },
     prog(v) { if (this.bar) this.bar.style.width = v + '%'; },
     finish(msg) {
       if (this.done) return; this.done = true;
       this.prog(100);
-      if (msg) { U.text('#boothint', msg); }
+      if (msg) U.text('#boothint', msg);
+      U.$$('.boot-step').forEach(s => { s.classList.remove('on'); s.classList.add('done'); const t = s.querySelector('.tick'); if (t) t.textContent = '✓'; });
       setTimeout(() => {
         const b = document.getElementById('boot'); if (b) b.classList.add('done');
-        A.anomaly.push({ type: 'SYS', sev: 'low', symbol: '系統', title: '監控上線', text: `已載入 ${S.state.universe.length} 個交易對，即時資料流建立完成` });
+        FX.glitch();
+        A.anomaly.push({ type: 'SYS', sev: 'low', symbol: '系統', title: '監控上線', text: '已載入 ' + S.state.universe.length + ' 個交易對、' + OC.hl.wallets.length + ' 個鏈上大戶錢包，資料流建立完成' });
       }, 420);
     },
     fail(msg) {
       const b = document.getElementById('boot'); if (b) b.classList.add('fail');
-      U.html('#bootlog', `<span style="color:var(--rd)">✗ ${msg}</span>`);
+      U.html('#bootlog', '<span style="color:var(--rd)">✗ ' + msg + '</span>');
       U.text('#boothint', '請確認網路可連線 api.binance.com，5 秒後自動重試…');
       setTimeout(() => location.reload(), 6000);
     }
   };
 
-  /* ══════ 背景星空／資料流光 ══════ */
-  function starfield() {
-    const cv = document.getElementById('starfield'); if (!cv) return;
-    const c = cv.getContext('2d');
-    let W, H, dots = [], scan = 0;
-    function size() {
-      const dpr = Math.min(2, w.devicePixelRatio || 1);
-      W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr;
-      cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
-      const n = Math.min(150, Math.round(innerWidth * innerHeight / 16000));
-      dots = [];
-      for (let i = 0; i < n; i++) dots.push({ x: Math.random() * W, y: Math.random() * H, z: Math.random() * .8 + .2, s: Math.random() * 1.6 + .4 });
-    }
-    size(); addEventListener('resize', U.debounce(size, 250));
-    let last = 0;
-    function loop(t) {
-      requestAnimationFrame(loop);
-      if (t - last < 33) return;             // ~30fps 省電
-      last = t;
-      c.clearRect(0, 0, W, H);
-      for (const d of dots) {
-        d.y -= d.z * .35;
-        if (d.y < 0) { d.y = H; d.x = Math.random() * W; }
-        const a = .12 + d.z * .5;
-        c.fillStyle = d.z > .7 ? `rgba(56,246,255,${a})` : `rgba(143,178,201,${a * .7})`;
-        c.fillRect(d.x, d.y, d.s, d.s);
-      }
-      // 資料掃描光
-      scan += 1.6;
-      if (scan > H + 300) scan = -300;
-      const g = c.createLinearGradient(0, scan - 120, 0, scan);
-      g.addColorStop(0, 'rgba(56,246,255,0)'); g.addColorStop(1, 'rgba(56,246,255,.055)');
-      c.fillStyle = g; c.fillRect(0, scan - 120, W, 120);
-    }
-    requestAnimationFrame(loop);
-  }
-
   /* ══════ 選幣 ══════ */
-  S.select = async function (sym) {
+  S.select = async function (sym, quiet) {
     if (!sym) return;
     const c = S.state.bySym.get(sym);
     if (!c) return;
+    const switching = S.state.symbol !== sym;
     S.state.symbol = sym;
     S.state.cur = c;
     A.reset();
     S.chart.markers = [];
     S.ui.whale.count = 0;
+    lastPx = NaN;
     const tape = document.getElementById('whaleTape'); if (tape) tape.innerHTML = '<div class="empty">等待大額成交…</div>';
     S.ui.scan.render();
     U.text('#chartBadge', 'LIVE · ' + sym);
+    if (switching && !quiet) {
+      FX.glitch();
+      FX.streamLine(document.querySelector('.chart-panel'));
+    }
 
     const hasFut = !!(S.state.futuresSet && S.state.futuresSet.has(sym));
     S.stream.startSelected(sym, hasFut ? sym : null);
@@ -129,7 +111,6 @@
       out.h1 = (k[k.length - 1].c / k[k.length - 13].c - 1) * 100;
     }
     const vw = A.Trades.vwap(1800e3); out.vwap = isFinite(vw) ? vw : (k.length ? k[k.length - 1].c : NaN);
-    // Volume Profile（近 24 小時 1 小時 K 線近似）
     const src = k.length > 40 ? k.slice(-40) : k;
     if (src.length > 5) {
       const lo = Math.min.apply(null, src.map(x => x.l)), hi = Math.max.apply(null, src.map(x => x.h));
@@ -141,9 +122,8 @@
       });
       let bi = 0; for (let i = 1; i < NB; i++) if (bins[i] > bins[bi]) bi = i;
       out.poc = lo + (hi - lo) * (bi + .5) / NB;
-      // 以 POC 為中心的加權標準差
       let sw = 0, swx = 0, swx2 = 0;
-      for (let i = 0; i < NB; i++) { const p = lo + (hi - lo) * (i + .5) / NB; sw += bins[i]; swx += bins[i] * p; swx2 += bins[i] * p * p; }
+      for (let i = 0; i < NB; i++) { const pp = lo + (hi - lo) * (i + .5) / NB; sw += bins[i]; swx += bins[i] * pp; swx2 += bins[i] * pp * pp; }
       const m = sw ? swx / sw : 0, v = sw ? (swx2 / sw - m * m) : 0;
       out.pocBand = m ? Math.min(.05, Math.sqrt(Math.max(0, v)) / m) : 0.005;
       out.poc = sw ? m : out.poc;
@@ -162,11 +142,11 @@
   function wire() {
     S.on('trade', t => { if (t.symbol === S.state.symbol) { A.Trades.add(t); S.chart.setPrice(t.price); drawDirty = true; } });
     S.on('trade-new', t => { if (t.symbol !== S.state.symbol) return; pend.trades.push(t); });
-    S.on('depth', d => { if (S.state.symbol) { A.Book.setWs(d); } });
+    S.on('depth', d => { if (S.state.symbol) A.Book.setWs(d); });
     S.on('book-update', b => {
       S.heat.draw();
       const sp = document.getElementById('heatSpan');
-      if (sp) sp.textContent = `深度 ${b.levels || 0} 檔 · 涵蓋中價 ±${((b.depthRange || 0) * 100).toFixed(3)}%`;
+      if (sp) sp.textContent = '深度 ' + (b.levels || 0) + ' 檔 · 涵蓋中價 ±' + ((b.depthRange || 0) * 100).toFixed(3) + '%';
       const s = document.getElementById('hSkew');
       if (s) {
         const sk = b.skew || 0;
@@ -175,18 +155,44 @@
         s.title = '全部可見掛單的金額加權重心相對中價的位置：在中價上方代表上方賣壓較集中，下方代表買盤支撐較厚';
       }
     });
-    S.on('liquidation', e => { A.Liq.add(e); S.ui.liq.add(e); });
-    S.on('alert', a => S.ui.alerts.push(a));
+    S.on('liquidation', e => {
+      A.Liq.add(e); S.ui.liq.add(e);
+      const pn = document.querySelector('.liq-panel');
+      if (pn && e.notional >= 50000) {
+        pn.classList.remove('hit-long', 'hit-short'); void pn.offsetWidth;
+        pn.classList.add(e.side === 'long' ? 'hit-long' : 'hit-short');
+        setTimeout(() => pn.classList.remove('hit-long', 'hit-short'), 950);
+      }
+    });
+    S.on('alert', a => {
+      S.ui.alerts.push(a);
+      if (a.sev === 'high') FX.toast({ title: a.title, text: a.text, sev: 'high', tag: (a.type || 'ALERT').replace('CHAIN_', '鏈上·') });
+      else if (a.sev === 'mid' && (a.type || '').indexOf('CHAIN') === 0) FX.toast({ title: a.title, text: a.text, sev: 'mid', tag: '鏈上情報' });
+    });
     S.on('alert-clear', () => S.ui.alerts.clear());
     S.on('ws-state', st => S.ui.hud.pills(st));
 
+    /* 鏈上事件 */
+    S.on('hl-wallets', () => { S.chainUI.render(); S.ui.hud.pills(S.stream.state); });
+    S.on('hl-event', e => {
+      S.chainUI.hlEvent(e);
+      if (e.sev === 'high' || e.kind === 'FLIP') FX.toast({ title: e.name + ' ' + e.title, text: e.text, sev: e.sev === 'high' ? 'high' : 'mid', tag: '鏈上大戶' });
+    });
+    S.on('hl-state', () => { hlDirty = true; });
+    S.on('dex-trade', t => {
+      S.chainUI.dexTrade(t);
+      if (t.usd >= 1000000) FX.toast({
+        title: '鏈上大額' + (t.side === 'buy' ? '買入' : '賣出') + ' ' + (t.tokenSym || '') + ' $' + U.money(t.usd),
+        text: '錢包 ' + OC.short(t.wallet) + ' · ' + OC.chainLabel(t.chain) + ' · ' + (t.poolName || t.dex || ''), sev: 'mid', tag: '鏈上換幣'
+      });
+    });
+    S.on('dex-scan', () => S.chainUI.dexMeta());
+
     const map = {};
     S.on('miniTicker', arr => {
-      let n = 0;
       for (const m of arr) {
         if (!m.s || !S.state.bySym.has(m.s)) continue;
         map[m.s] = { c: +m.c, o: +m.o, h: +m.h, l: +m.l, q: +m.q };
-        n++;
       }
       S.state.tickMap = map;
     });
@@ -223,14 +229,39 @@
     });
     document.getElementById('clearAlerts').addEventListener('click', () => A.anomaly.clear());
 
-    // 鍵盤操作
+    /* 鏈上：鏈別 / 門檻切換 */
+    document.getElementById('chainSeg').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
+      OC.dex.chain = b.dataset.chain;
+      OC.dex.reset();
+      const tape = document.getElementById('chainTape');
+      if (tape) tape.innerHTML = '<div class="empty">切換鏈別，重新掃描中…</div>';
+      const wl = document.getElementById('walletList'); if (wl) { wl.__key = ''; wl.innerHTML = '<div class="empty">累積鏈上錢包資料中…</div>'; }
+      const cb = document.getElementById('coBuyList'); if (cb) { cb.__key = ''; cb.innerHTML = ''; }
+      S.chainUI.dexMeta();
+      FX.glitch();
+      setTimeout(() => dexScan(), 120);
+    });
+    document.getElementById('chainMin').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
+      OC.dex.min = +b.dataset.min;
+      S.chainUI.dexMeta();
+      setTimeout(() => dexScan(), 120);
+    });
+
+    /* 鍵盤操作 */
     document.addEventListener('keydown', e => {
       if (e.key === '/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); document.getElementById('scanSearch').focus(); return; }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         const list = S.ui.scan.sorted(); if (!list.length) return;
         const i = list.findIndex(x => x.symbol === S.state.symbol);
         const n = i < 0 ? 0 : U.clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, list.length - 1);
-        if (n !== i) { e.preventDefault(); S.select(list[n].symbol); const el = document.querySelector(`#scanBody tr[data-sym="${list[n].symbol}"]`); if (el) el.scrollIntoView({ block: 'nearest' }); }
+        if (n !== i) {
+          e.preventDefault(); S.select(list[n].symbol);
+          const el = document.querySelector('#scanBody tr[data-sym="' + list[n].symbol + '"]'); if (el) el.scrollIntoView({ block: 'nearest' });
+        }
       }
     });
   }
@@ -257,9 +288,26 @@
     if (cur && S.state.lastSmart) cur.smart = S.state.lastSmart;
   }
 
+  /* ══════ 鏈上：大戶輪詢與 DEX 掃描 ══════ */
+  let hlDirty = false, dexBusy = false;
+  async function loadWhales() {
+    const d = await S.api.hlWhales();
+    if (d) { OC.hl.setWallets(d); S.chainUI.render(); }
+  }
+  function hlPoll(batchSize) {
+    OC.hl.nextBatch(batchSize || 4).forEach(wl => S.api.hlState(wl.addr).then(st => { if (st) OC.hl.ingest(wl.addr, st); }));
+  }
+  async function dexScan() {
+    if (dexBusy) return;
+    dexBusy = true;
+    try { await OC.dex.scan(); } catch (e) { S.errors.push('dexScan: ' + e.message); }
+    dexBusy = false;
+    S.chainUI.dexMeta();
+  }
+
   /* ══════ 定時任務 ══════ */
   function timers() {
-    // 每 400ms：消化成交流（圖表標記 + 巨鯨面板）
+    // 每 400ms：消化成交流（圖表標記 + 巨鯨面板 + 價格脈動 + 浮動金額）
     setInterval(() => {
       if (!pend.trades.length) return;
       const batch = pend.trades; pend.trades = [];
@@ -271,13 +319,22 @@
         S.ui.whale.add(t);
       }
       drawDirty = true;
+      const pEl = document.getElementById('symPrice');
+      const px = S.chart.price;
+      if (pEl && isFinite(px) && px !== lastPx) {
+        if (isFinite(lastPx)) {
+          pEl.classList.remove('pulse-up', 'pulse-down'); void pEl.offsetWidth;
+          pEl.classList.add(px > lastPx ? 'pulse-up' : 'pulse-down');
+          const big = batch.filter(t => t.notional >= 250000).sort((a, b) => b.notional - a.notional)[0];
+          if (big) FX.floatTag(pEl, (big.side === 'buy' ? '+' : '−') + '$' + U.money(big.notional), big.side === 'buy' ? 'var(--gn)' : 'var(--rd)');
+        }
+        lastPx = px;
+      }
     }, 400);
 
-    // 每 1 秒：淨流向、清算統計、壓力分數、警報掃描、狀態
+    // 每 1 秒：分析 + 面板
     setInterval(() => {
-      // 分析（背景分頁也持續運算，只是不更新畫面）
       const ps = priceStats();
-      // 巨鯨淨流向的門檻也依市場規模自適應（最低 2.5 萬美元）
       const medN = A.Trades.medianNotional(600e3);
       if (isFinite(medN) && medN > 0) A.Trades.WHALE = U.clamp(Math.max(25000, medN * 8), 25000, 5e6);
       A.anomaly.scanPrice(S.state.cur ? S.state.cur.price : NaN, oneMin);
@@ -292,33 +349,39 @@
       S.ui.hud.pills(S.stream.state);
       S.ui.hud.clock();
       refreshStats();
-      // 壓力分數寫入浮動提示
-      const b = document.querySelector(`#scanBody tr[data-sym="${S.state.symbol}"] .smbadge`);
-      if (b) { b.title = '已完整分析：聰明錢壓力分數 ' + res.score + '（' + res.verdict + '）'; }
+      const b = document.querySelector('#scanBody tr[data-sym="' + S.state.symbol + '"] .smbadge');
+      if (b) b.title = '已完整分析：聰明錢壓力分數 ' + res.score + '（' + res.verdict + '）';
     }, 1000);
 
-    // 圖表重繪（節流）
+    // 圖表／熱圖／壓力計動畫重繪（僅在畫面可見時）
+    let atick = 0;
     setInterval(() => {
-      const now = performance.now();
-      if (drawDirty && now - lastDraw > 260) { lastDraw = now; drawDirty = false; S.chart.draw(); }
-    }, 250);
+      if (document.hidden) return;
+      const cv = document.getElementById('chart'); if (!cv) return;
+      const r = cv.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight) return;
+      atick++;
+      S.chart.draw();
+      if (atick % 2 === 0) S.heat.draw();
+      if (atick % 3 === 0) S.gauge.draw();
+    }, 62);
 
-    // 每 2.2 秒：訂單簿快照（熱圖與掛單牆的資料來源；背景分頁也持續抓取）
+    // 每 2.2 秒：訂單簿快照
     setInterval(async () => {
       if (!S.state.ready) return;
       const d = await S.api.depth(S.state.symbol, 1000);
       if (d && A.Book) { A.Book.setRest(d); S.bookUI.render(A.Book); }
     }, 2200);
 
-    // 每 8 秒：全市場輕量行情套用
+    // 全市場輕量行情套用
     setInterval(() => {
       if (document.hidden || !S.state.tickMap) return;
-      const n = S.ui.scan.patch(S.state.tickMap);
+      S.ui.scan.patch(S.state.tickMap);
       const up = S.state.universe.filter(x => x.changePct > 0).length;
       S.ui.hud.breadth(up, S.state.universe.length - up, S.state.universe.length);
     }, 1500);
 
-    // 每 20 秒：K 線刷新（主圖 + 1 分鐘量能掃描用；背景分頁也持續抓取）
+    // 每 20 秒：K 線刷新
     setInterval(async () => {
       if (!S.state.ready) return;
       const sym = S.state.symbol;
@@ -329,7 +392,7 @@
       refreshStats();
     }, 20000);
 
-    // 每 15 秒：全市場 24H 統計（背景分頁時延長為每 60 秒，減少無謂請求）
+    // 每 15 秒：全市場 24H 統計（背景分頁降頻）
     let uniTick = 0;
     setInterval(async () => {
       uniTick++;
@@ -344,7 +407,28 @@
       S.ui.hud.breadth(up, l.length - up, l.length);
     }, 15000);
 
-    // 每 10 分鐘：確認合約流與清算清單仍對應當前幣種/市場
+    // 每 6 秒：鏈上大戶錢包（每輪 4 個，約 80 秒輪完全部名單）
+    setInterval(() => { if (!document.hidden) hlPoll(4); else hlPoll(2); }, 6000);
+
+    // 每 14 秒：鏈上 DEX 大額換幣掃描（每輪 1 個高流量池；GeckoTerminal 免費層約 5 次/分即被擋）
+    setInterval(() => dexScan(), 14000);
+    setInterval(() => { if (!document.hidden) S.chainUI.dexMeta(); }, 3000);
+
+    // 每 1.2 秒：鏈上面板渲染
+    setInterval(() => {
+      if (document.hidden) return;
+      S.chainUI.agg();
+      if (hlDirty) { hlDirty = false; S.chainUI.hlTable(); S.chainUI.coinBars(); }
+      S.chainUI.wallets();
+      S.chainUI.coBuy();
+      const cnt = document.getElementById('chainCount');
+      if (cnt) cnt.textContent = String(OC.dex.trades.length + OC.hl.events.length);
+    }, 1200);
+
+    // 每 5 分鐘：重新載入大戶名單
+    setInterval(() => { S.api.hlWhales().then(d => { if (d) { OC.hl.setWallets(d); S.chainUI.render(); } }); }, 300000);
+
+    // 每 10 分鐘：確認合約流對應當前幣種
     setInterval(() => {
       if (document.hidden || !S.state.futuresSet) return;
       if (S.state.futuresSet.has(S.state.symbol)) S.stream.attachFutures(S.state.symbol);
@@ -372,12 +456,14 @@
       ti++;
       const st = S.stream.stats();
       const top = A.Trades.large(250000, 900e3)[0];
+      const a = OC.hl.agg;
       const msgs = [
-        `即時流 ${st.selRate} 筆/秒 · 全市場行情 ${st.globRate} 則/秒 · 資料源 ${S.api.source || 'Binance'}`,
-        `訂單簿熱圖已累積 ${A.Book.frames.length} 格（每格 2.2 秒）· 偵測到掛單牆 ${A.Book.walls.length} 道`,
-        top ? `近 15 分鐘最大單筆：${top.symbol} ${top.side === 'buy' ? '主動買入' : '主動賣出'} $${U.money(top.notional)} @ ${U.px(top.price)}` : '近 15 分鐘未出現 ≥25 萬美元大額單筆',
-        `清算監控中 · 近 15 分鐘清算總額 $${U.money(A.Liq.sum(900e3).total)} · 累計事件 ${S.ui.liq.count} 筆`,
-        `壓力分數 ${S.state.lastSmart || '—'} · K 線 ${S.chart.k.length} 根 · 建議使用方向鍵切換幣種、按 / 搜尋`
+        '即時流 ' + st.selRate + ' 筆/秒 · 全市場行情 ' + st.globRate + ' 則/秒 · 資料源 ' + (S.api.source || 'Binance'),
+        '訂單簿熱圖 ' + A.Book.frames.length + ' 格（每格 2.2 秒）· 掛單牆 ' + A.Book.walls.length + ' 道 · 疑似假掛單 ' + A.Book.spoofs.length + ' 次',
+        top ? '近 15 分鐘最大單筆：' + top.symbol + ' ' + (top.side === 'buy' ? '主動買入' : '主動賣出') + ' $' + U.money(top.notional) + ' @ ' + U.px(top.price) : '近 15 分鐘未出現大額單筆',
+        a && a.wallets ? '鏈上大戶追蹤 ' + a.wallets + ' 個錢包 / ' + a.positions + ' 個倉位：多 $' + U.money(a.longUsd) + '、空 $' + U.money(a.shortUsd) + '（Hyperliquid）' : '鏈上大戶錢包資料載入中…',
+        '鏈上換幣：' + OC.chainLabel(OC.dex.chain) + ' 追蹤 ' + OC.dex.pools.length + ' 個熱門池 · 已收 ' + OC.dex.trades.length + ' 筆大額 · ' + OC.dex.wallets.size + ' 個錢包',
+        '清算監控中 · 近 15 分鐘清算 $' + U.money(A.Liq.sum(900e3).total) + ' · 壓力分數 ' + (S.state.lastSmart || '—') + ' · 方向鍵切換幣種、/ 搜尋'
       ];
       S.ui.hud.ticker(msgs[ti % msgs.length]);
     }, 5000);
@@ -386,12 +472,13 @@
   /* ══════ 啟動 ══════ */
   async function main() {
     S.boot.start();
-    starfield();
+    FX.initBackground();
     S.chart.init(document.getElementById('chart'));
     S.heat.init(document.getElementById('heat'));
     S.gauge.init(document.getElementById('gauge'));
     S.oiChart.init(document.getElementById('oiChart'));
     S.bookUI.init();
+    FX.initRadar(document.getElementById('radar'));
     S.ui.hud.clock(); setInterval(() => S.ui.hud.clock(), 1000);
     wire();
 
@@ -405,16 +492,14 @@
 
     const start = uni.find(x => x.symbol === 'BTCUSDT') ? 'BTCUSDT' : uni[0].symbol;
     S.stream.startGlobal();
-    // 主要幣種清算流（Bybit 線性合約，取成交量前 24 個且有合約的幣種）
     S.api.bybitLinear().then(lin => {
       if (!lin) return;
       const majors = S.state.universe.filter(x => lin.has(x.symbol)).slice(0, 100).map(x => x.symbol);
       if (majors.length) S.stream.startLiquidations(majors);
     });
-    await S.select(start);
+    await S.select(start, true);
     S.boot.prog(80);
 
-    // 背景輔助資料（不阻塞畫面）
     Promise.all([S.api.futures(), S.api.global(), S.api.mcapMap(), S.api.fng()]).then(([fm, g, m, f]) => {
       if (fm) { S.state.fundMap = fm; S.state.futuresSet = new Set(Object.keys(fm)); }
       if (m) S.state.mcapMap = m;
@@ -422,28 +507,31 @@
       S.ui.scan.render();
       S.ui.hud.global(g, f);
       if (fm && S.state.futuresSet.has(S.state.symbol)) {
-        S.stream.attachFutures(S.state.symbol);   // 合約清單到齊後補掛合約成交流
+        S.stream.attachFutures(S.state.symbol);
         loadPos(S.state.symbol);
       }
       S.boot.prog(95);
-      S.boot.finish(`系統就緒 · ${S.state.universe.length} 個交易對 · 即時流已連線`);
+      S.boot.finish('系統就緒 · ' + S.state.universe.length + ' 個交易對 · 即時流已連線');
     }).catch(() => S.boot.finish('系統就緒（部分輔助資料暫時無法取得）'));
 
-    // 保險：無論如何 7 秒後關閉開機畫面
-    setTimeout(() => S.boot.finish(), 7000);
+    // 鏈上情報（獨立於行情）
+    loadWhales().then(() => { hlPoll(6); S.chainUI.render(); });
+    setTimeout(() => dexScan(), 1500);
 
+    setTimeout(() => S.boot.finish(), 7000);
     timers();
-    // 每秒檢查資料流是否真的在動
+
     setTimeout(() => {
       const st = S.stream.stats();
       if (st.sel !== 'open' || st.selAge > 4000) {
-        A.anomaly.push({ type: 'WS', sev: 'low', symbol: '系統', title: '即時流狀態', text: '成交明細資料流尚未收到資料，已自動切換備援資料源', });
+        A.anomaly.push({ type: 'WS', sev: 'low', symbol: '系統', title: '即時流狀態', text: '成交明細資料流尚未收到資料，已自動切換備援資料源' });
       }
     }, 9000);
   }
 
   S.ready(main);
-  // 全域診斷（供自動化檢查使用）
+
+  /* 全域診斷（供自動化檢查使用） */
   w.__SENTINEL_STATUS = () => ({
     symbol: S.state.symbol,
     universe: S.state.universe.length,
@@ -458,11 +546,25 @@
     ws: S.stream.stats(),
     apiHealth: S.api.health,
     errors: S.errors.slice(-12),
+    chain: {
+      hlWallets: OC.hl.wallets.length,
+      hlStates: OC.hl.states.size,
+      hlPolled: OC.hl.polled,
+      hlEvents: OC.hl.events.length,
+      hlAgg: OC.hl.agg ? { wallets: OC.hl.agg.wallets, positions: OC.hl.agg.positions, longUsd: Math.round(OC.hl.agg.longUsd), shortUsd: Math.round(OC.hl.agg.shortUsd), ratio: +(OC.hl.agg.ratio || 0).toFixed(3) } : null,
+      dexChain: OC.dex.chain, dexMin: OC.dex.min, dexPools: OC.dex.pools.length, dexTrades: OC.dex.trades.length,
+      dexWallets: OC.dex.wallets.size, coBuy: OC.dex.coBuy.length, radarPings: OC.radar.pings.length,
+      hlRows: document.querySelectorAll('#hlBody tr').length,
+      walletRows: document.querySelectorAll('#walletList .wl').length,
+      chainRows: document.querySelectorAll('#chainTape .ctrow').length,
+      hlEventRows: document.querySelectorAll('#hlEvents .hle').length,
+      toasts: document.querySelectorAll('.toast').length
+    },
     flow: (() => {
       const b = A.Trades.buf, f = b.filter(x => x.market === 'futures').length;
       return {
         trades: b.length, futures: f, spot: b.length - f,
-        maxNotional: Math.round(Math.max(0, ...b.map(x => x.notional))),
+        maxNotional: b.length ? Math.round(Math.max.apply(null, b.map(x => x.notional))) : 0,
         over50k: b.filter(x => x.notional >= 50000).length,
         liqRaw: A.Liq.buf.length, liqBuf: A.Liq.buf.slice(-3).map(x => x.symbol + ' ' + x.side + ' $' + Math.round(x.notional))
       };

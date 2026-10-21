@@ -20,7 +20,22 @@
     canvas: null, k: [], tf: '5m', ov: { cvd: true, vol: true, vwap: false, walls: true },
     price: NaN, walls: [], lastDelta: [], hover: null,
     markers: [],                   // 巨鯨標記 {t, price, notional, side}
-    setData(k) { this.k = k || []; this.series(); this.draw(); },
+    reveal: 1, _rv: null,
+    setData(k) {
+      this.k = k || []; this.series();
+      this.reveal = 0; this.revealAt = performance.now();
+      this.draw(); this.startReveal();
+    },
+    startReveal() {
+      if (this._rv) cancelAnimationFrame(this._rv);
+      const step = () => {
+        const p = U.clamp((performance.now() - this.revealAt) / 520, 0, 1);
+        this.reveal = 1 - Math.pow(1 - p, 3);
+        this.draw();
+        this._rv = p < 1 ? requestAnimationFrame(step) : null;
+      };
+      this._rv = requestAnimationFrame(step);
+    },
     setPrice(p) {
       this.price = p;
       if (this.k.length) {
@@ -60,7 +75,8 @@
       if (isFinite(this.price)) { mn = Math.min(mn, this.price); mx = Math.max(mx, this.price); }
       const pad = (mx - mn) * 0.06 || mx * 0.001; mn -= pad; mx += pad;
       if (this.ov.vwap) { const vw = S.analytics.Trades.vwap(1800e3); if (isFinite(vw)) { mn = Math.min(mn, vw); mx = Math.max(mx, vw); } }
-      const X = i => x0 + (i / (vis.length - 1 || 1)) * (x1 - x0);
+      const xr = x0 + (x1 - x0) * (this.reveal === undefined ? 1 : this.reveal);
+      const X = i => x0 + (i / (vis.length - 1 || 1)) * (xr - x0);
       const Y = p => y1 - (p - mn) / (mx - mn || 1) * (y1 - y0);
 
       // 背景網格
@@ -69,7 +85,7 @@
       c.font = '10px "Share Tech Mono", monospace'; c.fillStyle = 'rgba(143,178,201,.75)';
       for (let i = 0; i <= 5; i++) {
         const p = mn + (mx - mn) * i / 5, y = Math.round(Y(p)) + .5;
-        c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke();
+        c.beginPath(); c.moveTo(x0, y); c.lineTo(xr, y); c.stroke();
         c.textAlign = 'left'; c.fillText(U.pxSym(p), x1 + 6, y + 3.5);
       }
       c.textAlign = 'center';
@@ -88,7 +104,7 @@
         const vv = vis.map(k => k.q || 0);
         const vm = Math.max.apply(null, vv) || 1;
         vis.forEach((k, i) => {
-          const bw = Math.max(1.5, (x1 - x0) / vis.length * .62);
+          const bw = Math.max(1.5, (xr - x0) / vis.length * .62);
           const h = (k.q / vm) * (vy1 - vy0);
           const up = k.c >= k.o;
           const g = c.createLinearGradient(0, vy1 - h, 0, vy1);
@@ -100,7 +116,7 @@
       }
 
       // K 線
-      const bw = Math.max(1.5, (x1 - x0) / vis.length * .62);
+      const bw = Math.max(1.5, (xr - x0) / vis.length * .62);
       vis.forEach((k, i) => {
         const up = k.c >= k.o, x = X(i);
         const col = up ? '#26ffa8' : '#ff4d6b';
@@ -152,9 +168,9 @@
           c.save();
           c.setLineDash([2, 3]); c.lineWidth = 1.2;
           c.strokeStyle = bid ? 'rgba(38,255,168,.75)' : 'rgba(255,77,109,.75)';
-          c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke();
+          c.beginPath(); c.moveTo(x0, y); c.lineTo(xr, y); c.stroke();
           c.restore();
-          const label = `${bid ? 'BID' : 'ASK'} ${U.px(wl.px)} · ${U.usd(wl.notional)}`;
+          const label = `${bid ? 'BID' : 'ASK'} ${U.pxSym(wl.px)} · ${U.usd(wl.notional)}`;
           c.font = '9px "Share Tech Mono",monospace';
           const tw = c.measureText(label).width + 6;
           c.fillStyle = bid ? 'rgba(6,32,24,.92)' : 'rgba(38,6,16,.92)';
@@ -164,17 +180,37 @@
         });
       }
 
-      // 巨鯨成交標記
-      const t0 = vis[0].t;
+      // 掃描光束（緩慢掃過圖面）
+      if (!w.matchMedia || !w.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const sp = ((performance.now() % 7200) / 7200);
+        const sx = x0 + (xr - x0) * sp;
+        const gs = c.createLinearGradient(sx - 76, 0, sx, 0);
+        gs.addColorStop(0, 'rgba(56,246,255,0)'); gs.addColorStop(1, 'rgba(56,246,255,.10)');
+        c.fillStyle = gs; c.fillRect(sx - 76, y0, 76, vy1 - y0);
+        c.strokeStyle = 'rgba(127,249,255,.30)'; c.lineWidth = 1;
+        c.beginPath(); c.moveTo(sx, y0); c.lineTo(sx, vy1); c.stroke();
+      }
+
+      // 巨鯨成交標記（脈動 + 新事件漣漪）
+      const t0 = vis[0].t, nowT = Date.now();
       this.markers.slice(-40).forEach(m => {
         if (m.t < t0) return;
         const idx = vis.findIndex(k => k.t + this.tfMs() > m.t);
         if (idx < 0 || m.price < mn || m.price > mx) return;
         const x = X(idx), y = Y(m.price);
-        c.beginPath(); c.arc(x, y, Math.min(7, 2.5 + Math.log10(m.notional / 50000 + 1) * 2), 0, 6.2832);
-        c.fillStyle = m.side === 'buy' ? 'rgba(38,255,168,.28)' : 'rgba(255,62,165,.28)';
+        const age = (nowT - m.t) / 1000;
+        const base = Math.min(7, 2.5 + Math.log10(m.notional / 50000 + 1) * 2);
+        const pulse = 1 + (age < 14 ? Math.sin(age * 3.4) * 0.22 : 0);
+        c.beginPath(); c.arc(x, y, base * pulse, 0, 6.2832);
+        c.fillStyle = m.side === 'buy' ? 'rgba(38,255,168,.30)' : 'rgba(255,62,165,.30)';
         c.strokeStyle = m.side === 'buy' ? '#26ffa8' : '#ff3ea5';
         c.lineWidth = 1.2; c.fill(); c.stroke();
+        if (age < 10) {
+          const rr = base + age * 4.5, al = Math.max(0, .55 * (1 - age / 10));
+          c.beginPath(); c.arc(x, y, rr, 0, 6.2832);
+          c.strokeStyle = m.side === 'buy' ? `rgba(38,255,168,${al})` : `rgba(255,62,165,${al})`;
+          c.lineWidth = 1.1; c.stroke();
+        }
       });
 
       // 現價線
@@ -182,7 +218,7 @@
         const y = Y(this.price);
         c.save();
         c.setLineDash([4, 3]); c.strokeStyle = 'rgba(234,252,255,.65)'; c.lineWidth = 1;
-        c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); c.restore();
+        c.beginPath(); c.moveTo(x0, y); c.lineTo(xr, y); c.stroke(); c.restore();
         const lbl = U.pxSym(this.price);
         c.font = 'bold 11px "Share Tech Mono",monospace';
         const tw = c.measureText(lbl).width + 8;
@@ -277,6 +313,16 @@
       c.textAlign = 'left'; c.fillStyle = 'rgba(93,125,148,.8)';
       c.fillText('掛單密度熱圖 · 縱軸為距現價距離（自適應深度範圍）', 6, padT + 11);
 
+      // 最新一格的前緣光暈（脈動，強調資料正在寫入）
+      if (!w.matchMedia || !w.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const lx = 4 + dw, pulse = 0.30 + 0.28 * (0.5 + 0.5 * Math.sin(performance.now() / 430));
+        const g2 = c.createLinearGradient(lx - 34, 0, lx, 0);
+        g2.addColorStop(0, 'rgba(56,246,255,0)'); g2.addColorStop(1, 'rgba(127,249,255,' + pulse.toFixed(2) + ')');
+        c.fillStyle = g2; c.fillRect(lx - 34, padT, 34, dh);
+        c.strokeStyle = 'rgba(234,252,255,' + (pulse + .2).toFixed(2) + ')';
+        c.lineWidth = 1; c.beginPath(); c.moveTo(lx - .5, padT); c.lineTo(lx - .5, padT + dh); c.stroke();
+      }
+
       U.text('#hFrames', F + ' 格 · ' + Math.round(F * 2) + ' 秒');
       U.text('#hMax', U.usd(gmax));
     }
@@ -287,9 +333,12 @@
     canvas: null, val: 0, target: 0, raf: 0, cls: 'neu',
     init(canvas) { this.canvas = canvas; new ResizeObserver(U.raf(() => this.draw())).observe(canvas.parentElement); this.loop(); },
     set(v, cls) { this.target = U.clamp(v, 0, 100); this.cls = cls || 'neu'; },
+    vel: 0,
     loop() {
+      // 彈簧運動：指針會稍微過衝再回穩，比線性內插更有儀器感
       const d = this.target - this.val;
-      if (Math.abs(d) > .15) { this.val += d * .12; this.draw(); }
+      this.vel = (this.vel || 0) * 0.78 + d * 0.16;
+      if (Math.abs(d) > .08 || Math.abs(this.vel) > .08) { this.val += this.vel; this.draw(); }
       this.raf = requestAnimationFrame(() => this.loop());
     },
     draw() {
@@ -330,6 +379,14 @@
       c.beginPath(); c.arc(cx, cy, R - 6, A0, aEnd);
       c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 2; c.stroke();
       c.restore();
+
+      // 弧帶流光（沿已達分數的弧線移動）
+      if (!w.matchMedia || !w.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const gp = A0 + (A1 - A0) * ((performance.now() % 3600) / 3600) * U.clamp(k, 0.02, 1);
+        c.beginPath(); c.arc(cx, cy, R - 6, gp - 0.16, gp + 0.16);
+        c.strokeStyle = 'rgba(255,255,255,' + (0.30 + 0.25 * Math.sin(performance.now() / 300)).toFixed(2) + ')';
+        c.lineWidth = 3.4; c.stroke();
+      }
 
       // 指針
       c.save();

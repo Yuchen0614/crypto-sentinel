@@ -42,7 +42,15 @@
         const qtyTxt = U.qty(d[1]);
         if (tds[0].textContent !== U.pxSym(d[0])) {
           tds[0].textContent = U.pxSym(d[0]);
-          if (side === 'bid') { tr.classList.remove('newrow'); void tr.offsetWidth; tr.classList.add('newrow'); }
+          tr.classList.remove('newrow', 'hit-bid', 'hit-ask'); void tr.offsetWidth;
+          tr.classList.add('newrow', side === 'bid' ? 'hit-bid' : 'hit-ask');
+        }
+        if (tr.__q !== qtyTxt) {
+          tr.__q = qtyTxt;
+          if (!tr.classList.contains('hit-bid') && !tr.classList.contains('hit-ask')) {
+            tr.classList.remove('hit-bid', 'hit-ask'); void tr.offsetWidth;
+            tr.classList.add(side === 'bid' ? 'hit-bid' : 'hit-ask');
+          }
         }
         if (tds[1].textContent !== qtyTxt) tds[1].textContent = qtyTxt;
         tds[2].textContent = U.money(notional);
@@ -102,6 +110,7 @@
         else {
           const key = walls.map(x => x.side + x.px.toFixed(8)).join(',');
           if (wl.__key !== key) {
+            const isNew = wl.__key !== undefined;
             wl.__key = key;
             wl.innerHTML = walls.map(x =>
               `<div class="wall ${x.side}"><span class="tag">${x.side === 'bid' ? '買牆' : '賣牆'}</span>` +
@@ -109,6 +118,9 @@
               `<span class="dist">距中價 ${(x.dist * 100).toFixed(3)}%</span>` +
               `<span class="sz">$${U.money(x.notional)} <em style="font-style:normal;color:var(--am)" title="佔該側可見 ${x.levels || 0} 檔掛單總額比例">${(x.share || 0).toFixed(2)}%</em></span></div>`
             ).join('');
+            if (isNew) Array.prototype.forEach.call(wl.querySelectorAll('.wall'), (el, i) => {
+              setTimeout(() => { el.classList.add('ripple'); setTimeout(() => el.classList.remove('ripple'), 950); }, i * 90);
+            });
           } else {
             walls.forEach((x, i) => {
               const el = wl.children[i]; if (!el) return;

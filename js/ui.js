@@ -121,6 +121,7 @@
         `<span class="amt">$${U.money(t.notional)}</span>`;
       row.title = `${t.market === 'futures' ? '合約（Bybit）' : '現貨（Binance）'} · ${t.symbol} · ${new Date(t.ts).toLocaleString('zh-TW')}`;
       tape.insertBefore(row, tape.firstChild);
+      if (t.notional >= 250000) S.fx.floatTag(row, (t.side === 'buy' ? '+' : '−') + '$' + U.money(t.notional), t.side === 'buy' ? 'var(--gn)' : 'var(--rd)');
       this.els.push(row);
       while (this.els.length > 60) { const e = this.els.shift(); if (e.parentNode) e.parentNode.removeChild(e); }
       while (tape.children.length > 60) tape.removeChild(tape.lastChild);
@@ -296,6 +297,7 @@
       if (g) {
         U.animateNum(document.getElementById('gMcap'), g.mcap, v => '$' + U.money(v), 700);
         U.animateNum(document.getElementById('gVol'), g.vol, v => '$' + U.money(v), 700);
+        S.fx.bump(document.getElementById('gMcap')); S.fx.bump(document.getElementById('gVol'));
         const d = document.getElementById('gDom');
         if (d) { U.animateNum(d, g.btcDom, v => v.toFixed(1) + '%', 600); }
         const c = document.getElementById('gMcap');
@@ -334,6 +336,13 @@
         pf.innerHTML = `<i></i>合約/清算 ${ft ? '● ' + (S.stream.stats().liqEvents || 0) + ' 筆' : '連線中'}`;
         pf.title = 'Bybit 線性合約：選定幣種成交明細 + 主要幣種清算事件';
       }
+      const pc = document.getElementById('pillChain');
+      if (pc) {
+        const h = S.api.health.chain, oc = S.onchain;
+        pc.dataset.state = h === 'ok' ? 'ok' : h === 'wait' ? 'wait' : 'off';
+        pc.innerHTML = `<i></i>鏈上 ${h === 'ok' ? '● ' + (oc.dex.trades.length + oc.hl.states.size) + ' 筆' : '連線中'}`;
+        pc.title = `Hyperliquid 大戶錢包 ${oc.hl.wallets.length} 個（已取得 ${oc.hl.states.size} 個持倉）· DEX 大額換幣 ${oc.dex.trades.length} 筆 / ${oc.dex.wallets.size} 個錢包`;
+      }
       const rs = document.getElementById('pillRest');
       if (rs) {
         const h = S.api.health.spot;
@@ -343,7 +352,7 @@
     },
     ticker(txt) {
       const e = document.getElementById('statusTicker');
-      if (e) e.innerHTML = '<span>' + txt + '</span>';
+      if (e && e.textContent.trim() !== txt) e.innerHTML = '<span>' + txt + '</span>';
     }
   };
 

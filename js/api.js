@@ -9,9 +9,11 @@
     BYBIT: 'https://api.bybit.com',
     OKX: 'https://www.okx.com',
     CG: 'https://api.coingecko.com/api/v3',
-    FNG: 'https://api.alternative.me'
+    FNG: 'https://api.alternative.me',
+    GT: 'https://api.geckoterminal.com/api/v2',        // 鏈上 DEX 資料（免費、無金鑰）
+    HL: 'https://api.hyperliquid.xyz/info'             // 鏈上永續合約錢包持倉（免費、無金鑰）
   };
-  api.health = { spot: 'wait', futures: 'wait', lastOk: 0, failures: 0 };
+  api.health = { spot: 'wait', futures: 'wait', chain: 'wait', lastOk: 0, failures: 0 };
 
   /* ── 底層抓取 ─────────────────────────────────────── */
   async function jget(url, timeout) {
@@ -249,6 +251,121 @@
         return set.size ? set : null;
       } catch (e) { S.errors.push('bybit instruments: ' + e.message); return null; }
     });
+  };
+
+  /* ══════════ 鏈上資料（無金鑰公開端點）══════════════ */
+
+  /* GeckoTerminal 免費層限制很嚴：實測連續約 6 次呼叫後連線會被直接丟棄（不是回 429），
+     因此統一排隊、固定 2.5 秒間隔（≈24 次/分），並在失敗後整條佇列冷卻 45 秒。 */
+  let gtChain = Promise.resolve(), gtLast = 0, gtDownUntil = 0, gtErrLogged = 0;
+  api.gtStats = { calls: 0, fails: 0, cooling: false };
+  function gtCall(path) {
+    const run = async () => {
+      const now = Date.now();
+      if (now < gtDownUntil) { api.gtStats.cooling = true; return null; }
+      api.gtStats.cooling = false;
+      const wait = Math.max(0, 14000 - (Date.now() - gtLast));
+      if (wait) await new Promise(r => setTimeout(r, wait));
+      gtLast = Date.now();
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const r = await fetch(B.GT + path, { headers: { Accept: 'application/json' } });
+          if (r.status === 429) { gtDownUntil = Date.now() + 30000; return null; }
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          api.gtStats.calls++;
+          return await r.json();
+        } catch (e) {
+          api.gtStats.fails++;
+          if (attempt === 1) {
+            gtDownUntil = Date.now() + 90000;                       // 整條佇列冷卻，避免被暫時封鎖
+            if (Date.now() - gtErrLogged > 300000) { gtErrLogged = Date.now(); S.errors.push('gt throttled: ' + e.message); }
+            return null;
+          }
+          await new Promise(x => setTimeout(x, 3000));
+        }
+      }
+      return null;
+    };
+    const p = gtChain.then(run, run);
+    gtChain = p.catch(() => { });
+    return p;
+  }
+
+  /* 各鏈熱門池（含價格、24H 量、漲跌、買賣筆數）*/
+  api.gtTrending = async function (net) {
+    return cached('gt:' + net, 600e3, async () => {
+      const d = await gtCall(`/networks/${net}/trending_pools?page=1`);
+      if (!d || !d.data) return null;
+      return d.data.map(p => {
+        const a = p.attributes || {};
+        const chg = (a.price_change_percentage || {});
+        const vol = (a.volume_usd || {});
+        const tx = (a.transactions || {}).h24 || {};
+        return {
+          chain: net, pool: a.address, id: p.id,
+          name: a.name || '', dex: (p.relationships && p.relationships.dex && p.relationships.dex.data && p.relationships.dex.data.id) || '',
+          priceUsd: U.num(a.base_token_price_usd), quoteUsd: U.num(a.quote_token_price_usd),
+          fdv: U.num(a.fdv_usd), liq: U.num(a.reserve_in_usd), created: a.pool_created_at,
+          vol24: U.num(vol.h24), vol1: U.num(vol.h1), vol5: U.num(vol.m5),
+          chg5: U.num(chg.m5), chg1: U.num(chg.h1), chg24: U.num(chg.h24),
+          buys: U.num(tx.buys), sells: U.num(tx.sells)
+        };
+      }).filter(p => p.pool && isFinite(p.priceUsd));
+    });
+  };
+
+  /* 單一池的大額鏈上成交（含發起交易的錢包地址）*/
+  api.gtTrades = async function (net, pool, minUsd) {
+    const d = await gtCall(`/networks/${net}/pools/${pool}/trades?trade_volume_in_usd_greater_than=${minUsd || 50000}`);
+    if (!d || !d.data) return null;
+    return d.data.map(t => {
+      const a = t.attributes || {};
+      return {
+        chain: net, pool, wallet: (a.tx_from_address || '').toLowerCase(),
+        side: a.kind === 'buy' ? 'buy' : 'sell',
+        usd: U.num(a.volume_in_usd), ts: Date.parse(a.block_timestamp) || Date.now(),
+        priceUsd: U.num(a.price_from_in_usd), toUsd: U.num(a.price_to_in_usd),
+        fromToken: (a.from_token_address || '').toLowerCase(), toToken: (a.to_token_address || '').toLowerCase(),
+        fromAmt: U.num(a.from_token_amount), toAmt: U.num(a.to_token_amount),
+        tx: a.tx_hash, anomalous: !!a.is_anomalous
+      };
+    }).filter(t => t.wallet && isFinite(t.usd));
+  };
+
+  /* Hyperliquid：大戶追蹤名單（repo 內由 GitHub Actions 每日更新的小檔案）*/
+  api.hlWhales = async function () {
+    return cached('hlwhales', 3600e3, async () => {
+      try {
+        const r = await fetch('data/whales.json', { cache: 'no-cache' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        if (!d || !d.wallets) throw new Error('bad payload');
+        api.health.chain = 'ok';
+        return d;
+      } catch (e) {
+        S.errors.push('hlWhales: ' + e.message);
+        return null;
+      }
+    });
+  };
+
+  /* Hyperliquid：單一錢包的即時持倉與保證金摘要 */
+  api.hlState = async function (addr) {
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), 10000);
+    try {
+      const r = await fetch(B.HL, {
+        method: 'POST', signal: ac.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'clearinghouseState', user: addr })
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      api.health.chain = 'ok';
+      return d;
+    } catch (e) {
+      return null;
+    } finally { clearTimeout(to); }
   };
 
   api.updated = Date.now();

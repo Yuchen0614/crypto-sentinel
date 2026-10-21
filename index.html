@@ -8,6 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305070e'/%3E%3Cpath d='M6 22 L12 10 L18 20 L26 6' stroke='%2338f6ff' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/fx.css">
 </head>
 <body>
 <canvas id="starfield"></canvas>
@@ -17,6 +18,8 @@
 
 <!-- ── 開機動畫 ───────────────────────────────────────── -->
 <div id="boot" class="boot">
+  <canvas id="bootrain"></canvas>
+  <div class="boot-ring"></div>
   <div class="boot-inner">
     <div class="boot-logo">CRYPTO<b>SENTINEL</b></div>
     <div class="boot-sub">MARKET INTELLIGENCE TERMINAL · v1.0</div>
@@ -41,6 +44,7 @@
     <div class="stat"><label>漲 / 跌</label><b id="gBreadth">—</b></div>
     <div class="stat"><label>BTC 市佔率</label><b id="gDom">—</b></div>
     <div class="stat"><label>市場情緒</label><b id="gFng">—</b></div>
+    <div class="stat"><label>鏈上大戶多空</label><b id="gChain">—</b></div>
   </div>
   <div class="hud-right">
     <div class="clock">
@@ -52,6 +56,7 @@
       <span class="pill" id="pillRest" data-state="wait"><i></i>行情</span>
       <span class="pill" id="pillVer">SPOT</span>
       <span class="pill" id="pillFut" data-state="wait"><i></i>合約/清算</span>
+      <span class="pill" id="pillChain" data-state="wait"><i></i>鏈上情報</span>
     </div>
   </div>
 </header>
@@ -194,6 +199,73 @@
       </div>
       <div class="alert-list" id="alertList"><div class="empty">尚未偵測到異常事件 — 系統持續掃描中</div></div>
     </section>
+
+    <!-- 鏈上情報 -->
+    <section class="panel chain-panel">
+      <div class="panel-head">
+        <h2><i class="ic ic-chain"></i>鏈上聰明錢追蹤<span class="count" id="chainCount">0</span></h2>
+        <div class="seg seg-sm" id="chainSeg">
+          <button data-chain="eth" class="on">以太坊</button>
+          <button data-chain="solana">Solana</button>
+          <button data-chain="base">Base</button>
+          <button data-chain="bsc">BNB</button>
+        </div>
+        <div class="seg seg-sm" id="chainMin">
+          <button data-min="20000" class="on">≥2萬</button>
+          <button data-min="100000" title="DEX 大型換幣">≥10萬</button>
+          <button data-min="1000000" title="鏈上巨鯨">≥100萬</button>
+        </div>
+        <span class="mini" id="chainMeta">鏈上掃描啟動中…</span>
+      </div>
+      <div class="chain-body">
+        <div class="chain-col">
+          <div class="sub-head">
+            <b>Hyperliquid 大戶錢包 · 即時持倉</b>
+            <span class="mini" id="hlMeta">—</span>
+          </div>
+          <div class="agg-wrap">
+            <div class="agg-bar"><i id="aggFill"></i></div>
+            <div class="agg-labels"><span id="aggLong">多 —</span><span id="aggRatio">—</span><span id="aggShort">空 —</span></div>
+            <div class="agg-stats">
+              <div><label>已追蹤錢包</label><b id="aggWallets">0</b></div>
+              <div><label>倉位數</label><b id="aggPos">0</b></div>
+              <div><label>總名目規模</label><b id="aggNotional">—</b></div>
+              <div><label>未實現損益</label><b id="aggUpnl">—</b></div>
+            </div>
+          </div>
+          <div class="sub-head"><b>大戶最擁擠倉位</b><span class="mini" id="coinMeta">依追蹤錢包的持倉名目排序</span></div>
+          <div class="coin-bars" id="coinBars"><div class="empty">載入中…</div></div>
+          <div class="hl-table-wrap">
+            <table class="hl">
+              <thead><tr><th>大戶錢包</th><th>主要持倉</th><th class="ta-r">名目</th><th class="ta-r">未實現</th><th class="ta-r">月報酬</th></tr></thead>
+              <tbody id="hlBody"></tbody>
+            </table>
+          </div>
+          <div class="sub-head"><b>錢包倉位變化偵測</b><span class="mini" id="hlEventMeta">—</span></div>
+          <div class="hl-events" id="hlEvents"><div class="empty">等待錢包倉位變化…（首次比對需兩輪掃描）</div></div>
+        </div>
+        <div class="chain-col">
+          <div class="sub-head"><b>鏈上大額換幣即時流</b><span class="mini" id="dexMeta">掃描中…</span></div>
+          <div class="radar-wrap">
+            <canvas id="radar"></canvas>
+            <div class="radar-hud">
+              <span id="radarStatus">SCANNING</span>
+              <span id="radarStat">—</span>
+            </div>
+          </div>
+          <div class="chain-tape-head">
+            <span>時間</span><span>鏈</span><span>代幣</span><span>方向</span><span class="ta-r">金額</span><span class="ta-r">錢包</span>
+          </div>
+          <div class="chain-tape" id="chainTape"><div class="empty">正在掃描鏈上大額換幣…</div></div>
+          <div class="sub-head">
+            <b>聰明錢錢包榜</b>
+            <span class="mini" title="分數＝交易規模 28% + 買賣方向 16% + 交易後價格變化 36% + 代幣廣度 20%">評分：規模 28%・方向 16%・交易後走勢 36%・廣度 20%</span>
+          </div>
+          <div class="wallet-list" id="walletList"><div class="empty">累積鏈上錢包資料中…</div></div>
+          <div class="cobuy" id="coBuyList"></div>
+        </div>
+      </div>
+    </section>
   </section>
 
   <!-- 右：聰明錢 / 巨鯨 / 持倉 -->
@@ -267,6 +339,13 @@
   </aside>
 </main>
 
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<div class="overlay" id="walletOverlay" hidden>
+  <div class="overlay-card" id="overlayCard"></div>
+</div>
+<div class="glitch-veil" id="glitchVeil"></div>
+
 <div class="statusbar">
   <div class="ticker" id="statusTicker"><span>系統啟動中…</span></div>
   <div class="disc">資料來源：Binance 公開行情 API · 本工具僅供研究與視覺化，不構成投資建議</div>
@@ -276,9 +355,12 @@
 <script src="js/api.js"></script>
 <script src="js/stream.js"></script>
 <script src="js/analytics.js"></script>
+<script src="js/onchain.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/book.js"></script>
+<script src="js/fx.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/chainui.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
