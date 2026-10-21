@@ -9,14 +9,22 @@
   /* ── 大戶持倉彙總 ─────────────────────────────────── */
   C.agg = function () {
     const a = HL.agg; if (!a) return;
+    /* 只輪詢到一小部分錢包時，比例會嚴重偏斜（例如 多 0.5% / 空 99.5%），
+       因此標示「掃描中 n/N」，並在未掃完前用中性色，不讓它看起來像定論。 */
+    const scanned = HL.states.size, total = HL.wallets.length || 0;
+    const partial = total > 0 && scanned < total;
     const k = U.clamp(a.ratio, 0, 1);
     const fill = $('#aggFill'); if (fill) fill.style.width = (k * 100).toFixed(1) + '%';
     U.text('#aggLong', '多 $' + U.money(a.longUsd));
     U.text('#aggShort', '空 $' + U.money(a.shortUsd));
     const r = $('#aggRatio');
     if (r) {
-      r.textContent = isFinite(a.ratio) ? `多空比 ${(a.ratio * 100).toFixed(1)}% / ${((1 - a.ratio) * 100).toFixed(1)}%` : '—';
-      r.style.color = a.ratio > 0.55 ? 'var(--gn)' : a.ratio < 0.45 ? 'var(--rd)' : 'var(--cy)';
+      r.textContent = isFinite(a.ratio)
+        ? `多空比 ${(a.ratio * 100).toFixed(1)}% / ${((1 - a.ratio) * 100).toFixed(1)}%`
+          + (partial ? `（掃描中 ${scanned}/${total}）` : '')
+        : '—';
+      r.style.color = partial ? 'var(--tx-2)'
+        : a.ratio > 0.55 ? 'var(--gn)' : a.ratio < 0.45 ? 'var(--rd)' : 'var(--cy)';
       r.title = '以持倉名目金額加權計算，會受少數超大型帳戶主導；想看個別差異請點下方任一錢包，或用「大戶最擁擠倉位」看各幣別分佈';
     }
     U.text('#aggWallets', String(a.wallets || 0));
@@ -31,10 +39,15 @@
     const g = $('#gChain');
     if (g) {
       if (isFinite(a.ratio) && a.wallets > 0) {
-        g.innerHTML = `<span class="${a.ratio > 0.55 ? 'up' : a.ratio < 0.45 ? 'down' : ''}">多 ${(a.ratio * 100).toFixed(0)}%</span> / 空 ${((1 - a.ratio) * 100).toFixed(0)}%`;
-        g.title = `Hyperliquid 已追蹤 ${a.wallets} 個大戶錢包、${a.positions} 個倉位：多單 $${U.money(a.longUsd)}、空單 $${U.money(a.shortUsd)}`;
+        g.innerHTML = `<span class="${partial ? '' : a.ratio > 0.55 ? 'up' : a.ratio < 0.45 ? 'down' : ''}">多 ${(a.ratio * 100).toFixed(0)}%</span> / 空 ${((1 - a.ratio) * 100).toFixed(0)}%` +
+          (partial ? ` <span class="mini">掃描中 ${scanned}/${total}</span>` : '');
+        g.title = `Hyperliquid 已回報 ${scanned}/${total} 個大戶錢包、${a.positions} 個倉位：多單 $${U.money(a.longUsd)}、空單 $${U.money(a.shortUsd)}`
+          + (partial ? '（尚在輪詢，比例為暫定值）' : '');
         S.fx.bump(g);
       } else g.textContent = '—';
+      const vt = $('#vtChain');
+      if (vt) vt.textContent = (isFinite(a.ratio) && a.wallets)
+        ? `多 ${(a.ratio * 100).toFixed(0)}% / 空 ${((1 - a.ratio) * 100).toFixed(0)}%` : '—';
     }
   };
 
@@ -57,11 +70,15 @@
         `<i class="cb-long" style="width:${(lp * 100).toFixed(1)}%"></i>` +
         `<i class="cb-short" style="width:${((1 - lp) * 100).toFixed(1)}%;left:${(lp * 100).toFixed(1)}%"></i>` +
         `</span>` +
-        `<span class="cb-val ${net}">${U.signed(c.net, v => '$' + U.money(Math.abs(v)))}</span>` +
-        `<span class="cb-tot">$${U.money(tot)} · ${c.wallets} 錢包</span></div>`;
+        `<span class="cb-val ${net}">淨 ${U.signed(c.net, v => '$' + U.money(Math.abs(v)))}</span>` +
+        `<span class="cb-tot">多 $${U.money(c.long)} · 空 $${U.money(c.short)} · ${c.wallets} 錢包</span></div>`;
     }).join('');
     const m = $('#coinMeta');
-    if (m) m.textContent = `依追蹤錢包持倉名目排序 · 多 ${(HL.agg.ratio * 100).toFixed(1)}% / 空 ${((1 - HL.agg.ratio) * 100).toFixed(1)}%`;
+    if (m) {
+      const sc = HL.states.size, tt = HL.wallets.length || 0;
+      m.textContent = `依追蹤錢包持倉名目排序 · 多 ${(HL.agg.ratio * 100).toFixed(1)}% / 空 ${((1 - HL.agg.ratio) * 100).toFixed(1)}%`
+        + (tt && sc < tt ? ` · 尚在掃描 ${sc}/${tt} 錢包` : ` · ${sc} 個錢包`);
+    }
   };
 
   /* ── 大戶持倉表 ───────────────────────────────────── */
@@ -103,7 +120,7 @@
     const meta = $('#hlMeta');
     if (meta) {
       const dt = HL.listAt ? new Date(HL.listAt) : null;
-      meta.textContent = `${HL.wallets.length} 個錢包 · 已更新 ${HL.states.size} 個持倉 · 名單 ${dt ? dt.toLocaleDateString('zh-TW') : '—'}（GitHub Actions 每日更新）`;
+      meta.textContent = `已回報 ${HL.states.size}/${HL.wallets.length} 個錢包 · 每 6 秒輪詢 4 個 · 名單 ${dt ? dt.toLocaleDateString('zh-TW') : '—'}（每日自動更新）`;
     }
   };
 
@@ -186,7 +203,7 @@
     const hlW = HL.wallets.find(x => x.addr === addr);
     const st = HL.states.get(addr);
     let html = '';
-    if (kind === 'hl' || hlW) {
+    if (kind === 'hl' || (kind !== 'dex' && hlW)) {
       const name = (hlW && hlW.name) || OC.short(addr);
       const pos = st ? st.pos.slice().sort((a, b) => b.notional - a.notional) : [];
       const tot = pos.reduce((s, p) => s + p.notional, 0);
@@ -266,13 +283,13 @@
   C.dexMeta = function () {
     const d = DX, g = S.api.gtStats || { calls: 0, cools: 0 };
     const m = $('#dexMeta');
-    if (m) m.textContent = `${OC.chainLabel(d.chain)} · ${d.pools.length} 個熱門池 · 每輪 2 池 · 門檻 ≥$${U.money(d.min)} · 已收 ${d.trades.length} 筆 · API ${g.calls || 0} 次`;
+    if (m) m.textContent = `${OC.chainLabel(d.chain)} · ${d.pools.length} 個熱門池 · 每輪掃 1 池（限流）· 門檻 ≥$${U.money(d.min)} · 已收 ${d.trades.length} 筆 · 掃描 ${d.calls} 輪`;
     const cm = $('#chainMeta');
     if (cm) {
       const down = g.cooling;
       cm.textContent = down
-        ? `鏈上 API 冷卻中（GeckoTerminal 免費層限流）· 已收 ${d.trades.length} 筆`
-        : `${OC.chainLabel(d.chain)} ${d.pools.length} 池 · DEX ${d.trades.length} 筆 · 錢包 ${d.wallets.size} 個 · 大戶倉位 ${HL.states.size}/${HL.wallets.length}`;
+        ? `鏈上 API 冷卻中（GeckoTerminal 免費層限流）· 已收 ${d.trades.length} 筆，冷卻結束自動續掃`
+        : `${OC.chainLabel(d.chain)} ${d.pools.length} 池 · DEX ${d.trades.length} 筆 · 錢包 ${d.wallets.size} 個 · 大戶持倉 ${HL.states.size}/${HL.wallets.length}`;
       cm.style.color = down ? 'var(--am)' : '';
     }
   };

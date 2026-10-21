@@ -21,10 +21,11 @@
     price: NaN, walls: [], lastDelta: [], hover: null,
     markers: [],                   // 巨鯨標記 {t, price, notional, side}
     reveal: 1, _rv: null,
-    setData(k) {
+    setData(k, animate) {
       this.k = k || []; this.series();
-      this.reveal = 0; this.revealAt = performance.now();
-      this.draw(); this.startReveal();
+      if (animate) { this.reveal = 0; this.revealAt = performance.now(); this.startReveal(); }
+      else { this.reveal = 1; if (this._rv) { cancelAnimationFrame(this._rv); this._rv = null; } }
+      this.draw();
     },
     startReveal() {
       if (this._rv) cancelAnimationFrame(this._rv);
@@ -82,7 +83,7 @@
       // 背景網格
       c.save();
       c.strokeStyle = 'rgba(56,246,255,.09)'; c.lineWidth = 1;
-      c.font = '10px "Share Tech Mono", monospace'; c.fillStyle = 'rgba(143,178,201,.75)';
+      c.font = '10px "JetBrains Mono", monospace'; c.fillStyle = 'rgba(143,178,201,.75)';
       for (let i = 0; i <= 5; i++) {
         const p = mn + (mx - mn) * i / 5, y = Math.round(Y(p)) + .5;
         c.beginPath(); c.moveTo(x0, y); c.lineTo(xr, y); c.stroke();
@@ -143,7 +144,7 @@
         c.shadowColor = 'rgba(56,246,255,.85)'; c.shadowBlur = 8;
         c.stroke(); c.shadowBlur = 0;
         // CVD 零軸參考
-        c.fillStyle = 'rgba(56,246,255,.85)'; c.font = '9px "Share Tech Mono",monospace'; c.textAlign = 'left';
+        c.fillStyle = 'rgba(56,246,255,.85)'; c.font = '9px "JetBrains Mono",monospace'; c.textAlign = 'left';
         c.fillText('CVD ' + U.signed(cv[cv.length - 1], v => U.money(v)), x0 + 2, vy0 + 10);
       }
 
@@ -154,7 +155,7 @@
           const y = Y(vw);
           c.save(); c.setLineDash([5, 4]); c.strokeStyle = '#ffc857'; c.lineWidth = 1.1;
           c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); c.restore();
-          c.fillStyle = '#ffc857'; c.font = '9px "Share Tech Mono",monospace'; c.textAlign = 'left';
+          c.fillStyle = '#ffc857'; c.font = '9px "JetBrains Mono",monospace'; c.textAlign = 'left';
           c.fillText('VWAP 30M ' + U.px(vw), x0 + 2, y - 4);
         }
       }

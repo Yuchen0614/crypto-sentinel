@@ -74,7 +74,7 @@
     S.stream.startSelected(sym, hasFut ? sym : null);
 
     const jobs = [
-      S.api.klines(sym, S.chart.tf, 300).then(k => { if (k && S.state.symbol === sym) S.chart.setData(k); }),
+      S.api.klines(sym, S.chart.tf, 300).then(k => { if (k && S.state.symbol === sym) S.chart.setData(k, true); }),
       S.api.klines(sym, '1m', 90).then(k => { if (k && S.state.symbol === sym) oneMin = k; }),
       S.api.depth(sym, 1000).then(d => { if (d && S.state.symbol === sym) { A.Book.setRest(d); S.bookUI.render(A.Book); } })
     ];
@@ -197,20 +197,20 @@
       S.state.tickMap = map;
     });
 
-    document.getElementById('scanSearch').addEventListener('input', U.debounce(e => { S.ui.scan.q = e.target.value.trim(); S.ui.scan.render(); }, 180));
-    document.getElementById('onlyFutures').addEventListener('change', e => { S.ui.scan.onlyFut = e.target.checked; S.ui.scan.render(); });
+    document.getElementById('scanSearch').addEventListener('input', U.debounce(e => { S.ui.scan.q = e.target.value.trim(); S.ui.scan.render(true); }, 180));
+    document.getElementById('onlyFutures').addEventListener('change', e => { S.ui.scan.onlyFut = e.target.checked; S.ui.scan.render(true); });
     document.getElementById('scanSort').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       S.ui.scan.sort = b.dataset.sort;
       Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
-      S.ui.scan.render();
+      S.ui.scan.render(true);
     });
     document.getElementById('tfSeg').addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
       Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
       S.chart.tf = b.dataset.tf;
       const k = await S.api.klines(S.state.symbol, S.chart.tf, 300);
-      if (k) S.chart.setData(k);
+      if (k) S.chart.setData(k, true);
       refreshStats();
     });
     document.getElementById('ovSeg').addEventListener('click', e => {
@@ -353,18 +353,24 @@
       if (b) b.title = '已完整分析：聰明錢壓力分數 ' + res.score + '（' + res.verdict + '）';
     }, 1000);
 
-    // 圖表／熱圖／壓力計動畫重繪（僅在畫面可見時）
-    let atick = 0;
-    setInterval(() => {
+    // 圖表／熱圖動畫重繪（畫面可見時才畫；偵測到繪製過慢就自動降頻）
+    let atick = 0, slow = 0, animTimer = null;
+    const fast = () => {
       if (document.hidden) return;
       const cv = document.getElementById('chart'); if (!cv) return;
       const r = cv.getBoundingClientRect();
       if (r.bottom < 0 || r.top > innerHeight) return;
       atick++;
+      const t0 = performance.now();
       S.chart.draw();
       if (atick % 2 === 0) S.heat.draw();
-      if (atick % 3 === 0) S.gauge.draw();
-    }, 62);
+      const dt = performance.now() - t0;
+      if (dt > 16) {
+        // 連續偏慢（舊電腦／行動裝置）→ 降頻，先保住操作流暢度
+        if (++slow > 6) { clearInterval(animTimer); animTimer = setInterval(() => { if (!document.hidden) S.chart.draw(); }, 170); }
+      } else slow = Math.max(0, slow - 1);
+    };
+    animTimer = setInterval(fast, 62);
 
     // 每 2.2 秒：訂單簿快照
     setInterval(async () => {
@@ -401,6 +407,8 @@
       if (!l) return;
       S.state.universe = l;
       S.state.bySym = new Map(l.map(x => [x.symbol, x]));
+      const curNew = S.state.bySym.get(S.state.symbol);
+      if (curNew) { S.state.cur = curNew; if (S.state.lastSmart) curNew.smart = S.state.lastSmart; }
       applyScores();
       S.ui.scan.setList(l);
       const up = l.filter(x => x.changePct > 0).length;
@@ -515,7 +523,16 @@
     }).catch(() => S.boot.finish('系統就緒（部分輔助資料暫時無法取得）'));
 
     // 鏈上情報（獨立於行情）
-    loadWhales().then(() => { hlPoll(6); S.chainUI.render(); });
+    loadWhales().then(() => {
+      hlPoll(6); S.chainUI.render();
+      setTimeout(() => {
+        const m = document.getElementById('hlMeta');
+        if (OC.hl.wallets.length && !OC.hl.states.size) {
+          S.api.health.chain = 'off';
+          if (m) m.innerHTML = '<span style="color:var(--am)">無法取得持倉資料 — 可能是網路阻擋 api.hyperliquid.xyz（此站需要瀏覽器直連該端點）</span>';
+        }
+      }, 25000);
+    });
     setTimeout(() => dexScan(), 1500);
 
     setTimeout(() => S.boot.finish(), 7000);

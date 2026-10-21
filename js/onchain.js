@@ -193,7 +193,14 @@
       if (isFinite(t.tokenPrice) && t.token) this.tokenPrice.set(t.token, t.tokenPrice);
       // 錢包畫像
       let p = this.wallets.get(key);
-      if (!p) { p = { addr: key, trades: [], buyUsd: 0, sellUsd: 0, tokens: new Map(), chains: new Set(), first: t.ts, last: t.ts, maxUsd: 0 }; this.wallets.set(key, p); }
+      if (!p) {
+        if (this.wallets.size > 2500) {           // 上限：清掉最久沒動的錢包，避免長時間開啟記憶體膨脹
+          const arr = Array.from(this.wallets.entries()).sort((a, b) => a[1].last - b[1].last);
+          arr.slice(0, 500).forEach(([k]) => this.wallets.delete(k));
+        }
+        p = { addr: key, trades: [], buyUsd: 0, sellUsd: 0, tokens: new Map(), chains: new Set(), first: t.ts, last: t.ts, maxUsd: 0 };
+        this.wallets.set(key, p);
+      }
       p.trades.unshift(t);
       if (p.trades.length > 40) p.trades.pop();
       if (t.side === 'buy') p.buyUsd += t.usd; else p.sellUsd += t.usd;

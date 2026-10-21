@@ -20,9 +20,12 @@
   --tx:#c6e4f2;
   --tx-2:#8fb2c9;
   --tx-3:#5d7d94;
-  --mono:'Share Tech Mono',ui-monospace,Consolas,'Courier New',monospace;
-  --disp:'Orbitron','Rajdhani',system-ui,sans-serif;
-  --ui:'Rajdhani',system-ui,'Microsoft JhengHei UI','Microsoft JhengHei',-apple-system,sans-serif;
+  /* 2026-10-21：換掉 Orbitron/Rajdhani/Share Tech Mono（辨識度差、中英混排不協調），
+     改用 Inter + Space Grotesk + JetBrains Mono，中文字走系統 CJK 字。 */
+  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Consolas,monospace;
+  --disp:'Space Grotesk','Inter',system-ui,sans-serif;
+  --ui:'Inter',system-ui,-apple-system,'Noto Sans TC','PingFang TC','Microsoft JhengHei UI','Microsoft JhengHei',sans-serif;
+  --cjk:'Noto Sans TC','PingFang TC','Microsoft JhengHei UI','Microsoft JhengHei',-apple-system,sans-serif;
   --r:3px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -32,7 +35,7 @@ body{
   color:var(--tx);
   font-family:var(--ui);
   font-size:13px;
-  line-height:1.35;
+  line-height:1.45;
   overflow:hidden;
   -webkit-font-smoothing:antialiased;
 }
@@ -69,10 +72,10 @@ body::before{
   transition:opacity .7s ease, visibility .7s}
 .boot.done{opacity:0;visibility:hidden}
 .boot-inner{width:min(680px,88vw);text-align:left}
-.boot-logo{font-family:var(--disp);font-weight:900;font-size:clamp(26px,4.4vw,46px);letter-spacing:.16em;
+.boot-logo{font-family:var(--disp);font-weight:700;font-size:clamp(26px,4.4vw,46px);letter-spacing:.1em;
   color:#eafcff;text-shadow:0 0 26px rgba(56,246,255,.65)}
 .boot-logo b{color:var(--cy);font-weight:900}
-.boot-sub{font-family:var(--mono);color:var(--tx-3);letter-spacing:.34em;font-size:10px;margin:6px 0 22px}
+.boot-sub{font-family:var(--mono);color:var(--tx-3);letter-spacing:.22em;font-size:10px;margin:6px 0 22px}
 .bootlog{font-family:var(--mono);font-size:12px;color:var(--tx-2);white-space:pre-wrap;height:168px;overflow:hidden;
   border-left:1px solid var(--line);padding-left:14px;
   background:linear-gradient(90deg,rgba(56,246,255,.05),transparent)}
@@ -92,8 +95,8 @@ body::before{
 .hud-brand .dot{width:9px;height:9px;border-radius:50%;background:var(--cy);box-shadow:0 0 12px var(--cy);
   animation:blip 2.4s ease-in-out infinite}
 @keyframes blip{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.78)}}
-.hud-brand h1{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.14em;color:#e8fbff;line-height:1}
-.hud-brand h1 b{color:var(--cy)}
+.hud-brand h1{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.08em;color:#e8fbff;line-height:1}
+.hud-brand h1 b{color:var(--cy);font-weight:700}
 .hud-brand p{font-size:10.5px;color:var(--tx-3);letter-spacing:.08em;margin-top:3px}
 .hud-stats{display:flex;gap:6px;flex:1;overflow:hidden}
 .stat{flex:1;min-width:0;padding:5px 10px;border:1px solid var(--line);border-radius:var(--r);
@@ -117,13 +120,34 @@ body::before{
 .pill[data-state="off"] i{background:var(--rd)}
 #pillVer{color:var(--tx-3)}
 
-.layout{position:relative;z-index:10;display:grid;
-  grid-template-columns:346px minmax(0,1fr) 372px;
-  gap:10px;padding:10px;height:calc(100vh - 62px - 26px)}
+/* 檢視切換：市場行情（三欄）／鏈上大戶（整頁） */
+.viewtabs{position:relative;z-index:10;display:flex;align-items:center;gap:8px;height:42px;
+  padding:0 16px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(9,16,28,.92),rgba(6,10,18,.55));backdrop-filter:blur(6px)}
+.vtab{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 14px;font-family:var(--ui);
+  font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--tx-2);background:rgba(255,255,255,.02);
+  border:1px solid var(--line);border-radius:var(--r);cursor:pointer;transition:.18s}
+.vtab .ic{background:currentColor;opacity:.9}
+.vtab:hover{color:var(--cy-2);border-color:var(--line-2);background:rgba(56,246,255,.07)}
+.vtab.on{color:#04121a;background:linear-gradient(180deg,var(--cy),#12b6cf);border-color:transparent;
+  box-shadow:0 0 18px -5px rgba(56,246,255,.85)}
+.vtab-badge{font-family:var(--mono);font-size:10.5px;padding:0 6px;border-radius:2px;
+  background:rgba(0,0,0,.3);color:inherit}
+.vt-meta{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--tx-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.views{position:relative;z-index:10;padding:10px;height:calc(100vh - 62px - 42px - 26px)}
+.view{display:grid;gap:10px;height:100%;min-height:0}
+.view[hidden]{display:none}
+.view-market{grid-template-columns:346px minmax(0,1fr) 372px}
+.view-onchain{grid-template-columns:minmax(0,1fr)}
 .col{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
 .col-a{overflow:hidden}
 .col-b{overflow-y:auto;overflow-x:hidden;padding-right:2px}
 .col-c{overflow-y:auto;overflow-x:hidden;padding-right:2px}
+/* 面板是 flex 子項時不可壓縮（min-height:0 + flex-shrink:1 會把面板壓成 2px，
+   內容因此溢出到視窗外、整區看不到） */
+.col-b>*,.col-c>*{flex:0 0 auto}
 .row2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px}
 
 /* ── panels ───────────────────────────────────────────────── */
@@ -138,7 +162,7 @@ body::before{
 .panel-grow{flex:1;min-height:0}
 .panel-head{display:flex;align-items:center;gap:10px;padding:8px 11px;border-bottom:1px solid var(--line);
   background:linear-gradient(90deg,rgba(56,246,255,.07),transparent 70%);flex-wrap:wrap}
-.panel-head h2{font-family:var(--disp);font-size:12px;font-weight:700;letter-spacing:.14em;color:#dff6ff;
+.panel-head h2{font-family:var(--disp);font-size:12.5px;font-weight:700;letter-spacing:.055em;color:#dff6ff;
   display:flex;align-items:center;gap:7px;text-transform:uppercase}
 .panel-head h2 .count{font-family:var(--mono);font-size:10px;color:var(--cy);background:rgba(56,246,255,.12);
   border:1px solid var(--line-2);border-radius:2px;padding:0 5px;letter-spacing:0}
@@ -225,7 +249,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-family:var(--mon
 .chart-stats label{display:block;font-size:9.5px;color:var(--tx-3);letter-spacing:.06em}
 .chart-stats b{font-family:var(--mono);font-size:12.5px;color:#d8f4ff}
 .canvas-wrap{position:relative;width:100%}
-#chart{display:block;width:100%;height:316px}
+#chart{display:block;width:100%;height:300px}
 .chart-hover{position:absolute;inset:0;pointer-events:none}
 .chart-tip{position:absolute;z-index:5;background:rgba(4,9,17,.96);border:1px solid var(--line-2);
   border-radius:var(--r);padding:6px 9px;font-family:var(--mono);font-size:10.5px;color:var(--tx);
@@ -257,7 +281,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-family:var(--mon
 .band i{display:block;height:3px;margin-top:3px;background:rgba(255,255,255,.08);position:relative}
 .band i::after{content:'';position:absolute;left:0;top:0;bottom:0;width:var(--w,50%);
   background:linear-gradient(90deg,var(--gn),var(--cy));transition:width .5s}
-.book-cols{display:flex;flex-direction:column;padding:0 11px 6px}
+.book-cols{display:flex;flex-direction:column;padding:0 11px 6px;max-height:300px;overflow-y:auto}
 .book{font-size:11px}
 .book thead th{color:var(--tx-3);font-family:var(--ui);font-size:9.5px;font-weight:600;padding:2px 5px;
   border-bottom:1px solid var(--line);text-transform:uppercase}
@@ -287,7 +311,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-family:var(--mon
 
 /* ── heatmap ──────────────────────────────────────────────── */
 .heat-wrap{padding:6px 8px 0}
-#heat{display:block;width:100%;height:250px;border:1px solid var(--line);border-radius:2px;background:#04070e}
+#heat{display:block;width:100%;height:232px;border:1px solid var(--line);border-radius:2px;background:#04070e}
 .heat-legend{display:flex;align-items:center;gap:7px;padding:5px 11px;font-family:var(--mono);font-size:9.5px;color:var(--tx-3)}
 .heat-legend i{flex:1;height:6px;border-radius:2px;
   background:linear-gradient(90deg,#0a1a2e,#124a63,#1c9fb8,#4ff0ff,#ffc857,#ff3ea5)}
@@ -315,7 +339,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-family:var(--mon
 .gauge-wrap{position:relative;padding:6px 0 0;display:flex;justify-content:center}
 #gauge{display:block;width:100%;height:172px}
 .gauge-center{position:absolute;left:0;right:0;top:56%;text-align:center;pointer-events:none}
-.gauge-center b{display:block;font-family:var(--disp);font-size:32px;font-weight:900;color:#eafcff;
+.gauge-center b{display:block;font-family:var(--disp);font-size:32px;font-weight:700;color:#eafcff;
   text-shadow:0 0 22px rgba(56,246,255,.5);transition:color .4s}
 .gauge-center small{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.22em;color:var(--tx-3)}
 .gauge-center .verdict{display:inline-block;margin-top:4px;font-family:var(--ui);font-weight:700;font-size:12px;
@@ -397,17 +421,33 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-family:var(--mon
 .ticker b{color:var(--cy)}
 .disc{font-size:9.5px;color:var(--tx-3);white-space:nowrap}
 
+/* ── 鏈上大戶：整頁檢視 ───────────────────────────────────── */
+.view-onchain>.chain-panel{height:100%}
+.view-onchain .chain-body{flex:1;min-height:0;
+  grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}
+.view-onchain .chain-col{min-height:0;overflow-y:auto;padding-right:3px}
+.view-onchain .chain-col:first-child{overflow:hidden}
+.view-onchain .hl-table-wrap{max-height:none;flex:1 1 auto;min-height:200px}
+.view-onchain .hl-events{max-height:none;flex:0 0 auto;max-height:190px}
+.view-onchain .coin-bars{max-height:none;flex:0 0 auto}
+.view-onchain .subtle-note{font-family:var(--mono);font-size:10px;color:var(--tx-3);padding:2px 0 0}
+
 /* ── responsive ───────────────────────────────────────────── */
 @media (max-width:1560px){
-  .layout{grid-template-columns:308px minmax(0,1fr) 340px}
+  .view-market{grid-template-columns:308px minmax(0,1fr) 340px}
 }
 @media (max-width:1360px){
   body{overflow:auto}
-  .layout{grid-template-columns:1fr;height:auto;overflow:visible}
+  .views{height:auto}
+  .view{height:auto}
+  .view-market,.view-onchain{grid-template-columns:1fr}
   .col-a,.col-b,.col-c{overflow:visible;padding-right:0}
+  .view-onchain .chain-col,.view-onchain .chain-col:first-child{overflow:visible}
   .table-wrap{max-height:420px}
   .hud{flex-wrap:wrap;height:auto;padding:8px 12px;gap:10px}
   .hud-stats{order:3;width:100%}
+  .viewtabs{height:auto;flex-wrap:wrap;padding:8px 12px}
+  .vt-meta{display:none}
   .row2{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){

@@ -229,7 +229,7 @@ table.hl .nm { color: #e3f6ff; font-family: var(--ui); font-weight: 600 }
 
 /* 大戶最擁擠倉位 */
 .coin-bars { display: flex; flex-direction: column; gap: 3px; max-height: 168px; overflow-y: auto }
-.coin-bar { display: grid; grid-template-columns: 46px minmax(80px,1fr) 74px 96px; gap: 8px; align-items: center;
+.coin-bar { display: grid; grid-template-columns: 46px minmax(90px,1fr) 104px 176px; gap: 8px; align-items: center;
   font-family: var(--mono); font-size: 10.5px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 2px;
   background: rgba(0,0,0,.28); animation: alertIn .45s cubic-bezier(.16,.84,.34,1) }
 .coin-bar .cb-sym { color: #e3f6ff; font-weight: 600 }

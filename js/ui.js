@@ -7,6 +7,7 @@
   /* ══════ 全市場掃描表 ══════ */
   const Scan = UI.scan = {
     rows: new Map(), list: [], sort: 'quoteVolume', q: '', onlyFut: false, max: 120,
+    order: [], orderKey: '', orderAt: 0,
     setList(l) { this.list = l || []; this.render(); },
     sorted() {
       let l = this.list;
@@ -20,9 +21,21 @@
       else l.sort((a, b) => b.quoteVolume - a.quoteVolume);
       return l.slice(0, this.max);
     },
-    render() {
+    render(force) {
       const body = document.getElementById('scanBody'); if (!body) return;
-      const list = this.sorted();
+      let list = this.sorted();
+      // 只有在「排序/搜尋變更」或每 10 秒才重新排序，其餘時間維持列序（數字就地更新）
+      const key = this.sort + '|' + this.q + '|' + this.onlyFut + '|' + list.length;
+      const now = Date.now();
+      if (force || key !== this.orderKey || now - this.orderAt > 10000) {
+        this.order = list.map(x => x.symbol); this.orderKey = key; this.orderAt = now;
+      } else {
+        const by = new Map(list.map(x => [x.symbol, x]));
+        const out = [];
+        this.order.forEach(s => { const c = by.get(s); if (c) out.push(c); });
+        list.forEach(c => { if (this.order.indexOf(c.symbol) < 0) { this.order.push(c.symbol); out.push(c); } });
+        list = out;
+      }
       // 若先前顯示「查無資料」提示列，先清空
       if (body.firstChild && !body.firstChild.dataset.sym && !list.length) return;
       if (body.firstChild && !body.firstChild.dataset.sym) body.innerHTML = '';
@@ -142,6 +155,9 @@
       if (bar) bar.style.left = (U.clamp((n5.whaleDelta / Math.max(200000, Math.abs(n5.whaleBuy) + Math.abs(n5.whaleSell))) / 2 + 0.5, 0, 1) * 100).toFixed(1) + '%';
       this.thrNow = this.threshold();
       U.html('#whaleFoot', `累計 <b>${this.count}</b> 筆大額成交 · 現行門檻 ≥ $${U.money(this.thrNow)}${this.min === 'auto' ? '（自動：近 10 分鐘成交金額中位數 ×10）' : ''} · 分級：≥$250K 大型、≥$1M 巨鯨`);
+      const tape = document.getElementById('whaleTape');
+      const empty = tape && tape.querySelector('.empty');
+      if (empty && !this.count) empty.textContent = `監聽中 · 現行門檻 ≥ $${U.money(this.thrNow)} — 尚無達門檻的成交，可按「≥10萬」看更多`;
     }
   };
 

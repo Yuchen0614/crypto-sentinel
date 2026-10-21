@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/main.css">
 <link rel="stylesheet" href="assets/css/fx.css">
+<link rel="stylesheet" href="assets/css/v2.css">
 </head>
 <body>
 <canvas id="starfield"></canvas>
@@ -61,11 +62,11 @@
   </div>
 </header>
 
-<!-- ── 主體 ───────────────────────────────────────────── -->
+<!-- ── 主體：三欄儀表板 ──────────────────────────────── -->
 <main class="layout">
 
-  <!-- 左：全市場掃描 -->
-  <aside class="col col-a">
+    <!-- 左：全市場掃描 -->
+    <aside class="col col-a">
     <section class="panel panel-grow">
       <div class="panel-head">
         <h2><i class="ic ic-scan"></i>全市場掃描<span class="count" id="scanCount">0</span></h2>
@@ -98,10 +99,10 @@
       <div class="panel-foot" id="scanFoot">載入中…</div>
       <div class="panel-foot" style="border-top:0;padding-top:0">資金動能＝24H 動能 × 週轉率 × 區間位置 × 資金費率；右側面板為選定幣種的完整聰明錢分析。方向鍵切換幣種，/ 搜尋。</div>
     </section>
-  </aside>
+    </aside>
 
-  <!-- 中：主圖表 + 訂單簿 -->
-  <section class="col col-b">
+    <!-- 中：主圖表 + 訂單簿 -->
+    <section class="col col-b">
     <section class="panel chart-panel">
       <div class="panel-head">
         <div class="sym-block">
@@ -163,7 +164,7 @@
         <div class="imb-bands" id="imbBands"></div>
         <div class="book-cols">
           <table class="book">
-            <thead><tr><th class="ta-r">價格</th><th class="ta-r">數量</th><th class="ta-r">金額</th><th class="ta-r">累計</th></tr></thead>
+            <thead><tr><th class="ta-r">價格</th><th class="ta-r">數量</th><th class="ta-r">金額</th><th class="ta-r">距中價</th></tr></thead>
             <tbody id="bookAsks"></tbody>
           </table>
           <div class="spread" id="bookSpread">—</div>
@@ -199,77 +200,10 @@
       </div>
       <div class="alert-list" id="alertList"><div class="empty">尚未偵測到異常事件 — 系統持續掃描中</div></div>
     </section>
+    </section><!-- /col-b -->
 
-    <!-- 鏈上情報 -->
-    <section class="panel chain-panel">
-      <div class="panel-head">
-        <h2><i class="ic ic-chain"></i>鏈上聰明錢追蹤<span class="count" id="chainCount">0</span></h2>
-        <div class="seg seg-sm" id="chainSeg">
-          <button data-chain="eth" class="on">以太坊</button>
-          <button data-chain="solana">Solana</button>
-          <button data-chain="base">Base</button>
-          <button data-chain="bsc">BNB</button>
-        </div>
-        <div class="seg seg-sm" id="chainMin">
-          <button data-min="20000" class="on">≥2萬</button>
-          <button data-min="100000" title="DEX 大型換幣">≥10萬</button>
-          <button data-min="1000000" title="鏈上巨鯨">≥100萬</button>
-        </div>
-        <span class="mini" id="chainMeta">鏈上掃描啟動中…</span>
-      </div>
-      <div class="chain-body">
-        <div class="chain-col">
-          <div class="sub-head">
-            <b>Hyperliquid 大戶錢包 · 即時持倉</b>
-            <span class="mini" id="hlMeta">—</span>
-          </div>
-          <div class="agg-wrap">
-            <div class="agg-bar"><i id="aggFill"></i></div>
-            <div class="agg-labels"><span id="aggLong">多 —</span><span id="aggRatio">—</span><span id="aggShort">空 —</span></div>
-            <div class="agg-stats">
-              <div><label>已追蹤錢包</label><b id="aggWallets">0</b></div>
-              <div><label>倉位數</label><b id="aggPos">0</b></div>
-              <div><label>總名目規模</label><b id="aggNotional">—</b></div>
-              <div><label>未實現損益</label><b id="aggUpnl">—</b></div>
-            </div>
-          </div>
-          <div class="sub-head"><b>大戶最擁擠倉位</b><span class="mini" id="coinMeta">依追蹤錢包的持倉名目排序</span></div>
-          <div class="coin-bars" id="coinBars"><div class="empty">載入中…</div></div>
-          <div class="hl-table-wrap">
-            <table class="hl">
-              <thead><tr><th>大戶錢包</th><th>主要持倉</th><th class="ta-r">名目</th><th class="ta-r">未實現</th><th class="ta-r">月報酬</th></tr></thead>
-              <tbody id="hlBody"></tbody>
-            </table>
-          </div>
-          <div class="sub-head"><b>錢包倉位變化偵測</b><span class="mini" id="hlEventMeta">—</span></div>
-          <div class="hl-events" id="hlEvents"><div class="empty">等待錢包倉位變化…（首次比對需兩輪掃描）</div></div>
-        </div>
-        <div class="chain-col">
-          <div class="sub-head"><b>鏈上大額換幣即時流</b><span class="mini" id="dexMeta">掃描中…</span></div>
-          <div class="radar-wrap">
-            <canvas id="radar"></canvas>
-            <div class="radar-hud">
-              <span id="radarStatus">SCANNING</span>
-              <span id="radarStat">—</span>
-            </div>
-          </div>
-          <div class="chain-tape-head">
-            <span>時間</span><span>鏈</span><span>代幣</span><span>方向</span><span class="ta-r">金額</span><span class="ta-r">錢包</span>
-          </div>
-          <div class="chain-tape" id="chainTape"><div class="empty">正在掃描鏈上大額換幣…</div></div>
-          <div class="sub-head">
-            <b>聰明錢錢包榜</b>
-            <span class="mini" title="分數＝交易規模 28% + 買賣方向 16% + 交易後價格變化 36% + 代幣廣度 20%">評分：規模 28%・方向 16%・交易後走勢 36%・廣度 20%</span>
-          </div>
-          <div class="wallet-list" id="walletList"><div class="empty">累積鏈上錢包資料中…</div></div>
-          <div class="cobuy" id="coBuyList"></div>
-        </div>
-      </div>
-    </section>
-  </section>
-
-  <!-- 右：聰明錢 / 巨鯨 / 持倉 -->
-  <aside class="col col-c">
+    <!-- 右：聰明錢 / 巨鯨 / 持倉 -->
+    <aside class="col col-c">
     <section class="panel smart-panel">
       <div class="panel-head">
         <h2><i class="ic ic-brain"></i>聰明錢壓力計</h2>
@@ -336,8 +270,78 @@
       </div>
       <div class="tape tape-sm" id="liqTape"><div class="empty">等待清算事件…</div></div>
     </section>
-  </aside>
+    </aside>
 </main>
+
+<!-- ── 鏈上聰明錢（全寬、固定高度、永遠可見）────────────── -->
+<div class="chain-wrap">
+<!-- 鏈上情報 -->
+    <section class="panel chain-panel">
+      <div class="panel-head">
+        <h2><i class="ic ic-chain"></i>鏈上聰明錢追蹤<span class="count" id="chainCount">0</span></h2>
+        <div class="seg seg-sm" id="chainSeg">
+          <button data-chain="eth" class="on">以太坊</button>
+          <button data-chain="solana">Solana</button>
+          <button data-chain="base">Base</button>
+          <button data-chain="bsc">BNB</button>
+        </div>
+        <div class="seg seg-sm" id="chainMin">
+          <button data-min="20000" class="on">≥2萬</button>
+          <button data-min="100000" title="DEX 大型換幣">≥10萬</button>
+          <button data-min="1000000" title="鏈上巨鯨">≥100萬</button>
+        </div>
+        <span class="mini" id="chainMeta">鏈上掃描啟動中…</span>
+      </div>
+      <div class="chain-body">
+        <div class="chain-col">
+          <div class="sub-head">
+            <b>Hyperliquid 大戶錢包 · 即時持倉</b>
+            <span class="mini" id="hlMeta">—</span>
+          </div>
+          <div class="agg-wrap">
+            <div class="agg-bar"><i id="aggFill"></i></div>
+            <div class="agg-labels"><span id="aggLong">多 —</span><span id="aggRatio">—</span><span id="aggShort">空 —</span></div>
+            <div class="agg-stats">
+              <div><label>已追蹤錢包</label><b id="aggWallets">0</b></div>
+              <div><label>倉位數</label><b id="aggPos">0</b></div>
+              <div><label>總名目規模</label><b id="aggNotional">—</b></div>
+              <div><label>未實現損益</label><b id="aggUpnl">—</b></div>
+            </div>
+          </div>
+          <div class="sub-head"><b>大戶最擁擠倉位</b><span class="mini" id="coinMeta">依追蹤錢包的持倉名目排序</span></div>
+          <div class="coin-bars" id="coinBars"><div class="empty">載入中…</div></div>
+          <div class="hl-table-wrap">
+            <table class="hl">
+              <thead><tr><th>大戶錢包</th><th>主要持倉</th><th class="ta-r">名目</th><th class="ta-r">未實現</th><th class="ta-r">月報酬</th></tr></thead>
+              <tbody id="hlBody"></tbody>
+            </table>
+          </div>
+          <div class="sub-head"><b>錢包倉位變化偵測</b><span class="mini" id="hlEventMeta">—</span></div>
+          <div class="hl-events" id="hlEvents"><div class="empty">等待錢包倉位變化…（首次比對需兩輪掃描）</div></div>
+        </div>
+        <div class="chain-col">
+          <div class="sub-head"><b>鏈上大額換幣即時流</b><span class="mini" id="dexMeta">掃描中…</span></div>
+          <div class="radar-wrap">
+            <canvas id="radar"></canvas>
+            <div class="radar-hud">
+              <span id="radarStatus">SCANNING</span>
+              <span id="radarStat">—</span>
+            </div>
+          </div>
+          <div class="chain-tape-head">
+            <span>時間</span><span>鏈</span><span>代幣</span><span>方向</span><span class="ta-r">金額</span><span class="ta-r">錢包</span>
+          </div>
+          <div class="chain-tape" id="chainTape"><div class="empty">正在掃描鏈上大額換幣…</div></div>
+          <div class="sub-head">
+            <b>聰明錢錢包榜</b>
+            <span class="mini" id="walletMeta" title="分數＝交易規模 28% + 買賣方向 16% + 交易後價格變化 36% + 代幣廣度 20%">評分：規模 28%・方向 16%・交易後走勢 36%・廣度 20%</span>
+          </div>
+          <div class="wallet-list" id="walletList"><div class="empty">累積鏈上錢包資料中…</div></div>
+          <div class="cobuy" id="coBuyList"></div>
+        </div>
+      </div>
+    </section>
+</div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 

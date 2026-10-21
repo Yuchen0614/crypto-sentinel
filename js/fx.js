@@ -71,7 +71,7 @@
       if (t - last < 60) return requestAnimationFrame(loop);
       last = t;
       c.fillStyle = 'rgba(4,6,13,.30)'; c.fillRect(0, 0, W, H);
-      c.font = '13px "Share Tech Mono",monospace';
+      c.font = '13px "JetBrains Mono",monospace';
       cols.forEach((col, i) => {
         col.y += col.v;
         if (col.y > H + 40) { col.y = -20 - Math.random() * 200; col.v = 3 + Math.random() * 9; }
@@ -157,7 +157,7 @@
         c.beginPath(); c.arc(rp.x, rp.y, rp.r * 0.55, 0, 6.2832);
         c.strokeStyle = `rgba(${rp.col},${0.30 * life})`; c.stroke();
         if (rp.label && life > 0.55) {
-          c.font = '9px "Share Tech Mono",monospace'; c.fillStyle = `rgba(234,252,255,${life})`;
+          c.font = '9px "JetBrains Mono",monospace'; c.fillStyle = `rgba(234,252,255,${life})`;
           c.textAlign = 'left'; c.fillText(rp.label + ' $' + U.money(rp.usd), rp.x + 7, rp.y - 5);
         }
       }
@@ -191,10 +191,10 @@
       for (let i = 0; i < n; i++) dots.push({ x: Math.random() * W, y: Math.random() * H, z: Math.random() * .8 + .2, s: Math.random() * 1.6 + .4 });
     }
     size(); addEventListener('resize', U.debounce(size, 250));
-    let last = 0, floor = 0;
+    let last = 0, floor = 0, scanGrad = null, scanGradY = -1e9;
     (function loop(t) {
       requestAnimationFrame(loop);
-      if (t - last < 33) return;
+      if (t - last < 40) return;
       last = t;
       c.clearRect(0, 0, W, H);
       // 星空
@@ -221,9 +221,12 @@
       // 掃描光
       scan += 1.6;
       if (scan > H + 300) scan = -300;
-      const g = c.createLinearGradient(0, scan - 120, 0, scan);
-      g.addColorStop(0, 'rgba(56,246,255,0)'); g.addColorStop(1, 'rgba(56,246,255,.055)');
-      c.fillStyle = g; c.fillRect(0, scan - 120, W, 120);
+      if (!scanGrad || Math.abs(scan - scanGradY) > 24) {
+        scanGradY = scan;
+        scanGrad = c.createLinearGradient(0, scan - 120, 0, scan);
+        scanGrad.addColorStop(0, 'rgba(56,246,255,0)'); scanGrad.addColorStop(1, 'rgba(56,246,255,.055)');
+      }
+      c.fillStyle = scanGrad; c.fillRect(0, scan - 120, W, 120);
       // 雜訊條（極低機率）
       if (Math.random() < 0.004 && !reduced()) {
         bars.push({ y: Math.random() * H, h: 1 + Math.random() * 3, t: Date.now() });

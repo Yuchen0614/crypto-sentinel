@@ -2,7 +2,7 @@
 'use strict';
 (function (w) {
   const S = w.SENTINEL, U = S.util;
-  const N = 11;   // 每側顯示檔數
+  const N = 9;    // 每側顯示檔數
   const Bk = S.bookUI = {
     askRows: [], bidRows: [], built: false,
     init() {

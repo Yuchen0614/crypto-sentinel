@@ -1,0 +1,147 @@
+/* ══════════════════════════════════════════════════════════════
+   v2.css — 版面重整（單頁、鏈上區塊全寬常駐）
+   必須在 main.css / fx.css 之後載入
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 頁面骨架：HUD / 主體 / 鏈上區塊 / 狀態列 ─────────────── */
+body { display: flex; flex-direction: column; height: 100vh; overflow: hidden }
+.hud { flex: 0 0 auto }
+.statusbar { flex: 0 0 auto }
+.layout {
+  flex: 1 1 auto; min-height: 0; height: auto;
+  display: grid; grid-template-columns: 322px minmax(0, 1fr) 356px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 10px; padding: 10px 10px 6px;
+}
+/* 面板在捲動欄中不可被壓縮（flex-shrink:1 會把面板壓成 2px → 內容整區看不到） */
+.col-a > *, .col-b > *, .col-c > * { flex: 0 0 auto }
+.col-a > .panel-grow { flex: 1 1 auto; min-height: 0 }
+
+/* ── 鏈上聰明錢：全寬常駐區塊 ─────────────────────────────── */
+.chain-wrap { flex: 0 0 auto; display: flex; min-height: 0; padding: 0 10px 10px; height: clamp(228px, 26vh, 336px) }
+.chain-wrap .chain-panel { flex: 1 1 auto; min-height: 0 }
+.chain-body { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 8px 11px 10px }
+.chain-col { min-height: 0; overflow: hidden }
+.chain-col > * { flex: 0 0 auto }
+.hl-table-wrap, .chain-tape, .wallet-list, .coin-bars, .hl-events { max-height: none }
+.hl-table-wrap { flex: 1 1 auto; min-height: 76px }
+.chain-tape { flex: 1 1 auto; min-height: 72px }
+.wallet-list { flex: 1 1 auto; min-height: 66px }
+.coin-bars { flex: 0 1 auto; max-height: 152px }
+.hl-events { flex: 0 1 auto; max-height: 132px }
+.radar-wrap { flex: 0 0 auto }
+#radar { height: clamp(118px, 15vh, 168px) }
+
+/* ── 頂部 HUD：高度自適應、狀態燈橫向排列（原本固定 62px 會被 5 顆燈溢出蓋住內容）── */
+.hud { height: auto; min-height: 54px; padding: 6px 14px; gap: 14px; flex-wrap: wrap }
+.hud-right { gap: 12px; margin-left: auto }
+.pills { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 6px; max-width: 430px }
+.clock span { font-size: 17px }
+@media (max-width: 1560px) { #pillVer { display: none } }
+@media (max-width: 1360px) { .clock small { display: none } }
+
+/* ── 聰明錢壓力計：每項指標固定三行，說明文字單行截斷（原本會換行把面板撐到 1000px）── */
+.comp { grid-template-columns: minmax(0, 1fr) 42px; gap: 2px 8px; align-items: center }
+.comp label { display: block; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.comp label i.d { display: block; font-style: normal; font-size: 9.5px; color: var(--tx-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.comp-bar { grid-column: 1/2; height: 4px; margin-top: 3px }
+.comp-val { grid-row: 1/3; align-self: center; font-size: 10.5px }
+.comp-list { gap: 2px; padding: 4px 11px 6px }
+
+/* ── 掛單牆與訂單簿：密度收斂（8 道牆太佔高度）──────────────── */
+.wall { padding: 2px 7px }
+.wall:nth-child(n+5) { display: none }
+.book td { padding: 1px 5px }
+.book-cols { padding: 0 11px 4px }
+.imb-bands { padding: 5px 11px 6px }
+.imb-wrap { padding: 6px 11px 3px }
+
+/* ── 數字對齊（等寬數字，表格與數值直排對齊）──────────────── */
+table, .book td, .kv b, .agg-stats b, .mini-stats b, .liq-sum b, .chart-stats b,
+.price-block b, .stat b, .nf-item b, .trow, .ctrow, .lrow, .coin-bar, .wl .sc,
+.ov-grid b, .hle .t { font-variant-numeric: tabular-nums }
+
+/* ── 捲動容器：滾動不外溢、視覺提示更清楚 ─────────────────── */
+.col-b, .col-c { overscroll-behavior: contain; scrollbar-gutter: stable }
+.table-wrap, .tape, .chain-tape, .wallet-list, .hl-table-wrap, .hl-events, .coin-bars, .alert-list { overscroll-behavior: contain }
+
+/* ── 效能：面板不用 backdrop-filter（多層模糊會拖慢滾動與動畫）── */
+.panel {
+  backdrop-filter: none;
+  background: linear-gradient(180deg, rgba(13, 21, 35, .95), rgba(9, 15, 26, .93));
+}
+.panel:hover { box-shadow: 0 0 0 1px rgba(56, 246, 255, .1) inset, 0 0 26px -14px rgba(56, 246, 255, .7) }
+
+/* ── 小細節：標題列與留白更一致 ───────────────────────────── */
+.panel-head { min-height: 30px }
+.panel-head h2 { text-transform: none; letter-spacing: .03em }
+.scan-filter input { font-size: 12px }
+.panel-foot { line-height: 1.5 }
+.chart-legend { flex-wrap: wrap }
+
+/* ── 高度自適應：矮螢幕壓縮圖表，避免三欄內出現大幅捲動 ─────── */
+@media (max-height: 1050px) {
+  #chart { height: 262px } #heat { height: 208px } #gauge { height: 152px }
+  .agg-wrap { padding: 6px 9px 1px }
+}
+@media (max-height: 900px) {
+  #chart { height: 232px } #heat { height: 182px } #gauge { height: 140px }
+  .chart-stats > div { padding: 4px 9px } .panel-head { padding: 6px 10px; min-height: 27px }
+  .chart-legend { gap: 10px }
+  /* 矮螢幕：收起次要區塊，降低右欄與中欄的捲動量 */
+  .smart-panel .note { display: none }
+  .tape { max-height: 168px } .tape-sm { max-height: 132px }
+  #oiChart { height: 62px } .signal-box { max-height: 120px }
+  .alert-list { max-height: 132px }
+  .hl-table-wrap { min-height: 64px }
+}
+@media (max-height: 800px) {
+  #chart { height: 204px } #heat { height: 164px } #gauge { height: 126px }
+  .chain-wrap { height: 226px } .chart-legend { padding: 3px 10px; font-size: 9.5px }
+  .mini-stats > div, .liq-sum > div, .agg-stats > div { padding: 4px 7px }
+  .panel-foot { padding: 4px 10px }
+  .table-wrap { margin-top: 4px }
+  .scan tbody td { padding: 3px 8px }
+}
+
+/* ── 寬度自適應 ───────────────────────────────────────────── */
+@media (max-width: 1760px) { .layout { grid-template-columns: 296px minmax(0, 1fr) 340px } }
+@media (max-width: 1500px) {
+  .layout { grid-template-columns: 262px minmax(0, 1fr) 322px }
+  .hud-brand p { display: none }
+  .hud-brand { min-width: 210px }
+}
+/* 覆寫 main.css 的 1360 中斷點：這裡仍維持三欄 */
+@media (min-width: 1221px) and (max-width: 1360px) {
+  body { display: flex; flex-direction: column; height: 100vh; overflow: hidden }
+  .layout { display: grid; grid-template-columns: 248px minmax(0, 1fr) 306px; height: auto }
+  .col-a, .col-b, .col-c { overflow-y: auto; overflow-x: hidden }
+  .row2 { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) }
+  .hud { flex-wrap: nowrap; height: 62px; padding: 0 14px }
+  .hud-stats { order: 0; width: auto }
+  .table-wrap { max-height: none }
+  .chain-body { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) }
+}
+
+/* 窄螢幕：改成整頁捲動的堆疊版面 */
+@media (max-width: 1220px) {
+  body { display: block; height: auto; overflow-y: auto }
+  .layout { display: block; height: auto; padding: 8px }
+  .col { display: block; overflow: visible !important; padding-right: 0; margin-bottom: 8px }
+  .col > * { margin-bottom: 8px }
+  .row2 { grid-template-columns: 1fr }
+  .chain-wrap { height: auto; display: block; padding: 0 8px 8px }
+  .chain-body { grid-template-columns: 1fr; overflow: visible; gap: 10px }
+  .hl-table-wrap, .chain-tape, .wallet-list, .coin-bars, .hl-events { max-height: 300px }
+  .hud { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 10px }
+  .hud-stats { order: 3; width: 100% }
+  .hud-brand p { display: block }
+  .toasts { right: 8px; left: 8px; width: auto; top: 96px }
+  .table-wrap { max-height: 420px }
+}
+@media (max-width: 760px) {
+  .layout { padding: 6px }
+  .hud-right { width: 100%; justify-content: space-between }
+  .pills { flex-direction: row; flex-wrap: wrap; align-items: center }
+  .chart-stats { grid-template-columns: repeat(2, 1fr) }
+}
