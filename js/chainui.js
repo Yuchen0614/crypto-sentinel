@@ -120,8 +120,15 @@
     });
     const meta = $('#hlMeta');
     if (meta) {
-      const dt = HL.listAt ? new Date(HL.listAt) : null;
-      meta.textContent = `已回報 ${HL.states.size}/${HL.wallets.length} 個錢包 · 每 5 秒輪詢 6 個 · 名單 ${dt ? dt.toLocaleDateString('zh-TW') : '—'}（每日自動更新）`;
+      const dt = HL.listAt ? new Date(HL.listAt).toLocaleDateString('zh-TW') : '—';
+      const src = S.api.hlSource;
+      const base = `已回報 ${HL.states.size}/${HL.wallets.length} 個錢包 · 每 5 秒輪詢 6 個 · 名單 ${dt}`;
+      if (src === 'fallback') {
+        meta.innerHTML = base + ' · <span style="color:var(--am)">使用內建備援名單</span>'
+          + ` <span class="mini">（${S.api.hlNote || '讀取 data/whales.json 失敗'}；改用線上網址或在本機以 python -m http.server 開啟即可自動更新名單）</span>`;
+      } else {
+        meta.textContent = base + '（每日由 GitHub Actions 自動更新）';
+      }
     }
   };
 
@@ -288,10 +295,13 @@
     const cm = $('#chainMeta');
     if (cm) {
       const down = g.cooling;
+      const fb = S.api.hlSource === 'fallback';
       cm.textContent = down
-        ? `鏈上 API 冷卻中（GeckoTerminal 免費層限流）· 已收 ${d.trades.length} 筆，冷卻結束自動續掃`
-        : `${OC.chainLabel(d.chain)} ${d.pools.length} 池 · DEX ${d.trades.length} 筆 · 錢包 ${d.wallets.size} 個 · 大戶持倉 ${HL.states.size}/${HL.wallets.length}`;
+        ? `鏈上 API 冷卻中（GeckoTerminal 免費層限流）· 已收 ${d.trades.length} 筆 · 冷卻結束自動續掃`
+        : `${OC.chainLabel(d.chain)} ${d.pools.length} 池 · DEX ${d.trades.length} 筆 · 錢包 ${d.wallets.size} 個 · 大戶倉位 ${HL.states.size}/${HL.wallets.length}`
+          + (fb ? ' · 名單：內建備援' : '');
       cm.style.color = down ? 'var(--am)' : '';
+      cm.title = fb ? ('目前使用內建備援大戶名單：' + (S.api.hlNote || '') + '\n用線上網址開啟，或在本機執行 python -m http.server 後以 http://localhost 開啟，即可載入完整且每日更新的名單。') : '';
     }
   };
 })(window);

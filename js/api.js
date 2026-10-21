@@ -253,6 +253,40 @@
     });
   };
 
+  /* 內建備援大戶名單（24 筆，取自 2026-10-21）——用 file:// 直接開啟 index.html 時，
+     瀏覽器會禁止 fetch 讀取 data/whales.json，屆時改用這份名單，讓鏈上持倉仍可運作。 */
+  const HL_FALLBACK = {
+    generated_at: "2026-10-21T05:15:09Z",
+    source: "內建備援名單（2026-10-21 快照）",
+    count: 24,
+    wallets: [
+      {addr:"0x5b5d51203a0f9079f8aeb098a6523a13f298c060",name:"",av:249083583,roi30:32.1,pnl30:63599017,why:"資金規模最大"},
+      {addr:"0xb83de012dba672c76a7dbbbf3e459cb59d7d6e36",name:"",av:229392339,roi30:37.6,pnl30:61302895,why:"資金規模最大"},
+      {addr:"0xfc667adba8d4837586078f4fdcdc29804337ca06",name:"",av:123864507,roi30:13.8,pnl30:15604188,why:"資金規模最大"},
+      {addr:"0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",name:"",av:116783350,roi30:12.4,pnl30:13904377,why:"資金規模最大"},
+      {addr:"0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",name:"",av:96352455,roi30:7.4,pnl30:9329687,why:"資金規模最大"},
+      {addr:"0xe867fbdad3291530e41530301ecb77693850c78e",name:"",av:87788595,roi30:9.0,pnl30:126361,why:"資金規模最大"},
+      {addr:"0x856c35038594767646266bc7fd68dc26480e910d",name:"",av:80369494,roi30:12.8,pnl30:6665422,why:"資金規模最大"},
+      {addr:"0xf5d81a135f756ca16544e53c20fc20643ec3ad53",name:"",av:76821493,roi30:6.7,pnl30:4963461,why:"資金規模最大"},
+      {addr:"0xbdfa4f4492dd7b7cf211209c4791af8d52bf5c50",name:"",av:76138391,roi30:-39.0,pnl30:-10575,why:"資金規模最大"},
+      {addr:"0x03b9a189e2480d1e4c3007080b29f362282130fa",name:"",av:67518845,roi30:-0.1,pnl30:-5022,why:"資金規模最大"},
+      {addr:"0xdd53c5297309130ab5fe5623dc905752e3342b13",name:"",av:61578825,roi30:13.6,pnl30:7363671,why:"資金規模最大"},
+      {addr:"0x85ecf584f25db6f146718b86d493e33c5af72052",name:"",av:60625785,roi30:-1.4,pnl30:-1025359,why:"資金規模最大"},
+      {addr:"0x8def9f50456c6c4e37fa5d3d57f108ed23992dae",name:"",av:58427904,roi30:12.2,pnl30:6391040,why:"資金規模最大"},
+      {addr:"0x77375a8c9d13bf79afb2a87f1b0ac1dfd5f5bf66",name:"",av:48550938,roi30:40.5,pnl30:5509781,why:"資金規模最大"},
+      {addr:"0x7fdafde5cfb5465924316eced2d3715494c517d1",name:"BobbyBigSize",av:46292693,roi30:16.5,pnl30:11828279,why:"資金規模最大"},
+      {addr:"0x936cf4fb95c30ce83f658b5bbb247e4bb381bb0f",name:"",av:11630490,roi30:23.9,pnl30:10048076,why:"月獲利最高"},
+      {addr:"0x024294c53a69c1e6b39810b3fac87385752fffa1",name:"",av:20548179,roi30:73.0,pnl30:8424543,why:"月獲利最高"},
+      {addr:"0xd47587702a91731dc1089b5db0932cf820151a91",name:"",av:17871461,roi30:26.1,pnl30:7374265,why:"月獲利最高"},
+      {addr:"0xf02d16a272a842f8bac1d9a9e773aba1933454c6",name:"",av:32226798,roi30:57.4,pnl30:7188233,why:"月獲利最高"},
+      {addr:"0xfe7ce058edc7cfcde9ef8262ba51f8d4796ab7ae",name:"",av:14806236,roi30:16.9,pnl30:6994971,why:"月獲利最高"},
+      {addr:"0xd487e26c62ed8c28ce3cc70b5791e501c2934982",name:"",av:1596343,roi30:434.6,pnl30:374498,why:"月報酬率最高"},
+      {addr:"0x352deb23bebae8b4c57d0ae341d9c1951fd8425a",name:"",av:1165967,roi30:236.3,pnl30:148003,why:"月報酬率最高"},
+      {addr:"0x46926d8fad4a36047a73ed7be1cec963c77fef87",name:"",av:1376910,roi30:227.7,pnl30:1004316,why:"月報酬率最高"},
+      {addr:"0x77ee3604adbdefa66a817b3cf776412a6613a018",name:"",av:5718868,roi30:155.7,pnl30:3329881,why:"月獲利最高"}
+    ]
+  };
+
   /* ══════════ 鏈上資料（無金鑰公開端點）══════════════ */
 
   /* GeckoTerminal 免費層限制很嚴：實測連續約 6 次呼叫後連線會被直接丟棄（不是回 429），
@@ -333,18 +367,35 @@
   };
 
   /* Hyperliquid：大戶追蹤名單（repo 內由 GitHub Actions 每日更新的小檔案）*/
+  api.hlSource = 'wait'; api.hlNote = '';
   api.hlWhales = async function () {
+    // file:// 直接開啟時瀏覽器會禁止讀取本機檔案（fetch data/whales.json 必定失敗），
+    // 因此先用內建備援名單，讓大戶持倉在雙擊開啟的情境也能運作。
+    const isFile = (typeof location !== 'undefined' && location.protocol === 'file:');
     return cached('hlwhales', 3600e3, async () => {
+      api.health.chain = 'ok';
+      if (isFile) {
+        api.hlSource = 'fallback';
+        api.hlNote = '以 file:// 直接開啟，瀏覽器禁止讀取 data/whales.json';
+        return HL_FALLBACK;
+      }
       try {
-        const r = await fetch('data/whales.json', { cache: 'no-cache' });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const d = await r.json();
-        if (!d || !d.wallets) throw new Error('bad payload');
-        api.health.chain = 'ok';
+        const ac = new AbortController();
+        const to = setTimeout(() => ac.abort(), 12000);
+        let d = null;
+        try {
+          const r = await fetch('data/whales.json', { cache: 'no-cache', signal: ac.signal });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          d = await r.json();
+        } finally { clearTimeout(to); }
+        if (!d || !d.wallets || !d.wallets.length) throw new Error('名單格式異常');
+        api.hlSource = 'live'; api.hlNote = '';
         return d;
       } catch (e) {
-        S.errors.push('hlWhales: ' + e.message);
-        return null;
+        api.hlSource = 'fallback';
+        api.hlNote = e.message;
+        S.errors.push('hlWhales 改用內建備援名單: ' + e.message);
+        return HL_FALLBACK;
       }
     });
   };
