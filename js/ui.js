@@ -355,10 +355,11 @@
         bar.style.left = c.v >= 0 ? '50%' : (50 - w) + '%';
         bar.style.width = w + '%';
         bar.style.background = col;
-        bar.style.boxShadow = '0 0 10px -2px ' + col;
         val.textContent = (c.v >= 0 ? '+' : '') + (c.v * 100).toFixed(0);
         val.style.color = c.v >= 0 ? 'var(--gn)' : 'var(--rd)';
         el.querySelector('i.d').textContent = c.detail;
+        // 明細是單行截斷的（版面要緊湊），完整內容放 title；同時說明這條分數怎麼來的
+        el.title = c.label + '：' + c.detail + '（分數 ' + ((c.v >= 0 ? '+' : '') + (c.v * 100).toFixed(0)) + '／權重見指標說明）';
       });
     }
     U.text('#smNote', res.note);

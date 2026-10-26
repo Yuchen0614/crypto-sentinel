@@ -327,8 +327,10 @@
     // 1) 巨鯨淨流向（近 5 分鐘，以 15 分鐘平均大單量級歸一化）
     const nf5 = t.netflow(300e3), nf15 = t.netflow(900e3);
     const scale = Math.max(200000, (Math.abs(nf15.whaleBuy) + Math.abs(nf15.whaleSell)) / 2);
+    /* 壓力計每條的明細只給約 100px 寬（單行截斷），所以文字要短；
+       完整說明放在元素的 title，hover 就看得見。 */
     add('whale', '巨鯨淨流向 5M', nf5.whaleDelta / (scale * 2),
-      `大單買 $${U.money(nf5.whaleBuy)} / 賣 $${U.money(nf5.whaleSell)}`);
+      `買 $${U.money(nf5.whaleBuy)} · 賣 $${U.money(nf5.whaleSell)}`);
 
     // 2) CVD 斜率（近期動能）
     const cvd = t.cvdSeries(300, 5000);
@@ -338,12 +340,12 @@
       const noise = Math.abs(cvd[Math.floor(cvd.length / 2)] - cvd[0]) * 2 + 200000;
       cs = d / (Math.abs(d) + noise);
     }
-    add('cvd', 'CVD 累積斜率', cs * 1.6, `5 分鐘淨主動買賣差 ${U.signed(cvd.length ? cvd[cvd.length - 1] : 0, v => '$' + U.money(v))}`);
+    add('cvd', 'CVD 累積斜率', cs * 1.6, `5M 淨主動 ${U.signed(cvd.length ? cvd[cvd.length - 1] : 0, v => '$' + U.money(v))}`);
 
     // 3) 訂單簿買賣壓力
     const imb = (b.metrics && b.metrics.imb) || 0;
     add('book', '訂單簿買賣壓力', imb * 1.5,
-      `前 20 檔買 ${U.money(b.metrics ? b.metrics.b20 : 0)} / 賣 ${U.money(b.metrics ? b.metrics.a20 : 0)}`);
+      `前20 買 ${U.money(b.metrics ? b.metrics.b20 : 0)} · 賣 ${U.money(b.metrics ? b.metrics.a20 : 0)}`);
 
     // 4) 大戶持倉方向
     let tp = 0, tpTxt = '無合約資料';
@@ -351,7 +353,7 @@
       const dev = Math.log(p.out.topRatioNow) / Math.log(2);      // ratio>1 → 正
       const chg = isFinite(p.out.topRatioPrev) ? (p.out.topRatioNow - p.out.topRatioPrev) * 1.4 : 0;
       tp = U.clamp(dev * 0.5 + chg, -1, 1);
-      tpTxt = `大戶多空比 ${p.out.topRatioNow.toFixed(2)}${isFinite(p.out.topRatioPrev) ? `（1H ${(p.out.topRatioNow - p.out.topRatioPrev >= 0 ? '+' : '')}${(p.out.topRatioNow - p.out.topRatioPrev).toFixed(2)}）` : ''}`;
+      tpTxt = `多空比 ${p.out.topRatioNow.toFixed(2)}${isFinite(p.out.topRatioPrev) ? `（1H ${(p.out.topRatioNow - p.out.topRatioPrev >= 0 ? '+' : '')}${(p.out.topRatioNow - p.out.topRatioPrev).toFixed(2)}）` : ''}`;
     }
     add('top', '大戶部位方向', tp, tpTxt);
 
@@ -363,7 +365,7 @@
       const pxC = isFinite(ctx.priceStats && ctx.priceStats.h1) ? ctx.priceStats.h1 : 0;
       const agree = (oiC > 0 && pxC > 0) ? 0.35 : (oiC > 0 && pxC < 0 ? -0.35 : 0);
       lev = U.clamp(f * 0.45 + agree, -1, 1);
-      levTxt = `費率 ${(p.out.funding * 100).toFixed(4)}% · OI 1H ${isFinite(p.out.oi1h) ? U.pct(p.out.oi1h) : '—'}`;
+      levTxt = `費率 ${(p.out.funding * 100).toFixed(4)}% · OI ${isFinite(p.out.oi1h) ? U.pct(p.out.oi1h) : '—'}`;
     }
     add('lev', '槓桿結構', lev, levTxt);
 
@@ -375,14 +377,14 @@
       const sl = U.slope(closes, 24) / (price || 1) * 24 * 30;    // 歸一化
       const vwapDev = isFinite(vw) ? (price - vw) / vw * 25 : 0;
       mom = U.clamp(sl * 0.6 + vwapDev * 0.6, -1, 1);
-      momTxt = `價格 ${U.px(price)} · 30 分 VWAP ${U.px(vw)}`;
+      momTxt = `30M VWAP ${U.px(vw)}`;
     }
     add('mom', '價格動能', mom, momTxt);
 
     // 7) 清算偏向（空頭被軋 = 助力上漲）
     const lq15 = lq.sum(900e3);
     const lqv = lq15.total > 50000 ? U.clamp(lq15.net / (lq15.total * 1.5), -1, 1) : 0;
-    add('liq', '清算方向壓力', lqv, lq15.total > 0 ? `近 15 分清算 $${U.money(lq15.total)}（多 $${U.money(lq15.long)} / 空 $${U.money(lq15.short)}）` : '近 15 分無顯著清算');
+    add('liq', '清算方向壓力', lqv, lq15.total > 0 ? `15M $${U.money(lq15.total)} · 多 $${U.money(lq15.long)} / 空 $${U.money(lq15.short)}` : '近 15 分無顯著清算');
 
     const W = { whale: .2, cvd: .18, book: .14, top: .18, lev: .12, mom: .1, liq: .08 };
     let sum = 0, wsum = 0;
