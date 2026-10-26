@@ -50,6 +50,15 @@
 
   U.time = ts => { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0'); };
   U.timeShort = ts => { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  /* 依 K 線週期選時間軸格式：日內給 HH:MM，跨日以上給日期（否則大週期每格都長一樣） */
+  U.timeAxis = (ts, tf) => {
+    const d = new Date(ts);
+    const mo = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+    const HH = String(d.getHours()).padStart(2, '0'), MM = String(d.getMinutes()).padStart(2, '0');
+    if (tf === '1M' || tf === '1w' || tf === '3d' || tf === '1d') return mo + '/' + dd;
+    if (tf === '12h' || tf === '6h' || tf === '4h' || tf === '2h') return mo + '/' + dd + ' ' + HH + ':00';
+    return HH + ':' + MM;
+  };
   U.ago = ts => { const s = Math.max(0, (Date.now() - ts) / 1000); if (s < 60) return Math.round(s) + 's'; if (s < 3600) return Math.round(s / 60) + 'm'; return Math.round(s / 3600) + 'h'; };
 
   /* ── 統計 ─────────────────────────────────────────── */

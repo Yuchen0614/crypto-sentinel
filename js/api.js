@@ -142,7 +142,12 @@
     } catch (e) {
       S.errors.push('klines: ' + e.message);
       try {
-        const iv = { '1m': '1', '5m': '5', '15m': '15', '1h': '60', '4h': '240' }[interval] || '5';
+        /* 備援源（Bybit）的週期代碼；3 天以上沒有完全對應值，取最接近的日／週／月 */
+        const iv = {
+          '1m': '1', '3m': '3', '5m': '5', '15m': '15', '30m': '30',
+          '1h': '60', '2h': '120', '4h': '240', '6h': '360', '12h': '720',
+          '1d': 'D', '3d': 'D', '1w': 'W', '1M': 'M'
+        }[interval] || '5';
         const d = await jget(`${B.BYBIT}/v5/market/kline?category=spot&symbol=${symbol}&interval=${iv}&limit=${limit || 300}`, 12000);
         return (d.result.list || []).map(k => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5], q: +k[6], n: 0, tb: 0, tq: 0, delta: 0 })).reverse();
       } catch (e2) { return null; }

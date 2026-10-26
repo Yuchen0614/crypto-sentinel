@@ -87,7 +87,7 @@
         c.strokeStyle = 'rgba(77,141,255,.05)';
         c.beginPath(); c.moveTo(x, y0); c.lineTo(x, vy1); c.stroke();
         c.fillStyle = 'rgba(107,116,128,.9)';
-        c.fillText(U.timeShort(vis[i].t), x, H - 5);
+        c.fillText(U.timeAxis(vis[i].t, this.tf), x, H - 5);
       }
       c.restore();
 
@@ -226,7 +226,14 @@
         }
       }
     },
-    tfMs() { return { '1m': 6e4, '5m': 3e5, '15m': 9e5, '1h': 36e5, '4h': 144e5 }[this.tf] || 3e5; }
+    /* 週期 → 毫秒（1M 用 30 天近似，僅用於把標記對到 K 線索引） */
+    tfMs() {
+      return {
+        '1m': 6e4, '3m': 18e4, '5m': 3e5, '15m': 9e5, '30m': 18e5,
+        '1h': 36e5, '2h': 72e5, '4h': 144e5, '6h': 216e5, '12h': 432e5,
+        '1d': 864e5, '3d': 2592e5, '1w': 6048e5, '1M': 2592e6
+      }[this.tf] || 3e5;
+    }
   };
 
   /* ══════════════ 深度熱圖 ══════════════ */

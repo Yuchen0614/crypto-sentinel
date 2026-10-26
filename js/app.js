@@ -193,14 +193,34 @@
       Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
       S.ui.scan.render(true);
     });
-    document.getElementById('tfSeg').addEventListener('click', async e => {
-      const b = e.target.closest('button'); if (!b) return;
-      Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
-      S.chart.tf = b.dataset.tf;
-      const k = await S.api.klines(S.state.symbol, S.chart.tf, 300);
+    /* K 線週期：主要週期用分段鈕，冷門週期（3m/30m/2h/6h/12h/3d/1w/1M）用右邊的「更多」下拉，
+       兩者共用同一個切換函式，並互相把對方的選取狀態清掉。 */
+    const tfSeg = document.getElementById('tfSeg');
+    const tfMore = document.getElementById('tfMore');
+    const applyTf = async (tf, btn) => {
+      if (!tf) return;
+      S.chart.tf = tf;
+      if (tfSeg) Array.prototype.forEach.call(tfSeg.children, x => x.classList.toggle('on', x === btn));
+      if (tfMore) tfMore.classList.toggle('picked', !btn);
+      const k = await S.api.klines(S.state.symbol, tf, 300);
       if (k) S.chart.setData(k, true);
       refreshStats();
+    };
+    tfSeg.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (tfMore) tfMore.value = '';
+      applyTf(b.dataset.tf, b);
     });
+    if (tfMore) tfMore.addEventListener('change', () => { if (tfMore.value) applyTf(tfMore.value, null); });
+
+    /* 收藏交易對：列上的星號（在 ui.js 綁定）、面板篩選鈕、圖表標題的星號、鍵盤 F */
+    S.ui.scan.loadFavs();
+    document.getElementById('favChip').addEventListener('click', () => {
+      S.ui.scan.favOnly = !S.ui.scan.favOnly;
+      S.ui.scan.syncFavUI();
+      S.ui.scan.render(true);
+    });
+    document.getElementById('symFav').addEventListener('click', () => S.ui.scan.toggleFav(S.state.symbol));
     document.getElementById('ovSeg').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       const key = b.dataset.ov;
@@ -219,6 +239,10 @@
     /* 鍵盤操作 */
     document.addEventListener('keydown', e => {
       if (e.key === '/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); document.getElementById('scanSearch').focus(); return; }
+      // F：收藏／取消收藏目前選取的交易對
+      if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+        e.preventDefault(); S.ui.scan.toggleFav(S.state.symbol); return;
+      }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         const list = S.ui.scan.sorted(); if (!list.length) return;
         const i = list.findIndex(x => x.symbol === S.state.symbol);
@@ -297,6 +321,9 @@
       S.ui.hud.pills(S.stream.state);
       S.ui.hud.clock();
       refreshStats();
+      // 圖表標題的收藏星號跟著選取幣種／收藏數變動（只有變動時才寫 DOM）
+      const favKey = S.state.symbol + '|' + S.ui.scan.favs.size;
+      if (S.ui.scan.__favKey !== favKey) { S.ui.scan.__favKey = favKey; S.ui.scan.syncFavUI(); }
       const b = document.querySelector('#scanBody tr[data-sym="' + S.state.symbol + '"] .smbadge');
       if (b) b.title = '已完整分析：聰明錢壓力分數 ' + res.score + '（' + res.verdict + '）';
     }, 1000);

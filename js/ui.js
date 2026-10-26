@@ -8,10 +8,12 @@
   const Scan = UI.scan = {
     rows: new Map(), list: [], sort: 'quoteVolume', q: '', onlyFut: false, max: 120,
     order: [], orderKey: '', orderAt: 0,
+    favs: new Set(), favOnly: false,
     setList(l) { this.list = l || []; this.render(); },
     sorted() {
       let l = this.list;
       if (this.onlyFut && S.state.futuresSet) l = l.filter(x => S.state.futuresSet.has(x.symbol));
+      if (this.favOnly) l = l.filter(x => this.favs.has(x.symbol));
       if (this.q) { const q = this.q.toUpperCase(); l = l.filter(x => x.symbol.indexOf(q) >= 0 || (x.name || '').toUpperCase().indexOf(q) >= 0); }
       const s = this.sort;
       l = l.slice();
@@ -19,13 +21,19 @@
       else if (s === 'absChange') l.sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
       else if (s === 'smart') l.sort((a, b) => (b.smart || 50) - (a.smart || 50));
       else l.sort((a, b) => b.quoteVolume - a.quoteVolume);
+      /* 收藏釘在最前面（兩組各自照目前排序），清單下方用一條細線分隔 */
+      if (this.favs.size && !this.favOnly) {
+        const fav = l.filter(x => this.favs.has(x.symbol));
+        const rest = l.filter(x => !this.favs.has(x.symbol));
+        return fav.concat(rest).slice(0, Math.max(this.max, fav.length));
+      }
       return l.slice(0, this.max);
     },
     render(force) {
       const body = document.getElementById('scanBody'); if (!body) return;
       let list = this.sorted();
       // 只有在「排序/搜尋變更」或每 10 秒才重新排序，其餘時間維持列序（數字就地更新）
-      const key = this.sort + '|' + this.q + '|' + this.onlyFut + '|' + list.length;
+      const key = this.sort + '|' + this.q + '|' + this.onlyFut + '|' + this.favOnly + '|' + this.favs.size + '|' + list.length;
       const now = Date.now();
       if (force || key !== this.orderKey || now - this.orderAt > 10000) {
         this.order = list.map(x => x.symbol); this.orderKey = key; this.orderAt = now;
@@ -42,7 +50,7 @@
       // 條數不足時補齊 DOM
       while (body.children.length < list.length) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td class="ta-l"><span class="rk"></span><span class="sym"><b></b></span><em></em></td>' +
+        tr.innerHTML = '<td class="ta-l"><span class="fstar" title="收藏／取消收藏"></span><span class="rk"></span><span class="sym"><b></b></span><em></em></td>' +
           '<td class="ta-r px"></td><td class="ta-r ch"></td><td class="ta-r vol"></td><td class="ta-c sm"></td>';
         body.appendChild(tr);
       }
@@ -76,6 +84,19 @@
           tr.__sc = sc;
           smEl.innerHTML = `<span class="smbadge ${cls}">${sc}</span>`;
         }
+        /* 收藏星號：狀態只在變動時寫入 DOM（清單每 1.5 秒會重繪） */
+        const fav = this.favs.has(c.symbol);
+        const stEl = tr.children[0].querySelector('.fstar');
+        if (tr.__fav !== fav) {
+          tr.__fav = fav;
+          stEl.textContent = fav ? '★' : '☆';
+          stEl.classList.toggle('on', fav);
+          tr.classList.toggle('fav', fav);
+        }
+        if (!stEl.__bound) {
+          stEl.__bound = true;
+          stEl.onclick = e => { e.stopPropagation(); Scan.toggleFav(tr.dataset.sym); };
+        }
         tr.classList.toggle('sel', c.symbol === S.state.symbol);
         tr.onclick = () => S.select(c.symbol);
       });
@@ -104,6 +125,42 @@
       });
       if (hit) this.render();
       return hit;
+    },
+
+    /* ── 收藏交易對 ────────────────────────────────────────
+       存在 localStorage['cs.favs']；收藏的列會釘在清單最前面，
+       並可用面板上的「★ 收藏」篩選只看收藏（星號也可以直接點）。 */
+    loadFavs() {
+      try {
+        const a = JSON.parse(localStorage.getItem('cs.favs') || '[]');
+        if (Array.isArray(a)) a.forEach(s => { if (s) this.favs.add(s); });
+      } catch (e) { }
+      this.syncFavUI();
+    },
+    saveFavs() { try { localStorage.setItem('cs.favs', JSON.stringify(Array.from(this.favs))); } catch (e) { } },
+    toggleFav(sym) {
+      if (!sym) return false;
+      const on = !this.favs.has(sym);
+      if (on) this.favs.add(sym); else this.favs.delete(sym);
+      this.saveFavs(); this.syncFavUI(); this.render(true);
+      if (S.ui && S.ui.hud && S.ui.hud.ticker) S.ui.hud.ticker((on ? '已收藏 ' : '已移除收藏 ') + sym + '（共 ' + this.favs.size + ' 個）');
+      return on;
+    },
+    /* 把目前的收藏狀態同步到畫面上的星號與篩選鈕 */
+    syncFavUI() {
+      U.text('#favCount', this.favs.size);
+      const chip = document.getElementById('favChip');
+      if (chip) {
+        chip.classList.toggle('on', this.favOnly);
+        chip.title = this.favOnly ? '目前只顯示收藏，點一下看全部' : '只顯示收藏的交易對（在任一列左側的星號可收藏；已收藏 ' + this.favs.size + ' 個）';
+      }
+      const star = document.getElementById('symFav');
+      if (star && S.state.symbol) {
+        const on = this.favs.has(S.state.symbol);
+        star.textContent = on ? '★' : '☆';
+        star.classList.toggle('on', on);
+        star.title = (on ? '移除收藏 ' : '加入收藏 ') + S.state.symbol + '（F）';
+      }
     }
   };
 

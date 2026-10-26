@@ -87,6 +87,7 @@
       <div class="scan-filter">
         <input id="scanSearch" type="search" placeholder="搜尋幣種 / BTC ETH SOL …" spellcheck="false">
         <label class="chk"><input type="checkbox" id="onlyFutures"> 僅合約</label>
+        <button class="chip-toggle" id="favChip" title="只顯示收藏的交易對（在任一列左側的星號可收藏）">★ 收藏 <b id="favCount">0</b></button>
       </div>
       <div class="breadth" id="breadthBar"></div>
       <div class="table-wrap">
@@ -104,7 +105,7 @@
         </table>
       </div>
       <div class="panel-foot" id="scanFoot">載入中…</div>
-      <div class="panel-foot mini" style="border-top:0;padding-top:0">方向鍵切換 · 「/」搜尋 · 資金動能＝動能×週轉率×區間位置×費率</div>
+      <div class="panel-foot mini" style="border-top:0;padding-top:0">方向鍵切換 · 「/」搜尋 · <b>F 收藏</b> · ★ 收藏的列會釘在最上面</div>
     </section>
     </aside>
 
@@ -113,6 +114,7 @@
     <section class="panel chart-panel">
       <div class="panel-head">
         <div class="sym-block">
+          <button class="fstar-big" id="symFav" title="加入收藏（F）" aria-label="收藏這個交易對">☆</button>
           <h2 id="symName">BTC/USDT</h2>
           <span class="sym-tag" id="symTag">SPOT</span>
         </div>
@@ -120,13 +122,25 @@
           <b id="symPrice">—</b>
           <span id="symChange" class="chg">—</span>
         </div>
-        <div class="seg" id="tfSeg">
+        <div class="seg" id="tfSeg" title="K 線週期">
           <button data-tf="1m">1m</button>
           <button data-tf="5m" class="on">5m</button>
           <button data-tf="15m">15m</button>
           <button data-tf="1h">1H</button>
           <button data-tf="4h">4H</button>
+          <button data-tf="1d">1D</button>
         </div>
+        <select id="tfMore" class="tf-more" title="更多週期（3 分鐘 ~ 1 個月）">
+          <option value="">更多</option>
+          <option value="3m">3 分鐘</option>
+          <option value="30m">30 分鐘</option>
+          <option value="2h">2 小時</option>
+          <option value="6h">6 小時</option>
+          <option value="12h">12 小時</option>
+          <option value="3d">3 天</option>
+          <option value="1w">1 週</option>
+          <option value="1M">1 個月</option>
+        </select>
         <div class="seg" id="ovSeg">
           <button data-ov="cvd" class="on">CVD</button>
           <button data-ov="vol" class="on">量能</button>
