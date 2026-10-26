@@ -37,12 +37,60 @@
   ② 每一筆平倉都算出<b>錢包自己的實際已實現盈虧</b>（取自 Hyperliquid 成交紀錄的 <code>closedPnl</code>，是真實數字）；
   ③ 同時計算<b>「若固定名目跟單」的損益</b>——你要的「參考用盈虧」，扣掉雙邊估算手續費。
   <b>模擬跟單是紙上計算，不會下任何單，也不構成投資建議。</b>
-  ④ 下方「跟單設定」可以<b>設定模擬本金</b>（帳戶淨值／報酬率／相對本金回撤都以它為基準）、用<b>本金百分比</b>決定每筆名目、<b>加入或移除要跟的錢包</b>（名單清空＝跟全部），也可以<b>重新開始計算</b>從現在重新累積。
+  ④ 最上方<b>控制列</b>集中這一頁最常用的設定：<b>模擬本金</b>（帳戶淨值／報酬率／相對本金回撤都看它）、<b>每筆名目</b>（固定金額或本金 %）、<b>跟單對象</b>（勾選要跟的錢包，全部不勾＝跟全部）、<b>歷史紀錄</b>（可選 10 分～24 小時後按「重建歷史」重抓成交，或「重新開始」從現在累積）。
   記錄存在這台裝置的瀏覽器（可匯出 CSV）；每日績效快照由 GitHub Actions 寫入 repo，較耐久。
 </div>
 
 <!-- ── 主體 ─────────────────────────────────────────────── -->
 <main class="sg-page">
+
+  <!-- ══ 控制列：本金／名目／跟單對象／歷史，固定在最上面 ══ -->
+  <section class="sg-bar" id="sgBar" aria-label="跟單設定">
+    <div class="sb-grp">
+      <label>模擬本金</label>
+      <div class="sb-row">
+        <input type="number" id="sgCapInput" min="1000" step="10000" inputmode="numeric" placeholder="100000"
+               title="帳戶層級績效（淨值、報酬率、相對本金回撤）都以它為基準">
+        <div class="seg seg-sm" id="sgCapSeg">
+          <button data-cap="100000">10萬</button><button data-cap="1000000" class="on">100萬</button><button data-cap="10000000">1000萬</button>
+        </div>
+      </div>
+      <span class="mini">目前 <b id="sgCapVal">—</b></span>
+    </div>
+
+    <div class="sb-grp">
+      <label>每筆名目</label>
+      <div class="sb-row">
+        <div class="seg seg-sm" id="sgSizeSeg"><button data-mode="fixed" class="on">固定金額</button><button data-mode="pct">本金 %</button></div>
+        <div class="seg seg-sm" id="sgCopySeg"><button data-copy="1000">1千</button><button data-copy="10000" class="on">1萬</button><button data-copy="100000">10萬</button></div>
+        <div class="seg seg-sm" id="sgPctSeg" hidden><button data-pct="1">1%</button><button data-pct="2">2%</button><button data-pct="5" class="on">5%</button><button data-pct="10">10%</button></div>
+      </div>
+      <span class="mini"><b id="sgSizeVal">—</b> · <span id="sgSizeNote">—</span>；跟的是名目本身，不乘大戶槓桿</span>
+    </div>
+
+    <div class="sb-grp">
+      <label>跟單對象</label>
+      <button class="sg-pickbtn" id="sgPickBtn" title="勾選要跟的錢包；全部不勾＝跟全部大戶">
+        <b id="sgFollowVal">—</b><span class="mini">選擇 ▾</span>
+      </button>
+      <span class="mini">只影響之後的新回合</span>
+    </div>
+
+    <div class="sb-grp sb-act">
+      <label>歷史紀錄</label>
+      <div class="sb-row">
+        <div class="seg seg-sm" id="sgWinSeg"><button data-win="10">10分</button><button data-win="60">1時</button><button data-win="360" class="on">6時</button><button data-win="1440">24時</button></div>
+        <button class="entry-btn" id="sgRebuildBtn" title="清空本機帳本，重新抓指定期間的成交來重建回合（Hyperliquid 單次上限 2000 筆，會自動往前翻頁）">重建歷史</button>
+      </div>
+      <div class="sb-row">
+        <button class="ghost" id="sgRecalcBtn" title="用目前的每筆名目重算已記錄回合的模擬跟單盈虧（錢包真實盈虧不受影響）">重算名目</button>
+        <button class="ghost danger" id="sgRestartBtn" title="清空本機帳本，從現在重新累積新回合">重新開始</button>
+        <button class="ghost" id="sgExport" title="匯出目前帳本（最多 300 筆）成 CSV">匯出 CSV</button>
+      </div>
+    </div>
+
+    <div class="sb-prog" id="sgProg" hidden><i></i><span id="sgProgTxt">—</span></div>
+  </section>
 
   <!-- 績效總覽（即時、單一基準）-->
   <div class="sg-cap">
@@ -170,58 +218,15 @@
       </section>
 
       <section class="panel">
-        <div class="panel-head"><h2><i class="ic ic-sys"></i>跟單設定</h2></div>
+        <div class="panel-head"><h2><i class="ic ic-sys"></i>進階：記錄門檻</h2><span class="mini">太小的回合不記</span></div>
         <div class="sg-settings">
-          <label>模擬跟單名目（每筆）<b id="sgCopyVal">—</b></label>
-          <div class="seg seg-sm" id="sgCopySeg">
-            <button data-copy="1000">$1千</button>
-            <button data-copy="10000" class="on">$1萬</button>
-            <button data-copy="100000">$10萬</button>
-          </div>
-          <label>記錄門檻（回合名目）<b id="sgMinVal">—</b></label>
+          <label>記錄門檻（回合名目 <b id="sgMinVal">—</b>）</label>
           <div class="seg seg-sm" id="sgMinSeg">
             <button data-min="100000">≥10萬</button>
             <button data-min="250000" class="on">≥25萬</button>
             <button data-min="1000000">≥100萬</button>
           </div>
-          <label>模擬本金 <b id="sgCapVal">—</b></label>
-          <div class="sg-inline">
-            <input type="number" id="sgCapInput" min="1000" step="10000" inputmode="numeric" placeholder="100000" title="帳戶層級績效（淨值、報酬率、相對本金回撤）以此為基準">
-            <div class="seg seg-sm" id="sgCapSeg">
-              <button data-cap="100000">10萬</button>
-              <button data-cap="1000000" class="on">100萬</button>
-              <button data-cap="10000000">1000萬</button>
-            </div>
-          </div>
-
-          <label>每筆名目 <b id="sgSizeVal">—</b></label>
-          <div class="seg seg-sm" id="sgSizeSeg">
-            <button data-mode="fixed" class="on">固定金額</button>
-            <button data-mode="pct">本金 %</button>
-          </div>
-          <div class="seg seg-sm" id="sgPctSeg" hidden>
-            <button data-pct="1">1%</button>
-            <button data-pct="2">2%</button>
-            <button data-pct="5" class="on">5%</button>
-            <button data-pct="10">10%</button>
-          </div>
-
-          <label>跟單錢包 <b id="sgFollowVal">—</b></label>
-          <div class="sg-follow-list" id="sgFollowList"></div>
-          <div class="sg-follow-add">
-            <input list="sgWhaleList" id="sgFollowInput" placeholder="貼地址（0x…）或輸入名字">
-            <datalist id="sgWhaleList"></datalist>
-            <button class="ghost" id="sgFollowAdd">加入跟單</button>
-          </div>
-          <div class="sg-follow-quick">
-            <button class="ghost" id="sgFollowTop" title="用大戶名單中帳戶淨值最高的 5 個錢包">加入淨值前 5 名</button>
-            <button class="ghost" id="sgFollowAll" title="清空名單＝跟全部大戶">改為跟全部</button>
-          </div>
-
-          <div class="sg-restart-row">
-            <button class="ghost" id="sgRecalcBtn" title="用目前的每筆名目，重算已記錄回合的模擬跟單盈虧（真實盈虧不受影響）">套用名目重算</button>
-            <button class="ghost danger" id="sgRestartBtn" title="清空本機帳本，以目前的本金與名目從現在重新累積">重新開始計算</button>
-          </div>
+          <p class="mini">大戶某一輪的持倉名目小於門檻就不列入帳本，避免雜訊；改完畫面會自動重算。跟單設定都在頁面最上方的控制列。</p>
           <p class="mini" id="sgNote">—</p>
         </div>
       </section>
@@ -236,6 +241,28 @@
 
 <div class="overlay" id="sgOverlay" hidden><div class="overlay-card sg-ov" id="sgOverlayCard"></div></div>
 
+<!-- 跟單對象選擇器 -->
+<div class="overlay" id="sgPick" hidden>
+  <div class="overlay-card sg-pick" role="dialog" aria-modal="true" aria-label="選擇要跟單的錢包">
+    <div class="pk-head">
+      <h3>選擇要跟單的錢包</h3>
+      <span class="mini">勾選＝只跟這幾個；全部不勾＝跟全部大戶。淨值與月報酬取自 Hyperliquid 公開排行榜。</span>
+    </div>
+    <div class="pk-tools">
+      <input type="search" id="sgPickQ" placeholder="搜尋名稱或地址…">
+      <button class="ghost" id="sgPickTop">淨值前 10</button>
+      <button class="ghost" id="sgPickAll">全選</button>
+      <button class="ghost" id="sgPickNone">全不選</button>
+    </div>
+    <div class="pk-list" id="sgPickList"><div class="empty" style="padding:12px">載入中…</div></div>
+    <div class="pk-foot">
+      <span class="mini" id="sgPickCount">—</span>
+      <button class="ghost" id="sgPickCancel">取消</button>
+      <button class="entry-btn" id="sgPickApply">套用</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/util.js"></script>
 <script src="js/api.js"></script>
 <script src="js/analytics.js"></script>
@@ -243,7 +270,7 @@
 <script src="js/signals.js"></script>
 <script src="js/signalui.js"></script>
 <script src="js/sgmetrics.js"></script>
-<script src="js/sgsettings.js"></script>
+<script src="js/sgpanel.js"></script>
 <script src="js/signalsboot.js"></script>
 </body>
 </html>

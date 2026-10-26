@@ -329,6 +329,58 @@ a.pill { color: #c9d8ff !important } a.pill i { background: var(--p-ax) !importa
 /* 三頁的獨立頁頁首比較空，導覽維持單行 */
 @media (max-width: 1450px) { .oc-hud .pagenav { order: 0 !important } }
 
+/* ══ 帶單頁：最上方控制列（本金／名目／跟單對象／歷史）══════════
+   這一頁最常用的四個設定固定在頂端，不必捲到最下面才找得到；
+   .sg-page 本身是捲動容器，所以 sticky 以它為基準。 */
+[hidden] { display: none !important }   /* 屬性 hidden 必須真的隱藏，否則 display:flex 會蓋掉它 */
+.sg-bar {
+  flex: 0 0 auto; position: sticky; top: 0; z-index: 30;
+  display: grid; gap: 10px 18px; padding: 11px 14px 12px;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  background: color-mix(in srgb, var(--p-surface2) 92%, transparent);
+  backdrop-filter: blur(9px);
+  border: 1px solid var(--p-line); border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 22px -14px rgba(0,0,0,.7);
+}
+.sg-bar .sb-grp { display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+.sg-bar .sb-grp > label { font-size: 10.5px; letter-spacing: .04em; color: var(--p-t3) }
+.sg-bar .sb-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0 }
+.sg-bar .sb-row .seg { flex: 0 1 auto }
+.sg-bar .sb-grp > .mini b { color: var(--p-t1); font-weight: 600 }
+.sg-bar #sgCapInput { width: 108px; min-width: 88px; flex: 0 0 auto }
+.sg-pickbtn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; padding: 6px 10px; cursor: pointer; text-align: left;
+  background: var(--p-surface1); color: var(--p-t1);
+  border: 1px solid var(--p-line); border-radius: 7px;
+  transition: border-color 140ms, background 140ms;
+}
+.sg-pickbtn:hover { border-color: var(--p-accent); background: var(--p-surface2) }
+.sg-pickbtn.picked { border-color: var(--p-accent) }
+.sg-pickbtn b { font-size: 12px; font-weight: 600 }
+.sg-pickbtn .mini { font-size: 10px !important }
+.sb-prog { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px }
+.sb-prog > i { display: block; height: 3px; width: 2%; border-radius: 2px; background: var(--p-accent); transition: width 260ms ease }
+.sb-prog > span { font-size: 10.5px; color: var(--p-t3); white-space: nowrap }
+.sb-prog::before { content: ''; flex: 1 1 auto; order: 2; height: 3px; border-radius: 2px; background: var(--p-line) }
+
+/* ── 跟單對象選擇器 ── */
+.sg-pick { width: min(660px, 94vw); max-height: min(78vh, 720px); display: flex; flex-direction: column; gap: 10px; padding: 14px }
+.sg-pick .pk-head { display: flex; flex-direction: column; gap: 3px; padding-right: 26px }
+.sg-pick .pk-head h3 { margin: 0; font-size: 14px; color: var(--p-t1) }
+.sg-pick .pk-tools { display: flex; gap: 6px; flex-wrap: wrap }
+.sg-pick .pk-tools input[type=search] { flex: 1 1 190px; min-width: 140px }
+.sg-pick .pk-list { flex: 1 1 auto; overflow-y: auto; border: 1px solid var(--p-line); border-radius: 8px; background: var(--p-surface1) }
+.sg-pick .pk-row { display: flex; align-items: center; gap: 9px; padding: 7px 10px; cursor: pointer; border-bottom: 1px solid var(--p-line-soft) }
+.sg-pick .pk-row:last-child { border-bottom: 0 }
+.sg-pick .pk-row:hover { background: var(--p-surface2) }
+.sg-pick .pk-row.on { background: color-mix(in srgb, var(--p-accent) 12%, transparent) }
+.sg-pick .pk-row input { flex: 0 0 auto; width: 14px; height: 14px; accent-color: var(--p-accent) }
+.sg-pick .pk-nm { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
+.sg-pick .pk-nm b { font-size: 12px; color: var(--p-t1); font-weight: 600 }
+.sg-pick .pk-foot { display: flex; align-items: center; gap: 8px; justify-content: flex-end }
+.sg-pick .pk-foot .mini { margin-right: auto; font-size: 10.5px !important }
+
 /* ══ 帶單頁：總覽列標題（說清楚上面那排與下方績效指標的差別）══════ */
 .sg-cap { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 0 2px }
 .sg-cap b { font-size: 12px; font-weight: 600; color: var(--p-t1) }
