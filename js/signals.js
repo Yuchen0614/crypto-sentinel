@@ -26,6 +26,10 @@
 
   SG.cfg = {
     copyNotional: 10000,   // 模擬跟單：每筆固定名目（USDC）
+    capital: 100000,       // 模擬本金（USDC）：帳戶層級的績效（淨值／報酬率／回撤%）用它當基準
+    sizeMode: 'fixed',     // 'fixed' 固定名目 ｜ 'pct' 每筆＝本金 × sizePct%
+    sizePct: 5,            // sizeMode='pct' 時使用
+    follow: [],            // 跟單錢包白名單（空陣列＝跟全部大戶）
     feeRate: 0.00045,      // 手續費估算（單邊 taker）
     minNotional: 250000,   // 記錄門檻：回合／批次名目 ≥ 此值才進帳
     seedWallets: 12,       // 首次載入時抓成交紀錄的錢包數
@@ -41,6 +45,7 @@
   SG.queues = new Map();// coin → { long: [...], short: [...] } FIFO 開倉隊列
   SG.mids = null;
   SG.pnlDaily = null;
+  SG.startAt = 0;     // 「重新開始計算」的時間點：早於此的成交不再進帳本
   SG.lastFillAt = 0;
 
   const F = v => (isFinite(v) ? v : NaN);
@@ -59,13 +64,14 @@
         SG.seen = j.seen || {};
         SG.cfg = Object.assign(SG.cfg, j.cfg || {});
         SG.since = j.since || 0;
+        SG.startAt = j.startAt || 0;
       }
     } catch (e) { S.errors.push('signals load: ' + e.message); }
   };
   SG.save = function () {
     try {
       localStorage.setItem('cs.signals.v2', JSON.stringify({
-        v: 2, at: now(), cfg: SG.cfg, since: SG.since || 0,
+        v: 2, at: now(), cfg: SG.cfg, since: SG.since || 0, startAt: SG.startAt || 0,
         rounds: SG.rounds.slice(-SG.cfg.maxRounds), events: SG.events.slice(0, SG.cfg.maxEvents),
         seen: SG.trimSeen()
       }));
@@ -78,6 +84,65 @@
   };
   SG.clear = function () { SG.rounds = []; SG.events = []; SG.seen = {}; SG.prev.clear(); SG.queues.clear(); SG.since = 0; SG.save(); };
 
+  /* ── 模擬本金與每筆名目 ───────────────────────────────
+     固定名目：直接用 copyNotional。
+     本金百分比：每筆名目 = 本金 × sizePct%（固定本金、不複利，數字可重現）。
+     跟單的曝險就是這個名目本身（等同現貨式曝險），不再乘大戶槓桿——
+     這點與 simPnl 的算法一致，也是 R 基準不乘槓桿的原因。 */
+  SG.copySize = function () {
+    const c = SG.cfg;
+    if (c.sizeMode === 'pct') {
+      const n = (+c.capital || 0) * (+c.sizePct || 0) / 100;
+      if (n > 0) return n;
+    }
+    return +c.copyNotional || 0;
+  };
+  /* 跟單範圍：名單為空＝跟全部大戶 */
+  SG.follows = function (addr) {
+    const f = SG.cfg.follow;
+    if (!f || !f.length) return true;
+    return f.indexOf(addr) >= 0;
+  };
+  /* 重新開始計算：清空本機帳本，並把起點設為現在（早於起點的成交不再進帳本） */
+  SG.restart = function () {
+    SG.clear();
+    SG.startAt = now();
+    SG.since = SG.startAt;
+    SG.save();
+    S.emit('sig-restart', { at: SG.startAt });
+    return SG.startAt;
+  };
+  /* 用目前的名目設定重算已記錄回合（只動模擬跟單那條線，真實盈虧不變） */
+  SG.recomputeAll = function () {
+    let n = 0;
+    SG.rounds.forEach(r => {
+      if (r.status !== 'closed') return;
+      const v = SG.simPnl(r.entryPx, r.exitPx, r.side);
+      if (isFinite(v)) { r.simUsd = v; r.simPct = SG.simPct(r.entryPx, r.exitPx, r.side); n++; }
+    });
+    SG.save();
+    return n;
+  };
+  /* 帳戶層級（以本金為基準） */
+  SG.account = function () {
+    const cap = +SG.cfg.capital || 0;
+    const rows = SG.rounds.filter(r => r.status === 'closed' && isFinite(r.simUsd));
+    const net = rows.reduce((a, r) => a + r.simUsd, 0);
+    let peak = cap, mdd = 0, eq = cap;
+    rows.slice().sort((a, b) => a.closedAt - b.closedAt).forEach(r => {
+      eq += r.simUsd;
+      if (eq > peak) peak = eq;
+      const dip = eq - peak;
+      if (dip < mdd) mdd = dip;
+    });
+    return {
+      capital: cap, net, equity: cap + net,
+      ret: cap > 0 ? net / cap : NaN,
+      mdd: cap > 0 ? mdd / cap : NaN,     // 相對本金的回撤比例
+      peak, size: SG.copySize(), trades: rows.length
+    };
+  };
+
   /* ── 標記價與模擬跟單損益 ───────────────────────────── */
   SG.setMids = function (m) { if (m) SG.mids = m; };
   SG.mid = function (coin) { const v = SG.mids ? parseFloat(SG.mids[coin]) : NaN; return isFinite(v) ? v : NaN; };
@@ -85,7 +150,7 @@
   /* 模擬跟單：固定名目、同方向、進出場各收一次估算手續費 */
   SG.simPnl = function (entryPx, exitPx, side, copy) {
     if (!isFinite(entryPx) || !isFinite(exitPx) || entryPx <= 0) return NaN;
-    const n = isFinite(copy) ? copy : SG.cfg.copyNotional;
+    const n = isFinite(copy) ? copy : SG.copySize();
     const gross = n * dirOf(side) * (exitPx / entryPx - 1);
     return gross - SG.fee(n) * 2;
   };
@@ -117,6 +182,7 @@
   /* pre = true：這是「頁面載入前就已經存在」的持倉，不算新開倉
      → 不發開倉事件、開倉時間未知（0）、只出現在開倉中清單。 */
   SG.openRound = function (addr, name, p, ts, pre) {
+    if (!SG.follows(addr)) return null;                        // 不在跟單名單內
     if (!(p.notional >= SG.cfg.minNotional)) return null;
     if (SG.findOpen(addr, p.coin, p.side)) return null;
     const r = {
@@ -216,7 +282,9 @@
 
   SG.ingestFills = function (addr, fills, name) {
     if (!Array.isArray(fills) || !fills.length) return 0;
-    const list = fills.slice().sort((a, b) => a.time - b.time);
+    const list = fills.slice().sort((a, b) => a.time - b.time)
+      .filter(f => SG.follows(addr) && (!SG.startAt || +f.time >= SG.startAt));
+    if (!list.length) return 0;
     let added = 0;
     for (const f of list) {
       const k = String(f.tid || f.hash || (addr + f.time + f.coin + f.px + f.sz));

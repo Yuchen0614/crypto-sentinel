@@ -13,9 +13,10 @@
      標準差 σ    = 每筆淨盈虧的標準差
      穩定度      = 期望值 ÷ σ                 （每筆層級的類 Sharpe，愈大愈穩）
      最大回撤    = 累積盈虧曲線「從高點往下的最大跌幅」（金額 + 相當幾 R + 筆數）
-     平均 R      = 每筆淨盈虧 ÷ R 基準；R 基準 = 名目 × 槓桿 × 停損%
-                   （跟著別人的單沒有固定停損，所以用「假設停損%」當風險基準，
-                     並在畫面上明列這個假設，可切換 1% / 1.5% / 2%）
+     平均 R      = 每筆淨盈虧 ÷ R 基準；R 基準 = 每筆名目 × 假設停損%
+                   （跟單的曝險就是名目本身，等同現貨式曝險，不乘大戶槓桿——
+                     與 SG.simPnl 的算法一致。跟別人的單沒有固定停損，
+                     所以用「假設停損%」當風險基準並在畫面明列，可切 1% / 1.5% / 2%）
      最大連續勝敗 = 連續獲利／連續虧損的最長筆數
    ══════════════════════════════════════════════════════════════ */
 (function (w) {
@@ -43,10 +44,10 @@
     const v = M.basis === 'real' ? r.realUsd : r.simUsd;
     return isFinite(v) ? v : NaN;
   };
-  M.riskOf = function (r) {
-    const notional = isFinite(r.notional) ? r.notional : 0;
-    const lev = isFinite(r.lev) && r.lev > 0 ? r.lev : 1;
-    return notional * lev * (M.slPct / 100);
+  M.riskOf = function () {
+    const SG = S.signals;
+    const size = (SG && SG.copySize) ? SG.copySize() : 0;
+    return size * (M.slPct / 100);
   };
   M.samples = function () {
     const SG = S.signals;
@@ -219,8 +220,15 @@
     M.res = res;
     const box = document.getElementById('sgKpi');
     const meta = document.getElementById('sgMetMeta');
-    const basisLabel = M.basis === 'real' ? '大戶實際已實現' : '模擬跟單（固定名目）';
-    if (meta) meta.innerHTML = `樣本 <b>${res.N}</b> 筆平倉 · 計算基礎：<b>${basisLabel}</b> · R 基準＝名目×槓桿×${M.slPct}%`;
+    const basisLabel = M.basis === 'real' ? '大戶實際已實現' : '模擬跟單';
+    const SG = S.signals, acc = SG && SG.account ? SG.account() : null;
+    if (meta) {
+      const sizeTxt = (SG && SG.copySize) ? ('每筆名目 ' + ' $' + U.money(SG.copySize()))
+        + (SG.cfg.sizeMode === 'pct' ? `（本金 ${SG.cfg.sizePct}%）` : '（固定）') : '';
+      meta.innerHTML = `樣本 <b>${res.N}</b> 筆平倉 · 計算基礎：<b>${basisLabel}</b> · `
+        + (acc && acc.capital > 0 ? `本金 $${U.money(acc.capital)} · ` : '') + sizeTxt
+        + ` · R 基準＝名目×${M.slPct}%（不乘槓桿）`;
+    }
 
     if (box) {
       if (!res.N) {
@@ -228,6 +236,10 @@
       } else {
         const pfTxt = !isFinite(res.pf) ? (res.pf === Infinity ? '∞' : '—') : res.pf.toFixed(2);
         box.innerHTML = [
+          (acc ? tile('模擬本金', '$' + U.money(acc.capital), (SG.cfg.sizeMode === 'pct' ? ('每筆 = 本金 ' + SG.cfg.sizePct + '%') : '每筆固定名目'), '', '設定的模擬本金（帳戶層級績效的基準）') : ''),
+          (acc ? tile('帳戶淨值', (acc.equity >= 0 ? '$' : '−$') + U.money(Math.abs(acc.equity)), '本金 ' + money(acc.net) + ' 累計', acc.equity >= acc.capital ? 'up' : 'down', '本金 + 累計淨盈虧（固定本金、不複利）') : ''),
+          (acc ? tile('總報酬率', isFinite(acc.ret) ? ((acc.ret >= 0 ? '+' : '−') + Math.abs(acc.ret * 100).toFixed(2) + '%') : '—', '相對本金', acc.ret >= 0 ? 'up' : 'down', '累計淨盈虧 ÷ 模擬本金') : ''),
+          (acc ? tile('回撤（相對本金）', isFinite(acc.mdd) ? (acc.mdd * 100).toFixed(2) + '%' : '—', '$' + U.money(Math.abs(acc.mdd * acc.capital)) + ' 高點回落', 'warn', '累積淨值自高點往下的最大跌幅 ÷ 模擬本金') : ''),
           tile('總淨盈虧', money(res.sum), `期望值 ${money(res.avg)}／筆`, res.sum >= 0 ? 'up' : 'down', '所有已平倉回合的淨盈虧總和（含雙邊估算手續費）'),
           tile('勝率', pct(res.winRate), `${res.wins} 勝 / ${res.losses} 敗`, res.winRate >= .5 ? 'up' : '', '獲利筆數 ÷ 總筆數'),
           tile('獲利因子', pfTxt, `總獲利 ${'$' + U.money(res.grossWin)} ÷ 總虧損 ${'$' + U.money(res.grossLoss)}`, res.pf >= 1 ? 'up' : 'down', '總獲利 ÷ |總虧損|。>1 為正期望，>1.5 算穩健'),

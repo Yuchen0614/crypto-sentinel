@@ -37,6 +37,7 @@
   ② 每一筆平倉都算出<b>錢包自己的實際已實現盈虧</b>（取自 Hyperliquid 成交紀錄的 <code>closedPnl</code>，是真實數字）；
   ③ 同時計算<b>「若固定名目跟單」的損益</b>——你要的「參考用盈虧」，扣掉雙邊估算手續費。
   <b>模擬跟單是紙上計算，不會下任何單，也不構成投資建議。</b>
+  ④ 下方「跟單設定」可以<b>設定模擬本金</b>（帳戶淨值／報酬率／相對本金回撤都以它為基準）、用<b>本金百分比</b>決定每筆名目、<b>加入或移除要跟的錢包</b>（名單清空＝跟全部），也可以<b>重新開始計算</b>從現在重新累積。
   記錄存在這台裝置的瀏覽器（可匯出 CSV）；每日績效快照由 GitHub Actions 寫入 repo，較耐久。
 </div>
 
@@ -161,6 +162,44 @@
             <button data-min="250000" class="on">≥25萬</button>
             <button data-min="1000000">≥100萬</button>
           </div>
+          <label>模擬本金 <b id="sgCapVal">—</b></label>
+          <div class="sg-inline">
+            <input type="number" id="sgCapInput" min="1000" step="10000" inputmode="numeric" placeholder="100000" title="帳戶層級績效（淨值、報酬率、相對本金回撤）以此為基準">
+            <div class="seg seg-sm" id="sgCapSeg">
+              <button data-cap="100000">10萬</button>
+              <button data-cap="1000000" class="on">100萬</button>
+              <button data-cap="10000000">1000萬</button>
+            </div>
+          </div>
+
+          <label>每筆名目 <b id="sgSizeVal">—</b></label>
+          <div class="seg seg-sm" id="sgSizeSeg">
+            <button data-mode="fixed" class="on">固定金額</button>
+            <button data-mode="pct">本金 %</button>
+          </div>
+          <div class="seg seg-sm" id="sgPctSeg" hidden>
+            <button data-pct="1">1%</button>
+            <button data-pct="2">2%</button>
+            <button data-pct="5" class="on">5%</button>
+            <button data-pct="10">10%</button>
+          </div>
+
+          <label>跟單錢包 <b id="sgFollowVal">—</b></label>
+          <div class="sg-follow-list" id="sgFollowList"></div>
+          <div class="sg-follow-add">
+            <input list="sgWhaleList" id="sgFollowInput" placeholder="貼地址（0x…）或輸入名字">
+            <datalist id="sgWhaleList"></datalist>
+            <button class="ghost" id="sgFollowAdd">加入跟單</button>
+          </div>
+          <div class="sg-follow-quick">
+            <button class="ghost" id="sgFollowTop" title="用大戶名單中帳戶淨值最高的 5 個錢包">加入淨值前 5 名</button>
+            <button class="ghost" id="sgFollowAll" title="清空名單＝跟全部大戶">改為跟全部</button>
+          </div>
+
+          <div class="sg-restart-row">
+            <button class="ghost" id="sgRecalcBtn" title="用目前的每筆名目，重算已記錄回合的模擬跟單盈虧（真實盈虧不受影響）">套用名目重算</button>
+            <button class="ghost danger" id="sgRestartBtn" title="清空本機帳本，以目前的本金與名目從現在重新累積">重新開始計算</button>
+          </div>
           <p class="mini" id="sgNote">—</p>
         </div>
       </section>
@@ -182,6 +221,7 @@
 <script src="js/signals.js"></script>
 <script src="js/signalui.js"></script>
 <script src="js/sgmetrics.js"></script>
+<script src="js/sgsettings.js"></script>
 <script src="js/signalsboot.js"></script>
 </body>
 </html>
