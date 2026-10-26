@@ -1,0 +1,349 @@
+/* ══════════════════════════════════════════════════════════════
+   pro.css — 專業化／質感提升層（三個頁面共用，必須最後載入）
+   ─────────────────────────────────────────────────────────────
+   目標：把「能看」的儀表板變成「像產品」的儀表板。作法是把先前各頁
+   各自為政的樣式收斂成一套一致的原則：
+
+     1. 表面階層（surface）而非裝飾：page < panel < header < hover < elevated，
+        每一階只差一點點亮度，靠 1px 內上緣高光（inset highlight）做出「受光」感。
+     2. 型階（type scale）固定 6 級，不再出現 9.5/10/10.5/11/11.5 混用。
+        所有數字一律等寬 + tabular-nums + 右對齊。
+     3. 表格：表頭 sticky + 毛玻璃、細髮絲分隔線、hover 單色調、不斑馬紋。
+     4. 動態一律 140ms 同一個緩動曲線；只在 hover / focus / 狀態切換時出現。
+     5. 顏色只給資料（漲綠跌紅、強調藍），介面本身是灰階。
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── 表面階層 ── */
+  --p-page: #0a0c11;
+  --p-s1: #0f1319;          /* 面板 */
+  --p-s2: #13171e;          /* 面板標題列 / 工具列 */
+  --p-s3: #171c24;          /* hover / 次級區塊 */
+  --p-s4: #1b212b;          /* elevated（彈窗、下拉） */
+  --p-line: rgba(255, 255, 255, .055);
+  --p-line-2: rgba(255, 255, 255, .095);
+  --p-lit: inset 0 1px 0 rgba(255, 255, 255, .035);   /* 內上緣高光 */
+
+  /* ── 文字階層 ── */
+  --p-t1: #e8ecf3;
+  --p-t2: #9aa4b2;
+  --p-t3: #68717e;
+  --p-t4: #4c545f;
+
+  /* ── 強調與語意 ── */
+  --p-ax: #5b8cff;
+  --p-ax-soft: rgba(91, 140, 255, .13);
+  --p-up: #0ecb81;
+  --p-dn: #f6465d;
+  --p-warn: #f5a524;
+
+  /* ── 型階 ── */
+  --fs-micro: 9.5px;        /* 全大寫標籤 */
+  --fs-label: 10.5px;       /* 次要標籤、註解 */
+  --fs-body: 12px;          /* 內文、表格 */
+  --fs-title: 12.5px;       /* 面板標題 */
+  --fs-val: 13px;           /* 表格數值 */
+  --fs-kpi: 19px;           /* 大數字 */
+
+  --r6: 6px; --r8: 8px; --r10: 10px; --r999: 999px;
+  --ease: cubic-bezier(.22, .61, .36, 1);
+  --t: 140ms var(--ease);
+}
+
+/* ══ 基礎 ══════════════════════════════════════════════════ */
+body { background: var(--p-page) !important; color: var(--p-t1) }
+::selection { background: rgba(91, 140, 255, .28); color: #fff }
+b, strong { font-weight: 600 }
+.num, .ta-r, td.ta-r, th.ta-r, .kpi b, .stat b { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1 }
+*:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(91, 140, 255, .45); border-radius: var(--r6) }
+
+/* ══ 面板：受光卡片 ════════════════════════════════════════ */
+.panel {
+  background: var(--p-s1) !important;
+  border: 1px solid var(--p-line) !important;
+  border-radius: var(--r8) !important;
+  box-shadow: var(--p-lit) !important;
+  transition: border-color var(--t);
+  overflow: hidden;
+}
+.panel:hover { border-color: var(--p-line-2) !important }
+.panel-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .022), rgba(255, 255, 255, 0)) !important;
+  border-bottom: 1px solid var(--p-line) !important;
+  padding: 0 12px !important; min-height: 36px !important;
+  display: flex !important; align-items: center !important; gap: 10px !important;
+}
+.panel-head h2 {
+  font-size: var(--fs-title) !important; font-weight: 600 !important; color: var(--p-t1) !important;
+  letter-spacing: .01em !important; display: inline-flex; align-items: center; gap: 8px;
+}
+/* 標題前的小強調刻度：低調的品牌記號，取代滿版霓虹 */
+.panel-head h2::before {
+  content: ''; width: 2px; height: 11px; border-radius: 1px;
+  background: var(--p-ax); opacity: .85; flex: 0 0 auto;
+}
+.panel-head .mini { font-size: var(--fs-label) !important; color: var(--p-t3) !important; letter-spacing: .01em }
+.panel-head h2 .count, .panel-head .count {
+  font-size: var(--fs-label) !important; font-weight: 600 !important; color: var(--p-t2) !important;
+  background: rgba(255, 255, 255, .05) !important; border: 0 !important;
+  padding: 1px 7px !important; border-radius: var(--r999) !important; min-width: 0;
+}
+.ic { background: var(--p-t3) !important; width: 11px !important; height: 11px !important; opacity: .9 }
+
+/* ══ 導覽列（三頁一致）════════════════════════════════════ */
+.pagenav { display: flex; gap: 2px; padding: 2px; background: rgba(255, 255, 255, .035); border: 1px solid var(--p-line); border-radius: var(--r8); margin-left: auto }
+.pagenav a {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--r6);
+  font-size: 11.5px; font-weight: 500; color: var(--p-t2) !important; text-decoration: none;
+  transition: color var(--t), background var(--t); white-space: nowrap;
+}
+.pagenav a:hover { color: var(--p-t1) !important; background: rgba(255, 255, 255, .05) }
+.pagenav a.on { color: #dbe6ff !important; background: var(--p-ax-soft); box-shadow: inset 0 0 0 1px rgba(91, 140, 255, .22) }
+.pagenav a .nd { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .55 }
+.pagenav a.on .nd { opacity: 1; background: var(--p-ax) }
+
+/* ══ KPI 磚（HUD／入口卡／各頁統計共用）═══════════════════ */
+.kpi, .kpi-tile {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  padding: 10px 14px; background: var(--p-s1); border: 1px solid var(--p-line);
+  border-radius: var(--r8); box-shadow: var(--p-lit);
+}
+.kpi label, .kpi-tile label {
+  font-size: var(--fs-micro) !important; color: var(--p-t3) !important;
+  letter-spacing: .09em !important; text-transform: uppercase; font-weight: 500;
+}
+.kpi b, .kpi-tile b {
+  font-size: var(--fs-kpi) !important; font-weight: 600 !important; color: var(--p-t1) !important;
+  letter-spacing: -.01em; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kpi b.up, .kpi-tile b.up { color: var(--p-up) !important }
+.kpi b.down, .kpi-tile b.down { color: var(--p-dn) !important }
+.kpi b.warn, .kpi-tile b.warn { color: var(--p-warn) !important }
+.kpi .mini, .kpi-tile .mini { font-size: var(--fs-label) !important; color: var(--p-t3) !important }
+.kpi .delta { font-size: var(--fs-label); color: var(--p-t3) }
+.kpi .delta.up { color: var(--p-up) } .kpi .delta.down { color: var(--p-dn) }
+
+/* HUD 內的統計也升級成同一套質感（但保持單行緊湊） */
+.hud { background: var(--p-s2) !important; border-bottom: 1px solid var(--p-line) !important }
+.hud-brand h1 { font-size: 15px !important; letter-spacing: .01em !important; color: var(--p-t1) !important }
+.hud-brand h1 b { color: var(--p-t3) !important; font-weight: 500 }
+.hud-stats .stat { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 16px !important }
+.hud-stats .stat:first-child { padding-left: 0 !important }
+.stat label { font-size: var(--fs-micro) !important; color: var(--p-t3) !important; letter-spacing: .08em !important; text-transform: uppercase }
+.stat b { font-size: 13.5px !important; color: var(--p-t1) !important; font-weight: 600 !important }
+.clock span { font-size: 15px !important; font-weight: 600 !important; letter-spacing: .01em }
+
+/* ══ 表格：專業報表感 ══════════════════════════════════════ */
+table.scan, table.hl, table.sg, table.book, .book-cols, .hl-table-wrap, .sg-table-wrap, .table-wrap { border-collapse: separate; border-spacing: 0 }
+.scan thead th, table.hl thead th, table.sg thead th, .chain-tape-head, .tape-head {
+  position: sticky; top: 0; z-index: 3;
+  background: rgba(19, 23, 30, .94) !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--p-line-2) !important;
+  font-size: var(--fs-micro) !important; letter-spacing: .07em !important; text-transform: uppercase;
+  color: var(--p-t3) !important; font-weight: 500 !important; padding: 7px 10px !important;
+}
+.scan tbody td, table.hl td, table.sg td {
+  padding: 7px 10px !important; font-size: var(--fs-body) !important;
+  border-bottom: 1px solid var(--p-line) !important; color: var(--p-t2);
+}
+.scan tbody tr, table.hl tbody tr, table.sg tbody tr { transition: background var(--t) }
+.scan tbody tr:hover td, table.hl tbody tr:hover td, table.sg tbody tr:hover td { background: rgba(255, 255, 255, .028) !important }
+.scan tbody tr.sel td, table.sg tbody tr.sel td { background: var(--p-ax-soft) !important }
+.scan tbody tr.sel td:first-child { box-shadow: inset 2px 0 0 var(--p-ax) }
+td.ta-r, th.ta-r { text-align: right; font-variant-numeric: tabular-nums }
+.scan tbody td b, table.hl td b, table.sg td b { color: var(--p-t1) !important; font-weight: 600 }
+.scan .sym b, table.sg .coin { color: var(--p-t1) !important; font-weight: 600; letter-spacing: .01em }
+.mini, .sg .mini, td.mini { font-size: var(--fs-label) !important; color: var(--p-t3) !important }
+
+/* 表格內的金額／報酬：數字亮、單位暗 */
+.up, .pos { color: var(--p-up) !important } .down, .neg { color: var(--p-dn) !important }
+
+/* ══ 控制項 ═══════════════════════════════════════════════ */
+.seg { background: rgba(255, 255, 255, .04) !important; border: 1px solid var(--p-line) !important; border-radius: var(--r8) !important; padding: 2px !important }
+.seg button {
+  font-size: 11.5px !important; color: var(--p-t2) !important; padding: 4px 11px !important;
+  border-radius: var(--r6) !important; transition: color var(--t), background var(--t);
+}
+.seg button:hover { color: var(--p-t1) !important; background: rgba(255, 255, 255, .05) !important }
+.seg button.on { color: #dbe6ff !important; background: var(--p-ax-soft) !important; box-shadow: inset 0 0 0 1px rgba(91, 140, 255, .22) !important; font-weight: 600 !important }
+.ghost, button.ghost {
+  border: 1px solid var(--p-line) !important; border-radius: var(--r6) !important; color: var(--p-t2) !important;
+  padding: 4px 11px !important; font-size: 11.5px !important; background: rgba(255, 255, 255, .02) !important;
+  transition: color var(--t), background var(--t), border-color var(--t);
+}
+.ghost:hover { color: var(--p-t1) !important; background: rgba(255, 255, 255, .06) !important; border-color: var(--p-line-2) !important }
+.ghost:active { transform: translateY(.5px) }
+input[type=text], input[type=search], .sg-search input, #scanSearch {
+  background: rgba(255, 255, 255, .035) !important; border: 1px solid var(--p-line) !important;
+  border-radius: var(--r6) !important; color: var(--p-t1) !important; font-size: 11.5px !important; padding: 5px 10px !important;
+  transition: border-color var(--t), background var(--t);
+}
+input:focus, #scanSearch:focus { border-color: rgba(91, 140, 255, .5) !important; background: rgba(91, 140, 255, .06) !important; outline: none }
+input[type=checkbox] { accent-color: var(--p-ax) }
+
+/* ══ 狀態標籤 ═════════════════════════════════════════════ */
+.pill { font-size: var(--fs-label) !important; color: var(--p-t3) !important; letter-spacing: .02em !important }
+.pill[data-state=ok] { color: var(--p-t2) !important }
+.pill[data-state=ok] i { background: var(--p-up) !important }
+.pill[data-state=off] { color: var(--p-dn) !important } .pill[data-state=off] i { background: var(--p-dn) !important }
+.pill[data-state=wait] { color: var(--p-warn) !important } .pill[data-state=wait] i { background: var(--p-warn) !important }
+a.pill { color: #c9d8ff !important } a.pill i { background: var(--p-ax) !important }
+.smbadge, .sidechip, .tag, .chip {
+  border-radius: var(--r999) !important; font-size: var(--fs-label) !important; padding: 1px 8px !important;
+}
+.smbadge { background: rgba(255, 255, 255, .06) !important; border: 1px solid var(--p-line) !important }
+.smbadge.bull { color: var(--p-up) !important; background: rgba(14, 203, 129, .12) !important; border-color: rgba(14, 203, 129, .25) !important }
+.smbadge.bear { color: var(--p-dn) !important; background: rgba(246, 70, 93, .12) !important; border-color: rgba(246, 70, 93, .25) !important }
+.verdict { border-radius: var(--r6) !important; font-size: 11px !important }
+
+/* ══ 入口卡（主控台下方）══════════════════════════════════ */
+.chain-entry .panel-head h2::before, .entry-card .panel-head h2::before { background: var(--p-ax) }
+.entry-btn, .oc-back {
+  border: 1px solid var(--p-line) !important; border-radius: var(--r6) !important;
+  background: rgba(255, 255, 255, .02) !important; color: var(--p-t1) !important;
+  font-size: 11.5px !important; font-weight: 500 !important; text-decoration: none !important;
+  padding: 5px 12px !important; transition: background var(--t), border-color var(--t), color var(--t);
+}
+.entry-btn:hover, .oc-back:hover { background: var(--p-ax-soft) !important; border-color: rgba(91, 140, 255, .3) !important; color: #dbe6ff !important }
+.entry-btn b, .oc-back b { color: var(--p-ax) !important; font-weight: 600 }
+.entry-stats b, .entry-stats .num { font-size: 13px !important; font-weight: 600 }
+
+/* ══ 空狀態與載入 ═════════════════════════════════════════ */
+.empty { color: var(--p-t4) !important; font-size: 11.5px !important; letter-spacing: .01em }
+.skel { background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.09), rgba(255,255,255,.04)); border-radius: var(--r6); animation: pSkel 1.5s ease-in-out infinite; color: transparent !important }
+@keyframes pSkel { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
+
+/* ══ 通知／彈窗 ═══════════════════════════════════════════ */
+.toast {
+  background: var(--p-s4) !important; border: 1px solid var(--p-line-2) !important;
+  border-radius: var(--r8) !important; box-shadow: 0 18px 40px -24px rgba(0, 0, 0, .9) !important;
+}
+.overlay { background: rgba(6, 8, 12, .66) !important; -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px) }
+.overlay-card {
+  background: var(--p-s4) !important; border: 1px solid var(--p-line-2) !important;
+  border-radius: var(--r10) !important; box-shadow: 0 32px 70px -34px #000 !important;
+}
+.ov-grid > div, .cv-grid > div { background: rgba(255, 255, 255, .03) !important; border-radius: var(--r6) !important }
+.ov-grid label { font-size: var(--fs-micro) !important; color: var(--p-t3) !important; text-transform: uppercase; letter-spacing: .07em }
+.ov-grid b { font-size: 13.5px !important; color: var(--p-t1) !important; font-weight: 600 }
+
+/* ══ 狀態列 ═══════════════════════════════════════════════ */
+.statusbar { background: var(--p-s2) !important; border-top: 1px solid var(--p-line) !important; font-size: 11px }
+.ticker { color: var(--p-t2) !important } .disc { color: var(--p-t4) !important; font-size: 10.5px }
+
+/* ══ 卷軸 ═════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 9px; height: 9px }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .13) !important; border-radius: var(--r999); border: 2px solid transparent; background-clip: padding-box }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .22) !important; background-clip: padding-box }
+::-webkit-scrollbar-corner { background: transparent }
+
+/* ══ 頁面說明條（onchain / signals）═══════════════════════ */
+.oc-note { color: var(--p-t3) !important; font-size: 11px !important; line-height: 1.6; padding: 8px 12px 2px !important }
+.oc-note b { color: var(--p-t2) !important; font-weight: 600 }
+.oc-note code { background: rgba(255, 255, 255, .06); border-radius: 4px; padding: 0 4px; font-size: 10.5px; color: var(--p-t2) }
+.oc-hud .oc-status { font-size: 11px !important; color: var(--p-t2) !important }
+.oc-hud .oc-status b { color: var(--p-t1) !important }
+.oc-actions { margin-left: 0 !important }
+.oc-hud .pagenav { margin-left: auto }
+
+/* 響應式：導覽在窄螢幕縮小但仍可點 */
+@media (max-width: 1100px) {
+  .pagenav a { padding: 4px 9px; font-size: 11px }
+  .hud-stats .stat { padding: 0 10px !important }
+}
+@media (max-width: 760px) {
+  .pagenav { order: 4; width: 100%; justify-content: stretch }
+  .pagenav a { flex: 1 1 0; justify-content: center }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   帶單頁：績效指標面板（KPI 牆 + 回撤曲線 + 分組表）
+   ══════════════════════════════════════════════════════════════ */
+
+/* KPI 牆：用 1px 間隙當分隔線，一體成型（比一排浮動卡片更像報表） */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
+  gap: 1px; background: var(--p-line);
+}
+.kpi-grid .kpi {
+  border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  background: var(--p-s1) !important; padding: 10px 12px !important;
+}
+.kpi-grid .kpi:hover { background: var(--p-s3) !important }
+.kpi-grid .kpi b { font-size: 16.5px !important }
+.kpi-grid .kpi { padding: 9px 11px !important }
+
+/* 頁面上方的既有統計列也用同一套牆 */
+.sg-kpi {
+  display: grid !important; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px !important; background: var(--p-line) !important;
+  border: 1px solid var(--p-line) !important; border-radius: var(--r8) !important;
+  overflow: hidden; box-shadow: var(--p-lit);
+}
+.sg-kpi .kpi { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: var(--p-s1) !important }
+
+/* 回撤曲線 */
+.sg-met .sg-dd { padding: 10px 12px 6px; border-top: 1px solid var(--p-line) }
+#sgDrawdown { display: block; width: 100%; height: 118px }
+
+/* 分組表 */
+.sg-met .sg-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--p-line) }
+.sg-met .sg-groups > div { padding: 10px 12px 12px; min-width: 0 }
+.sg-met .sg-groups > div + div { border-left: 1px solid var(--p-line) }
+.gtitle { text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; color: var(--p-t3) !important }
+.ggh, .ggr { display: grid; grid-template-columns: minmax(0, 1fr) 44px 50px 62px 92px; gap: 8px; align-items: center }
+.ggh {
+  padding-bottom: 5px; border-bottom: 1px solid var(--p-line-2);
+  font-size: var(--fs-micro) !important; letter-spacing: .07em; text-transform: uppercase; color: var(--p-t3)
+}
+.ggr { padding: 5px 0; border-bottom: 1px solid var(--p-line); transition: background var(--t) }
+.ggr:hover { background: rgba(255, 255, 255, .028) }
+.ggr .nm { position: relative; display: flex; align-items: center; min-width: 0; height: 18px }
+.ggr .nm b {
+  position: relative; z-index: 1; font-size: 11.5px !important; font-weight: 600; color: var(--p-t1) !important;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ggr .gbar { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 15px; border-radius: 3px; opacity: .16; z-index: 0 }
+.ggr .gbar.up { background: var(--p-up) } .ggr .gbar.down { background: var(--p-dn) }
+.ggr .up, .ggr .down { font-variant-numeric: tabular-nums; font-weight: 600 }
+.sg-met .kpi .mini { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+
+@media (max-width: 1100px) {
+  .sg-met .sg-groups { grid-template-columns: 1fr }
+  .sg-met .sg-groups > div + div { border-left: 0; border-top: 1px solid var(--p-line) }
+}
+
+/* ── 窄螢幕（≤1450px）工具列：刻意排成兩行，而不是讓 6 個統計被擠成三行 ──
+   第一行：品牌 + 導覽 + 時鐘 + 狀態燈；第二行：6 個統計橫向鋪滿（每個約 210px，
+   數字不會被截斷）。統計用 order 排到最後並吃滿整行，其他維持自然順序。 */
+@media (max-width: 1450px) {
+  .hud { flex-wrap: wrap; row-gap: 8px; padding: 8px 14px !important }
+  .hud-stats { order: 5 !important; flex: 1 1 100% !important; flex-wrap: nowrap !important }
+  .hud-stats .stat { flex: 1 1 0 !important; padding: 0 10px !important }
+  .pagenav a { padding: 4px 9px; font-size: 11px }
+  .pagenav a .nd { display: none }
+  .hud-brand { min-width: 0 }
+  .hud-right { margin-left: auto }
+}
+/* 三頁的獨立頁頁首比較空，導覽維持單行 */
+@media (max-width: 1450px) { .oc-hud .pagenav { order: 0 !important } }
+
+/* ══ 帶單頁高度模型修正 ══════════════════════════════════════
+   signals.css 的 .sg-page 是為「3 個內容列」寫死的 grid
+   （kpi / 曲線 / 兩欄主體）；新增「績效指標」後變成 4 列，
+   多出來的隱含列在 overflow:hidden 之下會把所有列一起壓扁
+   （曲線只剩 30px、新面板幾乎不可見）。改為整頁自然捲動：
+   每一列維持自己的高度，兩欄主體給合理最小高度、內部各自捲動。 */
+.sg-page {
+  display: flex !important; flex-direction: column !important;
+  gap: 10px; overflow-y: auto !important; min-height: 0;
+}
+.sg-page > .sg-kpi, .sg-page > .panel, .sg-page > .sg-cols { flex: 0 0 auto !important }
+/* 兩欄主體用「固定高」而不是 min-height：這樣它的內部才維持各自的捲動
+   （帳本長表自己捲、右側面板不必跟著被拉長），整頁高度也可預期。 */
+.sg-page > .sg-cols { height: clamp(500px, 58vh, 700px); min-height: 0 }
+.sg-eq-panel #sgEquity { height: 148px !important }
+.sg-met .kpi-grid { border-radius: 0 }
+@media (max-height: 950px) { .sg-page > .sg-cols { height: clamp(430px, 56vh, 620px) } }
+@media (max-width: 1100px) { .sg-page > .sg-cols { height: auto } }

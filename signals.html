@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="assets/css/v2.css">
 <link rel="stylesheet" href="assets/css/v3.css">
 <link rel="stylesheet" href="assets/css/signals.css">
+<link rel="stylesheet" href="assets/css/pro.css">
 </head>
 <body>
 
@@ -21,9 +22,12 @@
   </div>
   <div class="oc-status" id="sgListMeta">大戶名單載入中…</div>
   <div class="oc-actions">
+  <nav class="pagenav">
+    <a href="index.html"><i class="nd"></i>行情總覽</a>
+    <a href="onchain.html"><i class="nd"></i>鏈上聰明錢</a>
+    <a href="signals.html" class="on"><i class="nd"></i>帶單記錄</a>
+  </nav>
     <div class="clock"><span id="sgClock">--:--:--</span><small id="sgDate">台北</small></div>
-    <a class="oc-back" href="onchain.html">鏈上聰明錢</a>
-    <a class="oc-back" href="index.html">← 回主控台</a>
   </div>
 </div>
 
@@ -58,6 +62,32 @@
     <div class="sg-legend">
       <span class="lg sim">模擬跟單（固定名目）</span>
       <span class="lg real">錢包實際已實現</span>
+    </div>
+  </section>
+
+
+  <!-- 績效指標（完整風險調整後指標）-->
+  <section class="panel sg-met">
+    <div class="panel-head">
+      <h2><i class="ic ic-smart"></i>績效指標</h2>
+      <span class="mini" id="sgMetMeta">—</span>
+      <div class="seg seg-sm" id="sgBasisSeg" title="用哪一個盈虧來計算整頁指標">
+        <button data-basis="sim" class="on">模擬跟單</button>
+        <button data-basis="real">大戶真實</button>
+      </div>
+      <div class="seg seg-sm" id="sgSlSeg" title="R 倍數的風險基準：名目 × 槓桿 × 此假設停損%">
+        <button data-sl="1">停損 1%</button>
+        <button data-sl="1.5" class="on">1.5%</button>
+        <button data-sl="2">2%</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="sgKpi"></div>
+    <div class="sg-dd">
+      <canvas id="sgDrawdown"></canvas>
+    </div>
+    <div class="sg-groups">
+      <div><div class="mini gtitle">依幣種分組</div><div id="sgByCoin"></div></div>
+      <div><div class="mini gtitle">依跟單錢包分組</div><div id="sgByWallet"></div></div>
     </div>
   </section>
 
@@ -151,6 +181,7 @@
 <script src="js/onchain.js"></script>
 <script src="js/signals.js"></script>
 <script src="js/signalui.js"></script>
+<script src="js/sgmetrics.js"></script>
 <script src="js/signalsboot.js"></script>
 </body>
 </html>
