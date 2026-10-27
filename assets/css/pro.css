@@ -447,6 +447,10 @@ table.sg thead th.class-nowrap { white-space: nowrap !important }
 /* 數字與幣種欄：真的放不下時整段省略（而不是顯示半截數字／文字） */
 .scan tbody td.px, .scan tbody td.vol { overflow: hidden; text-overflow: ellipsis }
 .scan tbody td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+/* .sym 是 td 內的 flex span（td:first-child 的規則命中不到它）：
+   長幣名（MARSCOIN 等）要能收縮並用省略號，而不是溢出 7px 蓋到下一欄 */
+.scan .sym { min-width: 0 }
+.scan .sym b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .scan tbody td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 @media (min-width: 1760px) { .layout { grid-template-columns: 384px minmax(0, 1fr) 356px !important } }
 @media (min-width: 1441px) and (max-width: 1759px) {
