@@ -61,9 +61,10 @@
     <div class="sb-grp">
       <label>每筆名目</label>
       <div class="sb-row">
-        <div class="seg seg-sm" id="sgSizeSeg"><button data-mode="fixed" class="on">固定金額</button><button data-mode="pct">本金 %</button></div>
+        <div class="seg seg-sm" id="sgSizeSeg"><button data-mode="fixed" class="on">固定金額</button><button data-mode="pct">本金 %</button><button data-mode="mirror" title="每筆名目 = 該回合大戶名目 ÷ N：大單跟著大、小單跟著小，你的損益就和大戶同一個口徑（名目加權）">同比例</button></div>
         <div class="seg seg-sm" id="sgCopySeg"><button data-copy="1000">1千</button><button data-copy="10000" class="on">1萬</button><button data-copy="100000">10萬</button></div>
         <div class="seg seg-sm" id="sgPctSeg" hidden><button data-pct="1">1%</button><button data-pct="2">2%</button><button data-pct="5" class="on">5%</button><button data-pct="10">10%</button></div>
+        <div class="seg seg-sm" id="sgMirrorSeg" hidden><button data-div="1000">÷1000</button><button data-div="500" class="on">÷500</button><button data-div="200">÷200</button><button data-div="100">÷100</button></div>
       </div>
       <span class="mini"><b id="sgSizeVal">—</b> · <span id="sgSizeNote">—</span>；跟的是名目本身，不乘大戶槓桿</span>
     </div>
@@ -95,6 +96,7 @@
   <!-- 績效總覽（即時、單一基準）-->
   <div class="sg-cap">
     <b>即時總覽</b>
+    <span class="mini" id="sgBasis">—</span>
     <span class="mini">上面這排是「一眼看狀況」。<b>兩邊的 $ 不能直接比</b>：錢包實際是「名目加權」（他們的部位常在 $30 萬～180 萬），跟單是「每筆固定 $10K 的等權重」——要比就看下方的<b>報酬率</b>與「權益曲線（報酬率）」，完整的風險指標（回撤、獲利因子、平均 R…）在「績效指標」。</span>
   </div>
   <div class="sg-kpi">

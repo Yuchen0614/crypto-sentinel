@@ -27,7 +27,9 @@
   SG.cfg = {
     copyNotional: 10000,   // 模擬跟單：每筆固定名目（USDC）
     capital: 100000,       // 模擬本金（USDC）：帳戶層級的績效（淨值／報酬率／回撤%）用它當基準
-    sizeMode: 'fixed',     // 'fixed' 固定名目 ｜ 'pct' 每筆＝本金 × sizePct%
+    sizeMode: 'fixed',     // 'fixed' 固定名目 ｜ 'pct' 本金% ｜ 'mirror' 跟大戶同比例（名目 ÷ mirrorDiv）
+    mirrorDiv: 500,        // mirror 模式：每筆名目 = 該回合大戶名目 ÷ 此數
+    mirrorCapPct: 100,     // mirror 模式的單筆上限（占本金 %）
     sizePct: 5,            // sizeMode='pct' 時使用
     follow: [],            // 跟單錢包白名單（空陣列＝跟全部大戶）
     feeRate: 0.00045,      // 手續費估算（單邊 taker，吃單）
@@ -119,7 +121,8 @@
     let n = 0;
     SG.rounds.forEach(r => {
       if (r.status !== 'closed') return;
-      const v = SG.simPnl(r.entryPx, r.exitPx, r.side, undefined, SG.feeRatio(r.realFee, r.notional || r.maxNotional));
+      const _ntl = r.notional || r.maxNotional;
+      const v = SG.simPnl(r.entryPx, r.exitPx, r.side, SG.roundCopy(_ntl), SG.feeRatio(r.realFee, _ntl));
       if (isFinite(v)) { r.simUsd = v; r.simPct = SG.simPct(r.entryPx, r.exitPx, r.side); n++; }
     });
     SG.save();
@@ -148,6 +151,18 @@
   /* ── 標記價與模擬跟單損益 ───────────────────────────── */
   SG.setMids = function (m) { if (m) SG.mids = m; };
   SG.mid = function (coin) { const v = SG.mids ? parseFloat(SG.mids[coin]) : NaN; return isFinite(v) ? v : NaN; };
+  /* 這一回合要跟多少名目？（fixed/pct 一律 copySize；mirror 依大戶該回合名目等比縮放，並有上限） */
+  SG.roundCopy = function (realNotional) {
+    const c = SG.cfg;
+    if (c.sizeMode !== 'mirror') return SG.copySize();
+    const n = Math.abs(+realNotional || 0) / Math.max(1, +c.mirrorDiv || 500);
+    const cap = Math.abs(c.capital) * (+c.mirrorCapPct || 100) / 100;
+    return Math.min(n, cap);
+  };
+  SG.mirrorCapped = function (realNotional) {
+    if (SG.cfg.sizeMode !== 'mirror') return false;
+    return Math.abs(+realNotional || 0) / Math.max(1, +SG.cfg.mirrorDiv || 500) > Math.abs(SG.cfg.capital) * (+SG.cfg.mirrorCapPct || 100) / 100;
+  };
   SG.fee = function (notional) { return Math.abs(notional) * SG.cfg.feeRate; };
   /* 這個回合該收多少手續費？三種假設——
      whale：用該回合大戶自己付的 fee/名目（實測約 0.0017%/邊，因為他們多為掛單／VIP），
@@ -265,7 +280,7 @@
     const px = F(q.entry) + dirOf(q.side) * (F(q.upnl) / sz);
     r.status = 'closed'; r.closedAt = ts; r.exitPx = isFinite(px) ? px : NaN;
     r.holdMs = Math.max(0, ts - r.openedAt);
-    r.simUsd = SG.simPnl(r.entryPx, r.exitPx, r.side, undefined, SG.feeRatio(r.realFee, r.notional || r.maxNotional));
+    r.simUsd = SG.simPnl(r.entryPx, r.exitPx, r.side, SG.roundCopy(r.notional || r.maxNotional), SG.feeRatio(r.realFee, r.notional || r.maxNotional));
     r.simPct = SG.simPct(r.entryPx, r.exitPx, r.side);
     r.realSrc = 'pending';
     SG.event('CLOSE', r, {
@@ -370,7 +385,7 @@
     row.realFills = (row.realFills || 0) + 1;
     row.fills = (row.fills || 0) + 1;
     row.partial = row.partial || partial;
-    row.simUsd = SG.simPnl(row.entryPx, row.exitPx, row.side, undefined, SG.feeRatio(row.realFee, row.notional || row.maxNotional));
+    row.simUsd = SG.simPnl(row.entryPx, row.exitPx, row.side, SG.roundCopy(row.notional || row.maxNotional), SG.feeRatio(row.realFee, row.notional || row.maxNotional));
     row.simPct = SG.simPct(row.entryPx, row.exitPx, row.side);
     row.realPct = isFinite(row.realUsd) && row.notional > 0 ? row.realUsd / row.notional : NaN;
   };

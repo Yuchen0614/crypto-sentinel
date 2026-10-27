@@ -41,8 +41,12 @@
     if (inp && document.activeElement !== inp) inp.value = String(Math.round(c.capital));
     U.text('#sgCapVal', usd(c.capital));
     U.text('#sgSizeVal', usd(size));
-    U.text('#sgSizeNote', c.sizeMode === 'pct' ? ('本金 ' + c.sizePct + '%') : '固定每筆');
+    U.text('#sgSizeNote', c.sizeMode === 'pct' ? ('本金 ' + c.sizePct + '%')
+      : (c.sizeMode === 'mirror' ? ('大戶名目 ÷' + (c.mirrorDiv || 500) + '，單筆上限本金 ' + (c.mirrorCapPct || 100) + '%') : '固定每筆'));
+    basis();
     const ps = $('#sgPctSeg'); if (ps) ps.hidden = c.sizeMode !== 'pct';
+    const ms = $('#sgMirrorSeg'); if (ms) ms.hidden = c.sizeMode !== 'mirror';
+    if (c.sizeMode === 'mirror') U.text('#sgSizeVal', '÷' + (c.mirrorDiv || 500));
     [['#sgCapSeg', 'cap', Math.round(c.capital)], ['#sgSizeSeg', 'mode', c.sizeMode === 'pct' ? 'pct' : 'fixed'], ['#sgWinSeg', 'win', SS.win]]
       .forEach(([sel, key, cur]) => {
         const el = $(sel); if (!el) return;
@@ -59,6 +63,25 @@
     U.text('#sgFeeVal', fm === 'taker' ? '吃單 0.045%/邊' : (fm === 'maker' ? '掛單 0.015%/邊' : '同大戶（實際費率）'));
     const fe = $('#sgFeeSeg');
     if (fe) Array.prototype.forEach.call(fe.children, b => b.classList.toggle('on', b.dataset.fee === fm));
+  }
+
+  /* 同口徑比較：兩邊都用「名目加權報酬率」看，$ 的差距才拆得開 */
+  function basis() {
+    const el = $('#sgBasis'); if (!el) return;
+    const R = SG.rounds.filter(r => r.status === 'closed' && isFinite(r.realUsd) && isFinite(r.notional) && r.notional > 0);
+    if (!R.length) { el.textContent = '同口徑比較：還沒有已平倉回合'; return; }
+    const pc = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
+    let rr = 0, rn = 0, sr = 0, sn = 0, fee = 0;
+    R.forEach(r => {
+      const cp = SG.roundCopy(r.notional), fr = SG.feeRatio(r.realFee, r.notional);
+      rr += r.realUsd; rn += r.notional; sn += cp; fee += cp * fr;
+      sr += SG.simPnl(r.entryPx, r.exitPx, r.side, cp, fr);
+    });
+    const rRate = rr / rn, sRate = sr / sn;
+    el.innerHTML = '<b>同口徑比較（' + R.length + ' 個回合）</b>：錢包真實 <b>' + pc(rRate) + '</b>（名目加權 · 名目 $'
+      + U.money(rn) + '）｜ 你的跟單 <b>' + pc(sRate) + '</b>（' + (SG.cfg.sizeMode === 'mirror' ? '同比例' : '等權重')
+      + ' · 名目 $' + U.money(sn) + '）｜ 差距 <b>' + pc(sRate - rRate) + '</b>，其中手續費占 ' + pc(-fee / sn)
+      + '（' + (SG.cfg.sizeMode === 'mirror' ? '切成同比例後，剩下的差距就是手續費與配對差異' : '切成「同比例」可對齊大戶的下注大小') + '）';
   }
 
   /* ── 跟單對象選擇器 ───────────────────────────────────── */
@@ -142,6 +165,14 @@
   }
 
   /* ── 綁定 ─────────────────────────────────────────────── */
+  /* 改設定後重算既有回合（真實盈虧不動），並回報筆數 */
+  function recalc(what) {
+    const f = SG.recomputeAll || SG.recompute;
+    const n = (typeof f === 'function') ? (f.call(SG) || 0) : 0;
+    render();
+    say((what ? what + '；' : '') + '已重算 ' + n + ' 筆回合');
+  }
+
   function wire() {
     const inp = $('#sgCapInput');
     if (inp) {
@@ -158,8 +189,9 @@
     const seg = (sel, fn) => { const e = $(sel); if (e) e.addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) fn(b); }); };
 
     seg('#sgCapSeg', b => { SG.cfg.capital = +b.dataset.cap; SG.save(); render(); say('模擬本金 ' + usd(SG.cfg.capital) + '（既有回合的數字要按「重算名目」才更新）'); });
-    seg('#sgSizeSeg', b => { SG.cfg.sizeMode = b.dataset.mode === 'pct' ? 'pct' : 'fixed'; SG.save(); render(); });
-    seg('#sgPctSeg', b => { SG.cfg.sizePct = +b.dataset.pct; SG.cfg.sizeMode = 'pct'; SG.save(); render(); say('每筆名目＝本金 ' + SG.cfg.sizePct + '%＝' + usd(SG.copySize())); });
+    seg('#sgSizeSeg', b => { SG.cfg.sizeMode = b.dataset.mode; SG.save(); render(); recalc('每筆名目改成「' + b.textContent.trim() + '」'); });
+    seg('#sgPctSeg', b => { SG.cfg.sizePct = +b.dataset.pct; SG.cfg.sizeMode = 'pct'; SG.save(); render(); recalc('每筆名目＝本金 ' + SG.cfg.sizePct + '%＝' + usd(SG.copySize())); });
+    seg('#sgMirrorSeg', b => { SG.cfg.mirrorDiv = +b.dataset.div; SG.cfg.sizeMode = 'mirror'; SG.save(); render(); recalc('每筆名目＝大戶該回合名目 ÷' + SG.cfg.mirrorDiv + '（單筆上限本金 ' + (SG.cfg.mirrorCapPct || 100) + '%）'); });
     seg('#sgWinSeg', b => { SS.win = +b.dataset.win; render(); });
     seg('#sgFeeSeg', b => {
       SG.cfg.feeMode = b.dataset.fee; SG.save(); render();
