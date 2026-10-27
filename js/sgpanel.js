@@ -55,6 +55,10 @@
     if (fv) fv.textContent = f.length ? (f.length + ' 個錢包') : ('全部大戶' + (wl().length ? '（' + wl().length + '）' : ''));
     const pb = $('#sgPickBtn'); if (pb) pb.classList.toggle('picked', f.length > 0);
     const rb = $('#sgRebuildBtn'); if (rb) rb.disabled = SS.busy;
+    const fm = SG.cfg.feeMode || 'whale';
+    U.text('#sgFeeVal', fm === 'taker' ? '吃單 0.045%/邊' : (fm === 'maker' ? '掛單 0.015%/邊' : '同大戶（實際費率）'));
+    const fe = $('#sgFeeSeg');
+    if (fe) Array.prototype.forEach.call(fe.children, b => b.classList.toggle('on', b.dataset.fee === fm));
   }
 
   /* ── 跟單對象選擇器 ───────────────────────────────────── */
@@ -157,6 +161,12 @@
     seg('#sgSizeSeg', b => { SG.cfg.sizeMode = b.dataset.mode === 'pct' ? 'pct' : 'fixed'; SG.save(); render(); });
     seg('#sgPctSeg', b => { SG.cfg.sizePct = +b.dataset.pct; SG.cfg.sizeMode = 'pct'; SG.save(); render(); say('每筆名目＝本金 ' + SG.cfg.sizePct + '%＝' + usd(SG.copySize())); });
     seg('#sgWinSeg', b => { SS.win = +b.dataset.win; render(); });
+    seg('#sgFeeSeg', b => {
+      SG.cfg.feeMode = b.dataset.fee; SG.save(); render();
+      const f = SG.recomputeAll || SG.recompute;
+      const n = (typeof f === 'function') ? (f.call(SG) || 0) : 0;
+      say('手續費改用「' + b.textContent.trim() + '」重算 ' + n + ' 筆回合：模擬跟單累計 ' + (SG.stats ? '' : '') + '已更新');
+    });
     const legacy = $('#sgCopySeg');   // 舊的固定金額分段鈕仍在畫面上，切回固定時要同步
     if (legacy) legacy.addEventListener('click', () => { if (SG.cfg.sizeMode === 'pct') { SG.cfg.sizeMode = 'fixed'; SG.save(); render(); } });
 

@@ -95,7 +95,7 @@
   <!-- 績效總覽（即時、單一基準）-->
   <div class="sg-cap">
     <b>即時總覽</b>
-    <span class="mini">上面這排是「一眼看狀況」：跟單累計與錢包實際已實現並列。完整的風險指標（回撤、獲利因子、平均 R…）在下方「績效指標」，可切換計算基礎。</span>
+    <span class="mini">上面這排是「一眼看狀況」。<b>兩邊的 $ 不能直接比</b>：錢包實際是「名目加權」（他們的部位常在 $30 萬～180 萬），跟單是「每筆固定 $10K 的等權重」——要比就看下方的<b>報酬率</b>與「權益曲線（報酬率）」，完整的風險指標（回撤、獲利因子、平均 R…）在「績效指標」。</span>
   </div>
   <div class="sg-kpi">
     <div class="kpi" title="通過記錄門檻、且已配對出開倉與平倉的回合數。只影響畫面上的樣本，不影響你的模擬跟單紀錄。"><label>已記錄回合</label><b id="sgRounds">—</b><span class="mini" id="sgRoundsSub">—</span></div>
@@ -226,6 +226,13 @@
             <button data-min="250000" class="on">≥25萬</button>
             <button data-min="1000000">≥100萬</button>
           </div>
+          <label>手續費假設（模擬跟單）<b id="sgFeeVal">—</b></label>
+          <div class="seg seg-sm" id="sgFeeSeg">
+            <button data-fee="whale" title="用該回合大戶實際付的費率（實測約 0.0017%/邊，因為他們多為掛單／VIP）">同大戶</button>
+            <button data-fee="taker" title="你自己市價跟單：0.045%/邊，來回 0.09%">吃單 0.045%</button>
+            <button data-fee="maker" title="掛單成交：0.015%/邊，來回 0.03%">掛單 0.015%</button>
+          </div>
+          <p class="mini">名目固定 $10K 時，「吃單」來回要先付 0.09%＝$9／回合；用大戶實際費率約 $0.35／回合。這一項對小名目的跟單結果影響很大。</p>
           <p class="mini">大戶某一輪的持倉名目小於門檻就不列入帳本，避免雜訊；改完畫面會自動重算。跟單設定都在頁面最上方的控制列。</p>
           <p class="mini" id="sgNote">—</p>
         </div>

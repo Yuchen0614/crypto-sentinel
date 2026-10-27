@@ -30,7 +30,9 @@
     sizeMode: 'fixed',     // 'fixed' 固定名目 ｜ 'pct' 每筆＝本金 × sizePct%
     sizePct: 5,            // sizeMode='pct' 時使用
     follow: [],            // 跟單錢包白名單（空陣列＝跟全部大戶）
-    feeRate: 0.00045,      // 手續費估算（單邊 taker）
+    feeRate: 0.00045,      // 手續費估算（單邊 taker，吃單）
+    makerRate: 0.00015,    // 單邊 maker（掛單）
+    feeMode: 'whale',      // 'whale' 用該回合大戶實際付的費率 ｜ 'taker' 0.045%/邊 ｜ 'maker' 0.015%/邊
     minNotional: 250000,   // 記錄門檻：回合／批次名目 ≥ 此值才進帳
     seedWallets: 12,       // 首次載入時抓成交紀錄的錢包數
     seedMinutes: 10,       // 首次載入的回看分鐘數
@@ -117,7 +119,7 @@
     let n = 0;
     SG.rounds.forEach(r => {
       if (r.status !== 'closed') return;
-      const v = SG.simPnl(r.entryPx, r.exitPx, r.side);
+      const v = SG.simPnl(r.entryPx, r.exitPx, r.side, undefined, SG.feeRatio(r.realFee, r.notional || r.maxNotional));
       if (isFinite(v)) { r.simUsd = v; r.simPct = SG.simPct(r.entryPx, r.exitPx, r.side); n++; }
     });
     SG.save();
@@ -147,12 +149,25 @@
   SG.setMids = function (m) { if (m) SG.mids = m; };
   SG.mid = function (coin) { const v = SG.mids ? parseFloat(SG.mids[coin]) : NaN; return isFinite(v) ? v : NaN; };
   SG.fee = function (notional) { return Math.abs(notional) * SG.cfg.feeRate; };
+  /* 這個回合該收多少手續費？三種假設——
+     whale：用該回合大戶自己付的 fee/名目（實測約 0.0017%/邊，因為他們多為掛單／VIP），
+            取不到才退回吃單費率；
+     taker / maker：固定 0.045% / 0.015% 每邊（模擬你自己市價跟單的成本）。 */
+  SG.feeRatio = function (realFee, realNotional) {
+    const m = SG.cfg.feeMode || 'whale';
+    if (m === 'taker') return SG.cfg.feeRate * 2;
+    if (m === 'maker') return SG.cfg.makerRate * 2;
+    const r = (isFinite(realFee) && isFinite(realNotional) && realNotional > 0)
+      ? Math.abs(realFee) / Math.abs(realNotional) : NaN;
+    return (isFinite(r) && r > 0) ? r : SG.cfg.feeRate * 2;
+  };
   /* 模擬跟單：固定名目、同方向、進出場各收一次估算手續費 */
-  SG.simPnl = function (entryPx, exitPx, side, copy) {
+  SG.simPnl = function (entryPx, exitPx, side, copy, feeRatio) {
     if (!isFinite(entryPx) || !isFinite(exitPx) || entryPx <= 0) return NaN;
     const n = isFinite(copy) ? copy : SG.copySize();
     const gross = n * dirOf(side) * (exitPx / entryPx - 1);
-    return gross - SG.fee(n) * 2;
+    const fr = isFinite(feeRatio) ? feeRatio : SG.cfg.feeRate * 2;   // 預設吃單來回
+    return gross - n * fr;
   };
   SG.simPct = function (entryPx, exitPx, side) {
     if (!isFinite(entryPx) || !isFinite(exitPx) || !entryPx) return NaN;
@@ -250,7 +265,7 @@
     const px = F(q.entry) + dirOf(q.side) * (F(q.upnl) / sz);
     r.status = 'closed'; r.closedAt = ts; r.exitPx = isFinite(px) ? px : NaN;
     r.holdMs = Math.max(0, ts - r.openedAt);
-    r.simUsd = SG.simPnl(r.entryPx, r.exitPx, r.side);
+    r.simUsd = SG.simPnl(r.entryPx, r.exitPx, r.side, undefined, SG.feeRatio(r.realFee, r.notional || r.maxNotional));
     r.simPct = SG.simPct(r.entryPx, r.exitPx, r.side);
     r.realSrc = 'pending';
     SG.event('CLOSE', r, {
@@ -355,7 +370,7 @@
     row.realFills = (row.realFills || 0) + 1;
     row.fills = (row.fills || 0) + 1;
     row.partial = row.partial || partial;
-    row.simUsd = SG.simPnl(row.entryPx, row.exitPx, row.side);
+    row.simUsd = SG.simPnl(row.entryPx, row.exitPx, row.side, undefined, SG.feeRatio(row.realFee, row.notional || row.maxNotional));
     row.simPct = SG.simPct(row.entryPx, row.exitPx, row.side);
     row.realPct = isFinite(row.realUsd) && row.notional > 0 ? row.realUsd / row.notional : NaN;
   };
