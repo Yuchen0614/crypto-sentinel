@@ -1,2 +1,9 @@
 .fontbuild/
 fontbuild.log
+# 抓取快取（原始 API 回應、續抓進度）與 Python 快取，不進 repo
+.cache/
+__pycache__/
+*.pyc
+__pycache__/
+*.pyc
+.cache/
