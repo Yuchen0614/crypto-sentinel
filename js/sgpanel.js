@@ -71,12 +71,15 @@
     const R = SG.rounds.filter(r => r.status === 'closed' && isFinite(r.realUsd) && isFinite(r.notional) && r.notional > 0);
     if (!R.length) { el.textContent = '同口徑比較：還沒有已平倉回合'; return; }
     const pc = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
-    let rr = 0, rn = 0, sr = 0, sn = 0, fee = 0, used = 0;
+    let rr = 0, rn = 0, sr = 0, sn = 0, fee = 0, used = 0, capped = 0, skipped = 0;
     R.forEach(r => {
       const cp = SG.roundCopy(r.notional), fr = SG.feeRatio(r.realFee, r.notional);
       const s = SG.simPnl(r.entryPx, r.exitPx, r.side, cp, fr);
-      rr += r.realUsd; rn += r.notional;
-      if (isFinite(s) && cp > 0) { sr += s; sn += cp; fee += cp * fr; used++; }
+      // 兩邊必須是同一批回合才比得起來：沒有進場價（快照推得、抓不到成交）的回合，
+      // 模擬算不出來，就不該只算進「錢包真實」那一邊，否則差距會被這批回合放大。
+      if (!isFinite(s) || !(cp > 0)) { skipped++; return; }
+      rr += r.realUsd; rn += r.notional; sr += s; sn += cp; fee += cp * fr; used++;
+      if (SG.mirrorCapped && SG.mirrorCapped(r.notional)) capped++;
     });
     const rRate = rn > 0 ? rr / rn : NaN, sRate = sn > 0 ? sr / sn : NaN;
     if (!used || !isFinite(sRate)) {
@@ -86,7 +89,9 @@
     el.innerHTML = '<b>同口徑比較（' + used + ' / ' + R.length + ' 個回合）</b>：錢包真實 <b>' + pc(rRate) + '</b>（名目加權 · 名目 $'
       + U.money(rn) + '）｜ 你的跟單 <b>' + pc(sRate) + '</b>（' + (SG.cfg.sizeMode === 'mirror' ? '同比例' : '等權重')
       + ' · 名目 $' + U.money(sn) + '）｜ 差距 <b>' + pc(sRate - rRate) + '</b>，其中手續費占 ' + pc(-fee / sn)
-      + '（' + (SG.cfg.sizeMode === 'mirror' ? '切成同比例後，剩下的差距就是手續費與配對差異' : '切成「同比例」可對齊大戶的下注大小') + '）';
+      + '（' + (SG.cfg.sizeMode === 'mirror' ? '切成同比例後，剩下的差距就是手續費與配對差異' : '切成「同比例」可對齊大戶的下注大小') + '）'
+      + (skipped ? '　※ 另有 ' + skipped + ' 個回合抓不到進場價（快照推得）已排除，兩邊只比同一批 ' + used + ' 個回合' : '')
+      + (capped ? '　※ 其中 ' + capped + ' 筆被單筆上限壓住（大戶名目超過本金 ' + (SG.cfg.mirrorCapPct || 100) + '%÷' + (SG.cfg.mirrorDiv || 500) + ' 的上限）' : '');
   }
 
   /* ── 跟單對象選擇器 ───────────────────────────────────── */
