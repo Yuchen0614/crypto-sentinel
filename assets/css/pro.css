@@ -447,6 +447,7 @@ table.sg thead th.class-nowrap { white-space: nowrap !important }
 /* 數字與幣種欄：真的放不下時整段省略（而不是顯示半截數字／文字） */
 .scan tbody td.px, .scan tbody td.vol { overflow: hidden; text-overflow: ellipsis }
 .scan tbody td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.scan tbody td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 @media (min-width: 1760px) { .layout { grid-template-columns: 384px minmax(0, 1fr) 356px !important } }
 @media (min-width: 1441px) and (max-width: 1759px) {
   .layout { grid-template-columns: 336px minmax(0, 1fr) 344px !important }
@@ -476,7 +477,6 @@ table.sg thead th.class-nowrap { white-space: nowrap !important }
   .scan tbody td.px { font-size: 10px !important }   /* 微價幣字串最長，用最小字級 */
   /* 長幣名（100MARSCOIN）在 70px 欄寬會溢出 2px，縮一級並改用省略號 */
   .scan .sym b { font-size: 11px !important }
-  .scan tbody td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 }
 
 /* ══ 收藏交易對（掃描清單 + 圖表標題）═══════════════════════════ */
