@@ -290,6 +290,12 @@
   }
 
   /* ══ 渲染：策略績效 ════════════════════════════════════════ */
+  /* 等權買進持有（不換手）參考值：主 agent 用另一種口徑獨立算出
+     （data/whale-perf.json；條件：該視窗可靠、期初權益 ≥ $1000、視窗內 ≥ 2 個取樣點）
+     與上面策略表的「每期等權再平衡」不同口徑，兩者不能混著看。 */
+  const BUYHOLD = { '30': 0.4220, '60': 0.2918, '180': 0.3969, '360': 0.8708 };
+  const BUYHOLD_N = { '30': 49, '60': 47, '180': 31, '360': 22 };
+
   function renderStrategy() {
     const mbox = doc.getElementById('rpStrBody');
     const fbox = doc.getElementById('rpStrFull');
@@ -336,7 +342,12 @@
       return '<tr><td class="rp-strname"><b>' + esc(s.name) + '</b></td>' + cells +
         '<td class="rp-desc">' + esc(s.desc) + '</td></tr>';
     }).join('');
-    mbox.innerHTML = '<div class="rp-tw rp-tw-matrix"><table class="rp">' + head + '<tbody>' + body + '</tbody></table></div>' +
+    const bhCells = wins.map(win => '<td class="ta-r num ' + clsOf(BUYHOLD[win]) + '" title="期初等權買進後不再調整（' + (BUYHOLD_N[win] || '?') + ' 個錢包有完整視窗資料）">' + pctR(BUYHOLD[win]) + '</td>').join('');
+    const bhRow = '<tr class="rp-bh"><td class="rp-strname"><b>等權買進持有（不換手）</b></td>' + bhCells +
+      '<td class="rp-desc" title="期初等權買進、期間不調整">對照用：同一批大戶、期初等權買進後不再換手</td></tr>';
+    mbox.innerHTML = '<div class="rp-tw rp-tw-matrix"><table class="rp">' + head + '<tbody>' + body + bhRow + '</tbody></table></div>' +
+      '<div class="mini rp-basis">兩種口徑：上表策略是<b>每期等權再平衡</b>（每 5~14 天一個取樣期，把資金平均分配到當時選中的錢包、逐期複利）；最後一列是<b>等權買進持有、期間不換手</b>。' +
+      '同樣的大戶、同樣期間，360 天兩者差約 90 個百分點——差距來自再平衡（會賣強買弱）與可用錢包數不同（買進持有需有完整視窗資料，360 天只有 22 檔）。看策略績效請看同一列之間的高低，不要把兩列直接相減。</div>' +
       (st.scale !== 1 ? '<div class="mini rp-scale">回測檔的數值以百分比（35＝35%）記錄，畫面已統一換算成同一種寫法。</div>' : '');
 
     /* 該視窗的完整指標（可排序） */

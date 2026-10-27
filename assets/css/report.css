@@ -237,3 +237,9 @@ table.rp .up { color: var(--p-up) } table.rp .down { color: var(--p-dn) } table.
   .rp-bar-row { grid-template-columns: 92px minmax(60px, 1fr) 34px 48px; gap: 8px }
   .rp-dfoot .mini { margin-left: 0 }
 }
+
+/* 策略對照表的「等權買進持有（不換手）」對照列：與策略列區隔，但不搶眼 */
+.rp-bh > td { border-top: 2px solid var(--p-line); color: var(--p-t2) }
+.rp-bh .rp-strname b { font-weight: 600 }
+.rp-basis { margin-top: 7px; line-height: 1.6; color: var(--p-t3) }
+.rp-basis b { color: var(--p-t2); font-weight: 600 }
