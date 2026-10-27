@@ -71,14 +71,19 @@
     const R = SG.rounds.filter(r => r.status === 'closed' && isFinite(r.realUsd) && isFinite(r.notional) && r.notional > 0);
     if (!R.length) { el.textContent = '同口徑比較：還沒有已平倉回合'; return; }
     const pc = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
-    let rr = 0, rn = 0, sr = 0, sn = 0, fee = 0;
+    let rr = 0, rn = 0, sr = 0, sn = 0, fee = 0, used = 0;
     R.forEach(r => {
       const cp = SG.roundCopy(r.notional), fr = SG.feeRatio(r.realFee, r.notional);
-      rr += r.realUsd; rn += r.notional; sn += cp; fee += cp * fr;
-      sr += SG.simPnl(r.entryPx, r.exitPx, r.side, cp, fr);
+      const s = SG.simPnl(r.entryPx, r.exitPx, r.side, cp, fr);
+      rr += r.realUsd; rn += r.notional;
+      if (isFinite(s) && cp > 0) { sr += s; sn += cp; fee += cp * fr; used++; }
     });
-    const rRate = rr / rn, sRate = sr / sn;
-    el.innerHTML = '<b>同口徑比較（' + R.length + ' 個回合）</b>：錢包真實 <b>' + pc(rRate) + '</b>（名目加權 · 名目 $'
+    const rRate = rn > 0 ? rr / rn : NaN, sRate = sn > 0 ? sr / sn : NaN;
+    if (!used || !isFinite(sRate)) {
+      el.innerHTML = '<b>同口徑比較</b>：這批回合還沒有可計算的模擬名目（部分回合是用持倉快照推的，沒有進場價）。按「重建歷史」抓成交明細後即可比較。';
+      return;
+    }
+    el.innerHTML = '<b>同口徑比較（' + used + ' / ' + R.length + ' 個回合）</b>：錢包真實 <b>' + pc(rRate) + '</b>（名目加權 · 名目 $'
       + U.money(rn) + '）｜ 你的跟單 <b>' + pc(sRate) + '</b>（' + (SG.cfg.sizeMode === 'mirror' ? '同比例' : '等權重')
       + ' · 名目 $' + U.money(sn) + '）｜ 差距 <b>' + pc(sRate - rRate) + '</b>，其中手續費占 ' + pc(-fee / sn)
       + '（' + (SG.cfg.sizeMode === 'mirror' ? '切成同比例後，剩下的差距就是手續費與配對差異' : '切成「同比例」可對齊大戶的下注大小') + '）';
