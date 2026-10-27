@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>回測報表 · 大戶實際績效與策略回測 · CRYPTO SENTINEL</title>
+<meta name="description" content="用 Hyperliquid 真實權益曲線算出的追蹤大戶 30／60／180／360 天實際績效（報酬、回撤、夏普、勝率），與規則化策略回測結果並排對照。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305070e'/%3E%3Cpath d='M6 22 L12 10 L18 20 L26 6' stroke='%2338f6ff' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/fx.css">
+<link rel="stylesheet" href="assets/css/v2.css">
+<link rel="stylesheet" href="assets/css/v3.css">
+<link rel="stylesheet" href="assets/css/pro.css">
+<link rel="stylesheet" href="assets/css/report.css">
+</head>
+<body>
+
+<!-- ── 頁首 ─────────────────────────────────────────────── -->
+<div class="hud oc-hud rp-hud">
+  <div class="hud-brand">
+    <h1><span class="dot"></span>CRYPTO SENTINEL <b>／ 回測報表</b></h1>
+  </div>
+  <div class="oc-status" id="rpMeta">資料載入中…</div>
+  <div class="oc-actions">
+    <nav class="pagenav">
+      <a href="index.html"><i class="nd"></i>行情總覽</a>
+      <a href="onchain.html"><i class="nd"></i>鏈上聰明錢</a>
+      <a href="signals.html"><i class="nd"></i>持倉分析</a>
+      <a href="report.html" class="on" aria-current="page"><i class="nd"></i>回測報表</a>
+    </nav>
+    <div class="clock"><span id="rpClock">--:--:--</span><small id="rpDate">台北</small></div>
+  </div>
+</div>
+
+<div class="oc-note">
+  <b>這一頁在算什麼：</b>
+  ① 追蹤名單裡的每個大戶錢包，用 Hyperliquid 的<b>帳戶權益曲線</b>（每日降採樣）算出 30／60／180／360 天的區間報酬、最大回撤、夏普與勝率，
+  這些是他們的<b>實際結果</b>，不是回測；② 同一批錢包上跑<b>規則化策略</b>的回測，兩邊並排對照。
+  <b>看數字前先知道三件事：</b>資料源是粗採樣（實測點距 5～14 天，30 天視窗常常只有 5～10 個取樣點），短視窗的夏普與勝率會很浮動；
+  報酬<b>沒有扣</b>手續費、資金費率與滑價；名單只收「現在還在排行榜上、淨值 ≥ 100 萬美元、30 天成交額 ≥ 500 萬美元」的錢包，
+  已經賠光或離場的不在名單裡，<b>整體績效必然偏樂觀</b>。
+  每個視窗左上角都標了有效樣本、被排除的視窗數與取樣點中位數；標示 ⚠ 的是極端值（|報酬| ≥ 1000%，研判為權益曲線跳動），
+  它們在排行表照實顯示，但不列入平均與分布圖。
+</div>
+
+<!-- ── 主體 ─────────────────────────────────────────────── -->
+<main class="rp-page" id="rpRoot">
+
+  <!-- 綜合績效 -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-smart"></i>大戶實際績效 · 四個視窗</h2>
+      <span class="mini" id="rpAggMeta">—</span>
+      <span class="mini" style="margin-left:auto" title="中位數是主指標；平均報酬用修剪平均（排除極端值後雙邊各去掉 5%）">主指標為中位數 · 平均報酬為修剪平均</span>
+    </div>
+    <div id="rpAggBody"><div class="empty" style="padding:14px">正在讀取權益曲線…</div></div>
+  </section>
+
+  <!-- 分布 -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-scan"></i>分布</h2>
+      <span class="mini" id="rpDistMeta">—</span>
+      <div class="seg seg-sm" id="rpDistMetric" style="margin-left:auto" title="要看報酬率還是最大回撤的分布">
+        <button data-m="ret" class="on">報酬率</button><button data-m="dd">最大回撤</button>
+      </div>
+      <div class="seg seg-sm" id="rpDistSeg" title="要看的視窗">
+        <button data-win="30">30 天</button><button data-win="60">60 天</button><button data-win="180">180 天</button><button data-win="360" class="on">360 天</button>
+      </div>
+    </div>
+    <div id="rpDistBody"><div class="empty" style="padding:14px">正在讀取…</div></div>
+  </section>
+
+  <!-- 策略回測 -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-brain"></i>策略回測績效</h2>
+      <span class="mini" id="rpStrMeta">—</span>
+      <div class="seg seg-sm" id="rpStrSeg" style="margin-left:auto" hidden title="下方完整指標要看哪個視窗">
+        <button data-win="30">30 天</button><button data-win="60">60 天</button><button data-win="180">180 天</button><button data-win="360" class="on">360 天</button>
+      </div>
+    </div>
+    <div id="rpStrBody"><div class="empty" style="padding:14px">正在讀取回測結果…</div></div>
+    <div id="rpStrFullHead" hidden class="rp-subhead">
+      <b>完整指標</b>
+      <span class="mini" id="rpStrFullMeta">—</span>
+    </div>
+    <div id="rpStrFull"></div>
+  </section>
+
+  <!-- 錢包排行 -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-whale"></i>錢包績效排行</h2>
+      <span class="count" id="rpWalCount">0</span>
+      <span class="mini" id="rpWalHead">—</span>
+    </div>
+    <div class="rp-tools">
+      <input type="search" id="rpQ" placeholder="搜尋名稱或地址…（按 / 直接跳到這裡）" spellcheck="false" autocomplete="off">
+      <label class="chk"><input type="checkbox" id="rpRel"> <span id="rpRelLabel">只看可靠資料</span></label>
+      <div class="seg seg-sm" id="rpDetSeg" title="最大回撤／夏普／勝率這三欄（以及「只看可靠資料」的判定）要看哪一個視窗">
+        <button data-win="30">30 天</button><button data-win="60">60 天</button><button data-win="180">180 天</button><button data-win="360" class="on">360 天</button>
+      </div>
+      <span class="sp"></span>
+      <button class="ghost" id="rpCsv" title="匯出目前排序與篩選後的清單（CSV，Excel 可直接開啟）">匯出 CSV</button>
+    </div>
+    <div class="rp-legend">
+      <span><b>點欄位標題</b>可切換排序；<b>點一整列</b>看該錢包的權益曲線與四個視窗明細。</span>
+      <span><i class="rp-na">—</i> ＝ 該視窗資金變動過大或期初權益太小，已排除於統計。</span>
+      <span><i class="rp-ext">⚠</i> ＝ 極端值（|報酬| ≥ 1000%，研判為曲線跳動），不列入平均與分布圖。</span>
+      <span>淨值取自 Hyperliquid 公開排行榜。</span>
+    </div>
+    <div id="rpWalBody"><div class="empty" style="padding:14px">正在讀取名單…</div></div>
+  </section>
+
+  <!-- 方法論 -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-book"></i>方法論與已知限制</h2>
+      <span class="mini">欄位定義 · 統計規則 · 這份資料的極限</span>
+    </div>
+    <div id="rpMethodBody"><div class="empty" style="padding:14px">正在讀取…</div></div>
+  </section>
+
+</main>
+
+<div class="statusbar">
+  <div class="ticker" id="statusTicker"><span>回測報表啟動中…</span></div>
+  <div class="disc">資料來源：Hyperliquid 公開 portfolio／排行榜 API 快照 · 本頁只做統計與視覺化，不構成投資建議</div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="overlay" id="rpOv" hidden><div class="overlay-card rp-ov" id="rpOvCard"></div></div>
+
+<script src="js/util.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/report.js"></script>
+</body>
+</html>

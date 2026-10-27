@@ -52,7 +52,8 @@
   <nav class="pagenav">
     <a href="index.html" class="on"><i class="nd"></i>行情總覽</a>
     <a href="onchain.html"><i class="nd"></i>鏈上聰明錢</a>
-    <a href="signals.html"><i class="nd"></i>帶單記錄</a>
+    <a href="signals.html"><i class="nd"></i>持倉分析</a>
+    <a href="report.html"><i class="nd"></i>回測報表</a>
   </nav>
   <div class="hud-right">
     <div class="clock">
@@ -333,6 +334,26 @@
       </p>
     </div>
   </section>
+
+  <section class="panel chain-entry">
+    <div class="panel-head">
+      <h2><i class="ic ic-scan"></i>回測報表 · 實際績效與策略對照</h2>
+      <span class="mini" id="entryRepMeta">績效資料載入中…</span>
+      <a class="entry-btn" href="report.html">開啟獨立頁面 ↗</a>
+    </div>
+    <div class="entry-body">
+      <div class="entry-stats">
+        <div><label>追蹤錢包</label><b id="entryRepWallets">—</b></div>
+        <div><label>權益曲線資料</label><b id="entryRepPerf">—</b></div>
+        <div><label>策略回測</label><b id="entryRepBt">—</b></div>
+      </div>
+      <p class="entry-desc">
+        用 Hyperliquid 的<b>真實權益曲線</b>算出每個追蹤大戶 30／60／180／360 天的實際報酬、最大回撤、夏普與勝率，
+        再和規則化策略的回測（等權持有、淨值前 10、動能輪換、反向、低回撤）並排對照；
+        附可排序的錢包排行、每個錢包的權益曲線，以及方法論與已知限制。
+      </p>
+    </div>
+  </section>
 </div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
@@ -358,5 +379,30 @@
 <script src="js/ui.js"></script>
 <script src="js/chainui.js"></script>
 <script src="js/app.js"></script>
+<script>
+/* ── 回測報表入口卡：三個數字直接讀 data/*.json ───────────────
+   讀不到（例如 file:// 直開）就維持「—」，不影響主控台其他功能。 */
+(function () {
+  var get = function (p) {
+    return fetch(p).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  };
+  var day = function (s) { return s ? String(s).slice(0, 10) : '—'; };
+  var set = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+  var meta = document.getElementById('entryRepMeta');
+  Promise.all([get('data/whale-perf.json'), get('data/backtest.json')]).then(function (res) {
+    var perf = res[0], bt = res[1];
+    if (perf && perf.wallets) {
+      set('entryRepWallets', Object.keys(perf.wallets).length + ' 個');
+      set('entryRepPerf', day(perf.generated_at));
+    }
+    if (bt && bt.strategies) set('entryRepBt', bt.strategies.length + ' 組 · ' + day(bt.generated_at));
+    if (meta) {
+      meta.textContent = perf
+        ? '資料 ' + day(perf.generated_at) + (bt ? ' · 回測 ' + day(bt.generated_at) : ' · 回測資料產生中')
+        : '資料讀取失敗（請用 http(s) 開啟）';
+    }
+  });
+})();
+</script>
 </body>
 </html>

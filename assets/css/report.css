@@ -1,0 +1,239 @@
+/* ══════════════════════════════════════════════════════════════
+   report.css — 「回測報表」頁專用樣式（只載入 report.html）
+   ──────────────────────────────────────────────────────────────
+   只做這一頁需要的東西，設計 token 一律沿用 pro.css 的 --p-* 系列
+   （表面階層、文字階層、漲跌色、型階、圓角、緩動曲線）。
+
+   版面模型（這個專案踩過很多次「面板被壓扁、字被裁掉」）：
+     body → .hud（固定高）/ .oc-note（內容高）/ .rp-page（捲動容器）/ .statusbar
+     .rp-page 是 flex column + overflow-y:auto，每個面板 flex: 0 0 auto
+     （不可被壓縮）；面板內部的長表格各自 overflow:auto，維持表頭 sticky。
+     任何 white-space:nowrap 的儲存格都給了足夠欄寬或 ellipsis + title。
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* 規格指定的 token 名稱；既有設計系統用的是 --p-line-2，這裡補一個同色票的別名 */
+  --p-line-soft: rgba(255, 255, 255, .075);
+}
+
+/* ══ 頁面骨架 ══════════════════════════════════════════════ */
+.rp-page {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 2px 10px 12px;
+}
+/* 面板在捲動容器裡不可被壓縮（flex-shrink 會把面板壓成幾 px → 內容整區看不到） */
+.rp-page > * { flex: 0 0 auto }
+.rp-hud { align-items: center }
+.rp-hud .pagenav a { white-space: nowrap }
+/* 這一頁的頁首是「品牌 + 資料狀態 + 導覽 + 時鐘」，沒有主控台那排 6 個統計。
+   中等寬度時 pro.css 的 .hud{flex-wrap:wrap} 會把時鐘擠到第二行；與其讓
+   資料狀態被 ellipsis 切掉（字被吃掉），改成刻意兩行：
+     第 1 行＝品牌 + 導覽 + 時鐘（導覽與時鐘都完整）
+     第 2 行＝資料狀態整行鋪滿、可以換行顯示完整內容 */
+@media (min-width: 1000px) and (max-width: 1560px) {
+  .rp-hud { flex-wrap: wrap !important }
+  .rp-hud .oc-actions { flex: 0 0 auto; margin-left: auto !important; order: 1 }
+  .rp-hud .oc-status {
+    order: 5; flex: 1 1 100%; min-width: 0; white-space: normal;
+    overflow: visible; text-overflow: clip; line-height: 1.5;
+  }
+}
+
+/* ══ 綜合績效：每個視窗一列（左標籤 + 右 KPI 磚牆）════════ */
+.rp-wrow {
+  display: grid; grid-template-columns: minmax(184px, 232px) minmax(0, 1fr);
+  border-top: 1px solid var(--p-line);
+}
+.rp-wrow:first-child { border-top: 0 }
+.rp-wlabel {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  padding: 10px 12px; border-right: 1px solid var(--p-line);
+  background: var(--p-s2);
+}
+.rp-wlabel b { font-size: 12.5px; font-weight: 600; color: var(--p-t1); letter-spacing: .01em }
+.rp-wlabel .mini { font-size: 10.5px; color: var(--p-t3); line-height: 1.45 }
+.rp-wlabel .mini b { font-size: 10.5px; color: var(--p-t2) }
+.rp-wchip {
+  display: inline-block; margin-top: 2px; padding: 1px 7px; border-radius: var(--r999);
+  border: 1px solid var(--p-line-2); color: var(--p-t2) !important; font-size: 10px !important;
+  background: rgba(255, 255, 255, .03); white-space: nowrap;
+}
+.rp-wkpi {
+  border: 0 !important; border-radius: 0 !important;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)) !important;
+}
+.rp-wkpi .kpi { padding: 9px 12px !important }
+.rp-wkpi .kpi b { font-size: 16.5px !important; line-height: 1.2 }
+
+/* ══ 分布圖：div 寬度畫的橫條（無外部圖表庫）══════════════ */
+.rp-bars { display: flex; flex-direction: column; gap: 6px; padding: 11px 12px 6px }
+.rp-bar-row {
+  display: grid; grid-template-columns: 112px minmax(80px, 1fr) 38px 54px;
+  align-items: center; gap: 10px;
+}
+.rp-bl { font-family: var(--mono); font-size: 11px; color: var(--p-t2); white-space: nowrap }
+.rp-btrack { height: 12px; border-radius: 3px; background: rgba(255, 255, 255, .045); overflow: hidden }
+.rp-bfill { display: block; height: 100%; border-radius: 3px; transition: width .32s var(--ease) }
+.rp-bfill.up { background: linear-gradient(90deg, rgba(14, 203, 129, .45), var(--p-up)) }
+.rp-bfill.down { background: linear-gradient(90deg, rgba(246, 70, 93, .45), var(--p-dn)) }
+.rp-bfill.warn { background: linear-gradient(90deg, rgba(245, 165, 36, .4), var(--p-warn)) }
+.rp-bn { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: var(--p-t1) }
+.rp-bn.up { color: var(--p-up) } .rp-bn.down { color: var(--p-dn) } .rp-bn.warn { color: var(--p-warn) }
+.rp-dfoot {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  padding: 9px 12px 11px; border-top: 1px solid var(--p-line);
+  font-size: 11.5px; color: var(--p-t2);
+}
+.rp-dfoot b { font-variant-numeric: tabular-nums; color: var(--p-t1) }
+.rp-dfoot .up { color: var(--p-up) } .rp-dfoot .down { color: var(--p-dn) }
+.rp-dfoot .mini { margin-left: auto; font-size: 10.5px; color: var(--p-t3) }
+
+/* ══ 表格（沿用 pro.css 的報表質感）══════════════════════════ */
+.rp-tw { overflow: auto; max-height: 68vh; min-height: 0 }
+.rp-tw-matrix { max-height: 46vh }
+.rp-tw-full { max-height: 70vh }
+table.rp { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--fs-body) }
+table.rp thead th {
+  position: sticky; top: 0; z-index: 3; text-align: left; white-space: nowrap;
+  background: rgba(19, 23, 30, .96);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--p-line-2);
+  padding: 7px 10px; font-size: var(--fs-micro); font-weight: 500;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--p-t3);
+}
+table.rp thead th[data-sk] { cursor: pointer; transition: color var(--t) }
+table.rp thead th[data-sk]:hover { color: var(--p-t1) }
+table.rp tbody td {
+  padding: 7px 10px; border-bottom: 1px solid var(--p-line);
+  color: var(--p-t2); vertical-align: middle;
+}
+table.rp tbody tr { transition: background var(--t) }
+table.rp tbody tr:hover td { background: rgba(255, 255, 255, .028) }
+table.rp tbody td b { color: var(--p-t1); font-weight: 600 }
+table.rp .ta-r, table.rp th.ta-r { text-align: right; font-variant-numeric: tabular-nums }
+table.rp .num { font-variant-numeric: tabular-nums }
+table.rp .up { color: var(--p-up) } table.rp .down { color: var(--p-dn) } table.rp .warn { color: var(--p-warn) }
+.rp-rank td, .rp-rank thead th { white-space: nowrap }
+.rp-full td, .rp-full thead th { white-space: nowrap }
+.rp-c { text-align: center }
+.rp-rk { width: 34px; color: var(--p-t4) !important; font-family: var(--mono); font-size: 10.5px; text-align: right }
+.rp-rank thead th.rp-rk { text-align: right }
+
+/* 錢包欄：名稱 + 短地址（各自 ellipsis，title 帶完整地址） */
+.rp-wl { min-width: 0; max-width: 200px }
+.rp-wl b { display: block; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.rp-wl .mini {
+  display: block; font-family: var(--mono); font-size: 10px; color: var(--p-t3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rp-rank tbody tr { cursor: pointer }
+
+.rp-spark { display: block; width: 72px; height: 18px; margin: 0 auto; opacity: .95 }
+
+/* 策略表 */
+.rp-strname { max-width: 220px }
+.rp-strname b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block }
+.rp-desc {
+  max-width: 340px; white-space: normal !important; font-size: 11px; line-height: 1.55; color: var(--p-t3) !important;
+}
+.rp-best { display: block; font-size: 9.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--p-up) }
+.rp-bcell { background: rgba(14, 203, 129, .08) !important; box-shadow: inset 0 0 0 1px rgba(14, 203, 129, .16) }
+.rp-sarrow { font-style: normal; font-size: 8px; margin-left: 4px; color: var(--p-ax) }
+.rp-scale { padding: 7px 12px 9px; border-top: 1px solid var(--p-line); font-size: 10.5px; color: var(--p-t3) }
+.rp-thw2 { display: block; font-size: 9px; letter-spacing: 0; text-transform: none; color: var(--p-t4) }
+
+/* 儲存格標記 */
+.rp-ext { font-style: normal; font-size: 9px; margin-left: 3px; color: var(--p-warn) }
+.rp-na { color: var(--p-t4) }
+.rp-tag {
+  display: inline-block; padding: 0 6px; border-radius: var(--r999);
+  border: 1px solid var(--p-line); font-size: 9.5px; line-height: 15px; white-space: nowrap;
+}
+.rp-tag.ok { color: var(--p-up); border-color: rgba(14, 203, 129, .3); background: rgba(14, 203, 129, .09) }
+.rp-tag.warn { color: var(--p-warn); border-color: rgba(245, 165, 36, .3); background: rgba(245, 165, 36, .09) }
+.rp-tag.bad { color: var(--p-dn); border-color: rgba(246, 70, 93, .3); background: rgba(246, 70, 93, .09) }
+
+/* ══ 工具列 ════════════════════════════════════════════════ */
+.rp-tools {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 9px 12px 10px; border-bottom: 1px solid var(--p-line);
+}
+.rp-tools input[type=search] { width: 216px; max-width: 100% }
+.rp-tools .chk { font-size: 11px }
+.rp-tools .sp { margin-left: auto }
+.rp-tools .mini { font-size: 10.5px; color: var(--p-t3) }
+
+/* ══ 小節標題（策略表的「完整指標」列）／圖例 ═════════════ */
+.rp-subhead {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 9px 12px 8px; border-top: 1px solid var(--p-line); background: var(--p-s2);
+}
+.rp-subhead b { font-size: 12px; font-weight: 600; color: var(--p-t1) }
+.rp-subhead .mini { font-size: 10.5px; color: var(--p-t3) }
+.rp-legend {
+  display: flex; flex-wrap: wrap; gap: 4px 16px;
+  padding: 8px 12px 7px; border-bottom: 1px solid var(--p-line);
+  font-size: 10.5px; line-height: 1.6; color: var(--p-t3);
+}
+.rp-legend b { color: var(--p-t2); font-weight: 600 }
+.rp-legend .rp-ext, .rp-legend .rp-na { font-size: 10.5px }
+
+/* ══ 空狀態／載入／致命錯誤 ════════════════════════════════ */
+.rp-empty { padding: 14px 14px 18px; max-width: 940px; font-size: 12px; line-height: 1.75; color: var(--p-t2) }
+.rp-empty b { display: block; margin-bottom: 7px; font-size: 13px; color: var(--p-t1) }
+.rp-empty p { margin: 0 0 7px }
+.rp-empty code {
+  padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, .06);
+  font-family: var(--mono); font-size: 11px; color: var(--p-t2);
+}
+.rp-empty a { color: #c9d8ff; text-decoration: underline; text-underline-offset: 2px }
+
+/* ══ 方法論 ════════════════════════════════════════════════ */
+.rp-ms { padding: 11px 12px 13px; border-top: 1px solid var(--p-line) }
+.rp-ms:first-child { border-top: 0 }
+.rp-ms h4 { margin-bottom: 8px; font-size: 12.5px; font-weight: 600; color: var(--p-t1) }
+.rp-ul {
+  display: flex; flex-direction: column; gap: 6px; margin: 0;
+  padding-left: 18px; font-size: 11.5px; line-height: 1.7; color: var(--p-t2);
+}
+.rp-ul li::marker { color: var(--p-t4) }
+.rp-ul b { color: var(--p-t1) }
+.rp-p { font-size: 11.5px; line-height: 1.7; color: var(--p-t2) }
+.rp-quote {
+  margin-top: 9px; padding: 9px 11px; border-radius: 0 var(--r6) var(--r6) 0;
+  border-left: 2px solid var(--p-ax); background: var(--p-s3);
+  font-size: 11px; line-height: 1.75; color: var(--p-t2);
+  white-space: pre-wrap; word-break: break-word;
+}
+.rp-quote code { color: var(--p-t2) }
+.rp-quote p { margin: 0 0 7px }
+.rp-quote p:last-child { margin-bottom: 0 }
+.rp-quote b { color: var(--p-t1) }
+
+/* ══ 錢包明細彈窗 ══════════════════════════════════════════ */
+.rp-ov { width: min(1080px, 95vw) !important; max-height: 88vh; overflow-y: auto }
+.rp-ov-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px }
+.rp-ov-head h3 { font-family: var(--disp); font-size: 15px; letter-spacing: .01em; color: var(--p-t1) }
+.rp-ov-head .addr { margin-top: 2px; font-family: var(--mono); font-size: 11px; color: #9db9ff; word-break: break-all }
+.rp-ov h4 { margin: 15px 0 7px; font-size: 12.5px; font-weight: 600; color: var(--p-t1) }
+.rp-ov .ov-grid { grid-template-columns: repeat(auto-fit, minmax(174px, 1fr)); margin: 12px 0 2px }
+.rp-ov .ov-grid label { text-transform: uppercase; letter-spacing: .07em; font-size: 9.5px; color: var(--p-t3) }
+.rp-ov .ov-grid b { font-size: 13px; color: var(--p-t1); overflow-wrap: anywhere }
+.rp-ovcv { padding: 8px 10px; border: 1px solid var(--p-line); border-radius: var(--r6); background: var(--p-s3) }
+#rpOvChart { display: block; width: 100%; height: 172px }
+.rp-ov .rp-tw { max-height: 46vh }
+.rp-ov .ov-actions { display: flex; gap: 10px; margin-top: 14px }
+
+/* ══ 響應式：窄螢幕改成單欄，表格水平捲動 ═════════════════ */
+@media (max-width: 1120px) {
+  .rp-wrow { grid-template-columns: 1fr }
+  .rp-wlabel { border-right: 0; border-bottom: 1px solid var(--p-line) }
+  .rp-tw { max-height: none }
+  .rp-tools input[type=search] { width: 100%; order: -1 }
+}
+@media (max-width: 760px) {
+  .rp-bar-row { grid-template-columns: 92px minmax(60px, 1fr) 34px 48px; gap: 8px }
+  .rp-dfoot .mini { margin-left: 0 }
+}
