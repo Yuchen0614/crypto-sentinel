@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>開倉平倉帶單記錄 · CRYPTO SENTINEL</title>
-<meta name="description" content="追蹤 Hyperliquid 大戶錢包的開倉與平倉，記錄錢包實際已實現盈虧，並計算固定名目模擬跟單的損益，供參考。">
+<title>大戶持倉方向與倉位異動 · CRYPTO SENTINEL</title>
+<meta name="description" content="追蹤 Hyperliquid 52 個大戶錢包的持倉方向、共識度與擁擠度，分析倉位異動（新開倉、加倉、減倉、平倉、翻倉），並呈現大戶自己的真實已實現盈虧與各視窗權益報酬。">
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/main.css">
 <link rel="stylesheet" href="assets/css/fx.css">
@@ -18,225 +18,201 @@
 <!-- ── 頁首 ─────────────────────────────────────────────── -->
 <div class="hud oc-hud sg-hud">
   <div class="hud-brand">
-    <h1><span class="dot"></span>CRYPTO SENTINEL <b>／ 開倉平倉帶單記錄</b></h1>
+    <h1><span class="dot"></span>CRYPTO SENTINEL <b>／ 大戶持倉方向 · 倉位異動</b></h1>
   </div>
   <div class="oc-status" id="sgListMeta">大戶名單載入中…</div>
   <div class="oc-actions">
   <nav class="pagenav">
     <a href="index.html"><i class="nd"></i>行情總覽</a>
     <a href="onchain.html"><i class="nd"></i>鏈上聰明錢</a>
-    <a href="signals.html" class="on"><i class="nd"></i>帶單記錄</a>
+    <a href="signals.html" class="on"><i class="nd"></i>持倉分析</a>
+    <a href="report.html"><i class="nd"></i>回測報表</a>
   </nav>
     <div class="clock"><span id="sgClock">--:--:--</span><small id="sgDate">台北</small></div>
   </div>
 </div>
 
 <div class="oc-note">
-  <b>這一頁記錄什麼：</b>
-  ① 追蹤中的大戶錢包一有<b>開倉</b>（新開多／空單）、<b>加碼、減碼、翻倉、平倉</b>就記一筆流水；
-  ② 每一筆平倉都算出<b>錢包自己的實際已實現盈虧</b>（取自 Hyperliquid 成交紀錄的 <code>closedPnl</code>，是真實數字）；
-  ③ 同時計算<b>「若固定名目跟單」的損益</b>——你要的「參考用盈虧」，扣掉雙邊估算手續費。
-  <b>模擬跟單是紙上計算，不會下任何單，也不構成投資建議。</b>
-  ④ 最上方<b>控制列</b>集中這一頁最常用的設定：<b>模擬本金</b>（帳戶淨值／報酬率／相對本金回撤都看它）、<b>每筆名目</b>（固定金額或本金 %）、<b>跟單對象</b>（勾選要跟的錢包，全部不勾＝跟全部）、<b>歷史紀錄</b>（可選 10 分～24 小時後按「重建歷史」重抓成交，或「重新開始」從現在累積）。
-  記錄存在這台裝置的瀏覽器（可匯出 CSV）；每日績效快照由 GitHub Actions 寫入 repo，較耐久。
+  <b>這一頁看什麼：</b>
+  ① <b>持倉方向總覽</b>——追蹤中的大戶錢包現在持哪些倉，算成多空淨部位，以及每個幣的<b>共識度</b>（幾個錢包同向）與<b>擁擠度</b>（前 3 大持倉占該幣多少）；
+  ② <b>倉位異動分析</b>——前後兩次持倉快照的差分（新開倉、加倉、減倉、平倉、翻倉，含金額與錢包）、24 小時淨增減倉排行、每日快照累積起來的長期趨勢；
+  ③ <b>實際績效</b>——這些大戶自己的真實數字：已實現盈虧取自 Hyperliquid 成交的 <code>closedPnl</code>，另有 30／60／180／360 天的權益曲線報酬。
+  <b>這一頁不做跟單模擬</b>：沒有模擬本金、沒有每筆名目，也不算「若跟單」的損益。
+  即時異動只在你開著這一頁時觀察得到（重新整理會重新累積）；要長期累積請看每日部位快照，由 GitHub Actions 每天寫進 repo。
 </div>
 
 <!-- ── 主體 ─────────────────────────────────────────────── -->
 <main class="sg-page">
 
-  <!-- ══ 控制列：本金／名目／跟單對象／歷史，固定在最上面 ══ -->
-  <section class="sg-bar" id="sgBar" aria-label="跟單設定">
-    <div class="sb-grp">
-      <label>模擬本金</label>
-      <div class="sb-row">
-        <input type="number" id="sgCapInput" min="1000" step="10000" inputmode="numeric" placeholder="100000"
-               title="帳戶層級績效（淨值、報酬率、相對本金回撤）都以它為基準">
-        <div class="seg seg-sm" id="sgCapSeg">
-          <button data-cap="100000">10萬</button><button data-cap="1000000" class="on">100萬</button><button data-cap="10000000">1000萬</button>
-        </div>
-      </div>
-      <span class="mini">目前 <b id="sgCapVal">—</b></span>
-    </div>
-
-    <div class="sb-grp">
-      <label>每筆名目</label>
-      <div class="sb-row">
-        <div class="seg seg-sm" id="sgSizeSeg"><button data-mode="fixed" class="on">固定金額</button><button data-mode="pct">本金 %</button><button data-mode="mirror" title="每筆名目 = 該回合大戶名目 ÷ N：大單跟著大、小單跟著小，你的損益就和大戶同一個口徑（名目加權）">同比例</button></div>
-        <div class="seg seg-sm" id="sgCopySeg"><button data-copy="1000">1千</button><button data-copy="10000" class="on">1萬</button><button data-copy="100000">10萬</button></div>
-        <div class="seg seg-sm" id="sgPctSeg" hidden><button data-pct="1">1%</button><button data-pct="2">2%</button><button data-pct="5" class="on">5%</button><button data-pct="10">10%</button></div>
-        <div class="seg seg-sm" id="sgMirrorSeg" hidden><button data-div="1000">÷1000</button><button data-div="500" class="on">÷500</button><button data-div="200">÷200</button><button data-div="100">÷100</button></div>
-      </div>
-      <span class="mini"><b id="sgSizeVal">—</b> · <span id="sgSizeNote">—</span>；跟的是名目本身，不乘大戶槓桿</span>
-    </div>
-
-    <div class="sb-grp">
-      <label>跟單對象</label>
-      <button class="sg-pickbtn" id="sgPickBtn" title="勾選要跟的錢包；全部不勾＝跟全部大戶">
-        <b id="sgFollowVal">—</b><span class="mini">選擇 ▾</span>
-      </button>
-      <span class="mini">只影響之後的新回合</span>
-    </div>
-
-    <div class="sb-grp sb-act">
-      <label>歷史紀錄</label>
-      <div class="sb-row">
-        <div class="seg seg-sm" id="sgWinSeg"><button data-win="10">10分</button><button data-win="60">1時</button><button data-win="360" class="on">6時</button><button data-win="1440">24時</button></div>
-        <button class="entry-btn" id="sgRebuildBtn" title="清空本機帳本，重新抓指定期間的成交來重建回合（Hyperliquid 單次上限 2000 筆，會自動往前翻頁）">重建歷史</button>
-      </div>
-      <div class="sb-row">
-        <button class="ghost" id="sgRecalcBtn" title="用目前的每筆名目重算已記錄回合的模擬跟單盈虧（錢包真實盈虧不受影響）">重算名目</button>
-        <button class="ghost danger" id="sgRestartBtn" title="清空本機帳本，從現在重新累積新回合">重新開始</button>
-        <button class="ghost" id="sgExport" title="匯出目前帳本（最多 300 筆）成 CSV">匯出 CSV</button>
-      </div>
-    </div>
-
-    <div class="sb-prog" id="sgProg" hidden><i></i><span id="sgProgTxt">—</span></div>
-  </section>
-
-  <!-- 績效總覽（即時、單一基準）-->
-  <div class="sg-cap">
-    <b>即時總覽</b>
-    <span class="mini" id="sgBasis">—</span>
-    <span class="mini">上面這排是「一眼看狀況」。<b>兩邊的 $ 不能直接比</b>：錢包實際是「名目加權」（他們的部位常在 $30 萬～180 萬），跟單是「每筆固定 $10K 的等權重」——要比就看下方的<b>報酬率</b>與「權益曲線（報酬率）」，完整的風險指標（回撤、獲利因子、平均 R…）在「績效指標」。</span>
-  </div>
-  <div class="sg-kpi">
-    <div class="kpi" title="通過記錄門檻、且已配對出開倉與平倉的回合數。只影響畫面上的樣本，不影響你的模擬跟單紀錄。"><label>已記錄回合</label><b id="sgRounds">—</b><span class="mini" id="sgRoundsSub">—</span></div>
-    <div class="kpi" title="以「目前每筆名目」計算：假設每一輪都同方向跟進、在該錢包平倉時出場，扣雙邊估算手續費。這是紙上計算，不是你的實際損益。"><label>跟單累計損益</label><b id="sgSim">—</b><span class="mini" id="sgSimSub">—</span></div>
-    <div class="kpi" title="同一批回合中，這些錢包自己賺賠多少（Hyperliquid 成交的 closedPnl 加總）。跟你的跟單損益不同，因為名目與進出場時點都不一樣。"><label>錢包實際已實現</label><b id="sgReal">—</b><span class="mini" id="sgRealSub">—</span></div>
-    <div class="kpi" title="以「錢包實際已實現盈虧」計算的獲利比例。跟單的勝率在下方績效指標（可切換成模擬跟單）。"><label>錢包勝率</label><b id="sgWin">—</b><span class="mini" id="sgWinSub">—</span></div>
-    <div class="kpi"><label>平均持有時間</label><b id="sgHold">—</b><span class="mini">以模擬跟單樣本計算</span></div>
-    <div class="kpi" title="這批回合中，跟單損益最好與最差的一筆（副標會標示是哪個幣種）。"><label>最佳／最差單</label><b id="sgBest">—</b><span class="mini" id="sgWorst">—</span></div>
-  </div>
-
-  <section class="panel sg-eq-panel">
+  <!-- ══ 1. 持倉方向總覽 ══ -->
+  <section class="panel ps-block">
     <div class="panel-head">
-      <h2><i class="ic ic-smart"></i>累計盈虧曲線</h2>
-      <span class="mini" id="sgEqMeta">—</span>
+      <h2><i class="ic ic-smart"></i>持倉方向總覽</h2>
+      <span class="mini" id="psDirMeta">正在取得大戶持倉…</span>
+      <span class="mini" id="psCoinMeta">—</span>
+      <div class="seg seg-sm" id="psSortSeg" title="下方表格要用哪一個欄位排序">
+        <button data-sort="size" class="on">依總名目</button>
+        <button data-sort="net">依淨部位</button>
+        <button data-sort="crowd">依擁擠度</button>
+        <button data-sort="cons">依共識度</button>
+      </div>
     </div>
-    <canvas id="sgEquity"></canvas>
-    <div class="sg-legend">
-      <span class="lg sim">模擬跟單（固定名目）</span>
-      <span class="lg real">錢包實際已實現</span>
+    <div class="kpi-grid" id="psDirKpi"></div>
+
+    <div class="ps-split">
+      <div class="ps-tw ps-tw-coin">
+        <table class="sg">
+          <thead><tr>
+            <th title="Hyperliquid 的永續合約幣種">幣種</th>
+            <th title="方向共識：多數錢包站哪一邊。共識度＝同向錢包數 ÷ 持有該幣的錢包數；≥75% 算共識、60～75% 算偏一邊、其餘算分歧">方向共識</th>
+            <th class="ta-r" title="Σ多單名目 − Σ空單名目。正值＝整體偏多，負值＝整體偏空">淨名目</th>
+            <th class="ta-r" title="Σ多單名目 + Σ空單名目">總名目</th>
+            <th class="ta-r" title="持有該幣的錢包數（多方／空方）">錢包數</th>
+            <th class="ta-r" title="該幣前 3 大持倉占該幣總持倉的比例。越高代表少數幾檔決定這個幣的多空">擁擠度</th>
+            <th class="ta-r" title="持有該幣各錢包槓桿的平均值">平均槓桿</th>
+          </tr></thead>
+          <tbody id="psCoinBody"><tr><td colspan="7" class="empty">正在取得 52 個大戶錢包的持倉（約 80 秒跑完一輪）…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="ps-ranks">
+        <div class="ps-rankbox">
+          <div class="ps-rhead">加權淨部位排行 · 淨多前 10 <span class="mini">Σ多 − Σ空（名目加權）· 條長以本清單最大值為基準</span></div>
+          <div class="ps-bars" id="psRankUp"><div class="empty">輪詢中…</div></div>
+        </div>
+        <div class="ps-rankbox">
+          <div class="ps-rhead">加權淨部位排行 · 淨空前 10 <span class="mini">Σ多 − Σ空（名目加權）· 條長以本清單最大值為基準</span></div>
+          <div class="ps-bars" id="psRankDown"><div class="empty">輪詢中…</div></div>
+        </div>
+      </div>
     </div>
   </section>
 
-
-  <!-- 績效指標（完整風險調整後指標）-->
-  <section class="panel sg-met">
+  <!-- ══ 2. 倉位異動分析 ══ -->
+  <section class="panel ps-block">
     <div class="panel-head">
-      <h2><i class="ic ic-smart"></i>績效指標</h2>
-      <span class="mini" id="sgMetMeta">—</span>
-      <div class="seg seg-sm" id="sgBasisSeg" title="用哪一個盈虧來計算整頁指標">
-        <button data-basis="sim" class="on">模擬跟單</button>
-        <button data-basis="real">大戶真實</button>
-      </div>
-      <div class="seg seg-sm" id="sgSlSeg" title="R 倍數的風險基準：名目 × 槓桿 × 此假設停損%">
-        <button data-sl="1">停損 1%</button>
-        <button data-sl="1.5" class="on">1.5%</button>
-        <button data-sl="2">2%</button>
-      </div>
+      <h2><i class="ic ic-alert"></i>倉位異動分析</h2>
+      <span class="mini" id="psStatus">—</span>
+      <span class="mini" id="psDiffMeta">—</span>
     </div>
-    <div class="kpi-grid" id="sgKpi"></div>
-    <div class="sg-dd">
-      <canvas id="sgDrawdown"></canvas>
-    </div>
-    <div class="sg-groups">
-      <div><div class="mini gtitle">依幣種分組</div><div id="sgByCoin"></div></div>
-      <div><div class="mini gtitle">依跟單錢包分組</div><div id="sgByWallet"></div></div>
+    <div class="ps-split ps-3col">
+      <div class="ps-box">
+        <div class="ps-rhead">即時倉位異動 <span class="mini">這台裝置前後兩次持倉快照的差分</span></div>
+        <div class="ps-feed" id="psDiff"><div class="empty">等第一批倉位變化…（載入時的既有持倉不算異動）</div></div>
+      </div>
+      <div class="ps-box">
+        <div class="ps-rhead">24 小時淨增倉排行 <span class="mini">條長以本清單最大值為基準</span><span class="mini" id="psChangeMeta">—</span></div>
+        <div class="ps-bars" id="psAddList"><div class="empty">載入中…</div></div>
+      </div>
+      <div class="ps-box">
+        <div class="ps-rhead">24 小時淨減倉排行 <span class="mini">錢包 × 幣種</span></div>
+        <div class="ps-bars" id="psCutList"><div class="empty">載入中…</div></div>
+      </div>
     </div>
   </section>
 
-  <div class="sg-cols">
-    <!-- 左：持倉中 + 帳本 -->
-    <div class="sg-col sg-main">
-      <section class="panel">
-        <div class="panel-head">
-          <h2><i class="ic ic-book"></i>開倉中 · 未實現</h2>
-          <span class="mini" id="sgOpenMeta">—</span>
-        </div>
-        <div class="sg-table-wrap">
-          <table class="sg">
-            <thead><tr>
-              <th title="被跟蹤的大戶錢包（點一下看它的持倉明細）">錢包</th>
-              <th>幣種</th>
-              <th title="錢包目前的持倉方向">錢包方向</th>
-              <th class="ta-r" title="錢包目前的持倉進場均價">進場價</th>
-              <th class="ta-r" title="Hyperliquid 的標記價（用來算未實現損益）">標記價</th>
-              <th class="ta-r" title="錢包目前的持倉名目">錢包名目</th>
-              <th class="ta-r" title="錢包自己的未實現損益（不是你的）">錢包未實現</th>
-              <th class="ta-r" title="若現在就跟進、以目前標記價計算的未實現損益">跟單未實現</th>
-              <th class="ta-r" title="跟單未實現損益 ÷ 每筆名目">跟單報酬</th>
-              <th class="ta-r" title="從開倉到現在經過多久">已持有</th>
-            </tr></thead>
-            <tbody id="sgOpenBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <h2><i class="ic ic-chain"></i>平倉記錄（帳本）</h2>
-          <span class="mini" id="sgLedgerMeta">—</span>
-          <button class="ghost" id="sgExport" title="匯出目前畫面上的平倉記錄為 CSV">匯出 CSV</button>
-          <button class="ghost" id="sgClear" title="清除這台裝置上的帶單帳本（不影響伺服器快照）">清除記錄</button>
-        </div>
-        <div class="sg-table-wrap">
-          <table class="sg">
-            <thead><tr>
-              <th title="該輪的平倉時間。此表的每一列都是「一個回合」：同一個錢包、同一幣種、同方向的持倉從開到平。">平倉時間</th>
-              <th title="被跟蹤的大戶錢包（點一下看它的持倉與歷史）">錢包</th>
-              <th>幣種</th>
-              <th title="該錢包當時是持有多單還是空單，跟單會同方向">錢包方向</th>
-              <th class="ta-r" title="錢包這一輪的開倉均價（由成交或持倉快照推得）">進場價</th>
-              <th class="ta-r" title="錢包這一輪的平倉均價">出場價</th>
-              <th class="ta-r" title="錢包這一輪的持倉名目（不是你的部位大小）">錢包名目</th>
-              <th class="ta-r" title="錢包自己這一輪賺賠多少（Hyperliquid closedPnl，真實數字）">錢包實際盈虧</th>
-              <th class="ta-r" title="若以目前設定的每筆名目跟進，這一輪的損益（扣雙邊估算手續費）">跟單損益</th>
-              <th class="ta-r" title="跟單損益 ÷ 每筆名目（跟單的曝險就是名目本身，不乘大戶槓桿）">跟單報酬</th>
-              <th class="ta-r" title="這一輪從開倉到平倉經過多久">持有時間</th>
-              <th title="成交＝以 Hyperliquid userFills 配對出的批次（精確）；持倉＝以持倉快照差分追蹤（只有頁面開著時才觀察得到）">來源</th>
-            </tr></thead>
-            <tbody id="sgLedgerBody"></tbody>
-          </table>
-        </div>
-      </section>
+  <!-- ══ 2b. 累積異動史 ══ -->
+  <section class="panel ps-block">
+    <div class="panel-head">
+      <h2><i class="ic ic-book"></i>累積異動史（每日部位快照）</h2>
+      <span class="mini" id="psHistMeta">—</span>
     </div>
+    <div class="ps-hist" id="psHist"><div class="empty">載入中…</div></div>
+    <div class="ps-note">
+      每個錢包的每日總淨名目（Σ多 − Σ空）由 <code>scripts/snapshot_positions.py</code> 寫入
+      <code>data/positions-YYYY-MM-DD.json</code> 與 <code>data/positions-daily.json</code>，每天 00:10 UTC 由 GitHub Actions 執行一次。
+      條圖高度是 |淨名目| 相對該錢包這段期間最大值的比例（綠＝淨多、紅＝淨空），游標移上去可看當天數字。
+    </div>
+  </section>
 
-    <!-- 右：流水 + 排行 + 快照 + 設定 -->
-    <div class="sg-col sg-side">
-      <section class="panel">
-        <div class="panel-head"><h2><i class="ic ic-alert"></i>帶單流水</h2><span class="mini" id="sgFeedMeta">—</span></div>
-        <div class="sg-feed" id="sgFeed"><div class="empty">等待大戶開倉／平倉…</div></div>
-      </section>
+  <!-- ══ 3. 大戶實際績效 ══ -->
+  <section class="panel ps-block">
+    <div class="panel-head">
+      <h2><i class="ic ic-smart"></i>大戶實際績效</h2>
+      <span class="mini" id="psPerfMeta">—</span>
+    </div>
+    <div class="ps-wgrid" id="psPerfGrid">
+      <div class="empty" style="padding:12px">載入 data/whale-perf.json…</div>
+    </div>
+    <div class="ps-note" id="psPerfNote">—</div>
+  </section>
 
-      <section class="panel">
-        <div class="panel-head"><h2><i class="ic ic-smart"></i>錢包績效排行</h2><span class="mini">依實際已實現盈虧</span></div>
-        <div class="sg-wallets" id="sgWalletPerf"><div class="empty">累積記錄中…</div></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head"><h2><i class="ic ic-book"></i>每日績效快照</h2><span class="mini" id="sgDailyMeta">由 GitHub Actions 每日寫入</span></div>
-        <div class="sg-daily" id="sgDaily"><div class="empty">載入中…</div></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head"><h2><i class="ic ic-sys"></i>進階：記錄門檻</h2><span class="mini">太小的回合不記</span></div>
-        <div class="sg-settings">
-          <label>記錄門檻（回合名目 <b id="sgMinVal">—</b>）</label>
-          <div class="seg seg-sm" id="sgMinSeg">
+  <div class="ps-cols">
+    <!-- 左：即時持倉清單 + 真實盈虧帳本 -->
+    <div class="ps-col">
+      <section class="panel ps-block">
+        <div class="panel-head">
+          <h2><i class="ic ic-chain"></i>大戶即時持倉清單</h2>
+          <span class="mini" id="psOpenMeta">—</span>
+          <div class="seg seg-sm" id="psOpenSeg" title="只影響這張表顯示哪些持倉">
             <button data-min="100000">≥10萬</button>
             <button data-min="250000" class="on">≥25萬</button>
             <button data-min="1000000">≥100萬</button>
           </div>
-          <label>手續費假設（模擬跟單）<b id="sgFeeVal">—</b></label>
-          <div class="seg seg-sm" id="sgFeeSeg">
-            <button data-fee="whale" title="用該回合大戶實際付的費率（實測約 0.0017%/邊，因為他們多為掛單／VIP）">同大戶</button>
-            <button data-fee="taker" title="你自己市價跟單：0.045%/邊，來回 0.09%">吃單 0.045%</button>
-            <button data-fee="maker" title="掛單成交：0.015%/邊，來回 0.03%">掛單 0.015%</button>
-          </div>
-          <p class="mini">名目固定 $10K 時，「吃單」來回要先付 0.09%＝$9／回合；用大戶實際費率約 $0.35／回合。這一項對小名目的跟單結果影響很大。</p>
-          <p class="mini">大戶某一輪的持倉名目小於門檻就不列入帳本，避免雜訊；改完畫面會自動重算。跟單設定都在頁面最上方的控制列。</p>
-          <p class="mini" id="sgNote">—</p>
+        </div>
+        <div class="ps-tw ps-tw-open">
+          <table class="sg">
+            <thead><tr>
+              <th title="被追蹤的大戶錢包（名字取自追蹤名單，沒有名字就顯示地址前後幾碼）">錢包</th>
+              <th title="Hyperliquid 永續合約幣種">幣種</th>
+              <th title="持倉方向與該倉位的槓桿">方向</th>
+              <th class="ta-r" title="錢包自己的持倉進場均價">進場價</th>
+              <th class="ta-r" title="Hyperliquid 的標記價（未實現損益以它計算）">標記價</th>
+              <th class="ta-r" title="持倉名目＝數量 × 標記價，不是保證金">名目</th>
+              <th class="ta-r" title="錢包這一筆持倉的未實現損益（真實值，取自 Hyperliquid）">未實現</th>
+              <th class="ta-r" title="Hyperliquid 的 returnOnEquity：未實現損益 ÷ 該倉位占用的保證金">未實現%</th>
+              <th class="ta-r" title="這一筆持倉占該幣全部追蹤錢包持倉的比例">占該幣</th>
+              <th class="ta-r" title="這一筆持倉名目占該錢包帳戶淨值的比例，可以看出他押多重的注">占錢包</th>
+            </tr></thead>
+            <tbody id="psOpenBody"><tr><td colspan="10" class="empty">正在取得持倉…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel ps-block">
+        <div class="panel-head">
+          <h2><i class="ic ic-book"></i>大戶真實已實現盈虧帳本</h2>
+          <span class="mini" id="psLedgerMeta">—</span>
+          <button class="ghost" id="psExport" title="匯出大戶真實已實現的平倉記錄（CSV，只有真實數字）">匯出 CSV</button>
+          <button class="ghost" id="psClear" title="清除這台裝置上的本機記錄（不影響伺服器端的每日快照）">清除本機記錄</button>
+        </div>
+        <div class="ps-tw ps-tw-ledger">
+          <table class="sg">
+            <thead><tr>
+              <th title="該回合的平倉時間（台北時間）">平倉時間</th>
+              <th title="被追蹤的大戶錢包">錢包</th>
+              <th title="幣種">幣種</th>
+              <th title="該回合錢包持的是多單還是空單">方向</th>
+              <th class="ta-r" title="該回合的開倉均價（由成交配對或持倉快照推得）">進場價</th>
+              <th class="ta-r" title="該回合的平倉均價">出場價</th>
+              <th class="ta-r" title="該回合的持倉名目（錢包自己的規模，不是你的部位）">名目</th>
+              <th class="ta-r" title="錢包這一回合真的賺賠多少：Hyperliquid 成交的 closedPnl 加總，是真實數字">錢包實際盈虧</th>
+              <th class="ta-r" title="實際盈虧 ÷ 該回合名目">實際報酬</th>
+              <th class="ta-r" title="這一回合從開倉到平倉經過多久">持有時間</th>
+              <th title="成交＝以 Hyperliquid 成交配對出的批次（精確）；即時追蹤＝持倉快照差分（只有頁面開著時才觀察得到）">來源</th>
+            </tr></thead>
+            <tbody id="psLedgerBody"><tr><td colspan="11" class="empty">載入中…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- 右：錢包排行 + 每日快照 -->
+    <div class="ps-col ps-side2">
+      <section class="panel ps-block">
+        <div class="panel-head"><h2><i class="ic ic-smart"></i>錢包績效排行</h2><span class="mini" id="psWalletMeta">—</span></div>
+        <div class="sg-wallets" id="psWalletPerf"><div class="empty">累積記錄中…</div></div>
+        <div class="ps-note">
+          只計這一頁觀察到、且已向 Hyperliquid 取得 <code>closedPnl</code> 的回合，記錄存在這台裝置的瀏覽器（清快取會消失）。
+          要和 30／60／180／360 天的長期報酬對照，看上面的「大戶實際績效」。
+        </div>
+      </section>
+
+      <section class="panel ps-block">
+        <div class="panel-head"><h2><i class="ic ic-book"></i>每日績效快照</h2><span class="mini" id="sgDailyMeta">由 GitHub Actions 每日寫入</span></div>
+        <div class="sg-daily" id="sgDaily"><div class="empty">載入中…</div></div>
+        <div class="ps-note">
+          近 24 小時每個大戶的已實現盈虧（<code>data/pnl-daily.json</code>，真實數字）。數字後的
+          <span class="mini">*</span> 表示這次抓取失敗、沿用上一次快照，<span class="mini">⚠</span> 表示該期間成交超過單次上限、數字可能低估。
         </div>
       </section>
     </div>
@@ -244,42 +220,25 @@
 </main>
 
 <div class="statusbar">
-  <div class="ticker" id="sgTicker"><span>帶單記錄啟動中…</span></div>
-  <div class="disc">資料來源：Hyperliquid 公開持倉與成交 API · 模擬跟單為紙上計算，未執行任何交易，不構成投資建議</div>
+  <div class="ticker" id="sgTicker"><span>持倉分析啟動中…</span></div>
+  <div class="disc">資料來源：Hyperliquid 公開 API · 都是大戶真實數字，不構成投資建議</div>
 </div>
 
-<div class="overlay" id="sgOverlay" hidden><div class="overlay-card sg-ov" id="sgOverlayCard"></div></div>
-
-<!-- 跟單對象選擇器 -->
-<div class="overlay" id="sgPick" hidden>
-  <div class="overlay-card sg-pick" role="dialog" aria-modal="true" aria-label="選擇要跟單的錢包">
-    <div class="pk-head">
-      <h3>選擇要跟單的錢包</h3>
-      <span class="mini">勾選＝只跟這幾個；全部不勾＝跟全部大戶。淨值與月報酬取自 Hyperliquid 公開排行榜。</span>
-    </div>
-    <div class="pk-tools">
-      <input type="search" id="sgPickQ" placeholder="搜尋名稱或地址…">
-      <button class="ghost" id="sgPickTop">淨值前 10</button>
-      <button class="ghost" id="sgPickAll">全選</button>
-      <button class="ghost" id="sgPickNone">全不選</button>
-    </div>
-    <div class="pk-list" id="sgPickList"><div class="empty" style="padding:12px">載入中…</div></div>
-    <div class="pk-foot">
-      <span class="mini" id="sgPickCount">—</span>
-      <button class="ghost" id="sgPickCancel">取消</button>
-      <button class="entry-btn" id="sgPickApply">套用</button>
-    </div>
-  </div>
-</div>
-
+<!--
+  這一頁已經沒有跟單模擬（控制列、跟單對象選擇器、進階面板全部移除），
+  也刻意不掛 signalui.js 會渲染「模擬跟單」欄位的容器（#sgOpenBody／#sgFeed／#sgWalletPerf）：
+  即時持倉清單、倉位異動流水、錢包績效排行、真實盈虧帳本都改由 js/positions.js
+  以「只有真實數字」的欄位重新渲染。signalui.js 本體未修改（另一個 session 在維護），
+  它仍負責「每日績效快照」（#sgDaily，本身就是真實已實現盈虧）。
+  js/signals.js 的模擬引擎保留給其他頁面，這裡只讀它的大戶真實已實現盈虧與回合帳本。
+-->
 <script src="js/util.js"></script>
 <script src="js/api.js"></script>
 <script src="js/analytics.js"></script>
 <script src="js/onchain.js"></script>
 <script src="js/signals.js"></script>
 <script src="js/signalui.js"></script>
-<script src="js/sgmetrics.js"></script>
-<script src="js/sgpanel.js"></script>
 <script src="js/signalsboot.js"></script>
+<script src="js/positions.js"></script>
 </body>
 </html>

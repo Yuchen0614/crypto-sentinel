@@ -145,3 +145,199 @@ table.sg .mini { font-size: 9.5px; color: var(--tx-3) }
   .sg-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .sg-ov-kv { grid-template-columns: repeat(2, minmax(0, 1fr)) }
 }
+
+
+/* ══════════════════════════════════════════════════════════════
+   持倉分析頁（js/positions.js）—— 2026-10 改版：移除跟單模擬，
+   改為「持倉方向總覽 + 倉位異動分析 + 大戶實際績效」。
+   新增的類別一律以 ps- 開頭（不與 sg- / 其他頁共用），
+   版面原則：整頁由 .sg-page（flex column + overflow-y:auto）捲動，
+   每個長面板內部各自捲動（.ps-tw / .ps-bars / .ps-feed / .ps-hist），
+   所以不會出現「面板被壓扁、文字被裁掉」的情況。
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* pro.css 有些規則用了 --p-surface1/2/3、--p-line-soft、--p-accent、--p-down，
+     但沒有定義它們（未定義的 var() 會讓整個宣告失效）。這裡補上別名，
+     值指向 pro.css 既有變數，載入順序不影響（var() 是使用時才代入）。 */
+  --p-surface1: var(--p-s1, #0f1319);
+  --p-surface2: var(--p-s2, #13171e);
+  --p-surface3: var(--p-s3, #171c24);
+  --p-line-soft: rgba(255, 255, 255, .035);
+  --p-accent: var(--p-ax, #5b8cff);
+  --p-down: var(--p-dn, #f6465d);
+}
+
+.ps-block { flex: 0 0 auto; min-width: 0 }
+.ps-block .panel-head .mini { min-width: 0; white-space: normal; line-height: 1.35 }
+.ps-block .panel-head { flex-wrap: wrap; row-gap: 4px; padding-top: 3px; padding-bottom: 3px }
+
+/* ── KPI 磚：這一頁的數字（「48.2% / 51.8%」這種）不能被省略號吃掉 ── */
+#psDirKpi { grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)) }
+#psDirKpi .kpi { min-width: 0 }
+#psDirKpi .kpi label { white-space: normal; line-height: 1.3 }
+#psDirKpi .kpi b {
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+  font-size: 17px; line-height: 1.2;
+}
+#psDirKpi .kpi span, #psDirKpi .kpi .mini {
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important; line-height: 1.35;
+}
+/* 這一頁的 KPI 值有可能是「幣種」或「多空比」而不是數字，顏色自己指定，
+   不依賴 pro.css 的 .kpi b.up/.down（那裡只定義了 .up）。 */
+#psDirKpi .kpi b.up { color: var(--p-up, #0ecb81) !important }
+#psDirKpi .kpi b.down { color: var(--p-dn, #f6465d) !important }
+
+/* ── 兩欄／三欄 */ 
+.ps-split {
+  display: grid; gap: 10px; min-width: 0; padding: 10px 12px 12px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+}
+.ps-split.ps-3col { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+.ps-cols { display: grid; gap: 10px; min-width: 0; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr) }
+.ps-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0 }
+
+/* ── 每一塊自己的框 */ 
+.ps-rankbox, .ps-box {
+  display: flex; flex-direction: column; min-width: 0; overflow: hidden;
+  border: 1px solid var(--p-line, rgba(255, 255, 255, .055)); border-radius: 8px;
+  background: var(--p-s1, #0f1319);
+}
+.ps-ranks { display: grid; grid-template-rows: 1fr 1fr; gap: 10px; min-width: 0 }
+.ps-rhead {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;
+  padding: 7px 11px; font-size: var(--fs-label, 10.5px); color: var(--p-t2, #9aa4b2);
+  border-bottom: 1px solid var(--p-line, rgba(255, 255, 255, .055));
+  background: linear-gradient(180deg, rgba(255, 255, 255, .022), rgba(255, 255, 255, 0));
+}
+.ps-rhead .mini { color: var(--p-t3, #68717e); font-size: 9.5px }
+
+/* ── 表格容器（自己捲動，不撐高整頁）*/ 
+.ps-tw {
+  overflow: auto; min-width: 0; border-radius: 8px;
+  max-height: clamp(240px, 34vh, 420px);
+  border: 1px solid var(--p-line, rgba(255, 255, 255, .055)); background: var(--p-s1, #0f1319);
+}
+.ps-tw-open, .ps-tw-ledger { max-height: clamp(280px, 42vh, 540px) }
+.ps-tw table.sg { width: 100% }
+
+/* ── 橫條圖（div 自畫，不用外部圖表庫）*/
+/* min-height 只影響「還沒有資料」時的空框高度（有 8 列時本來就會長到 200px 上下），
+   所以給小一點，避免空框佔掉一整屏。 */
+.ps-bars { flex: 1 1 auto; min-height: 76px; overflow-y: auto; padding: 6px 10px 8px; max-height: clamp(210px, 32vh, 400px) }
+.ps-bar {
+  display: grid; grid-template-columns: 16px 58px minmax(40px, 1fr) 84px; gap: 8px; align-items: center;
+  padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, .04); font-size: 11px;
+}
+.ps-bar:hover { background: rgba(255, 255, 255, .03) }
+.ps-bar .rk { color: var(--tx-3, #6b7480); font-family: var(--mono); font-size: 10px; text-align: right }
+.ps-bar .cc { font-family: var(--mono); font-size: 11px; color: var(--tx, #e8ecf2); font-weight: 600 }
+.ps-bar .ww { display: none }
+.ps-bar .bb { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .07); overflow: hidden }
+.ps-bar .bb i { display: block; height: 100%; border-radius: 3px }
+.ps-bar .bb i.up { background: var(--gn, #0ecb81) }
+.ps-bar .bb i.down { background: var(--rd, #f6465d) }
+.ps-bar .vv { text-align: right; font-family: var(--mono); font-size: 10.5px; color: var(--tx-2, #98a2b3) }
+.ps-bar .vv.up { color: var(--gn, #0ecb81) }
+.ps-bar .vv.down { color: var(--rd, #f6465d) }
+/* 異動排行是「錢包 × 幣種」：多一欄錢包名稱 */
+.ps-bars#psAddList .ps-bar, .ps-bars#psCutList .ps-bar { grid-template-columns: 14px 52px 76px minmax(30px, 1fr) 78px }
+.ps-bars#psAddList .ps-bar .ww, .ps-bars#psCutList .ps-bar .ww {
+  display: block; color: var(--tx-2, #98a2b3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── 即時異動流水 */
+.ps-feed { flex: 1 1 auto; min-height: 96px; overflow-y: auto; padding: 6px 10px 8px; max-height: clamp(220px, 32vh, 420px) }
+.pse {
+  display: grid; grid-template-columns: 46px 46px minmax(0, 1fr); gap: 4px 8px; align-items: center;
+  padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, .04); font-size: 11px; cursor: pointer;
+}
+.pse:hover { background: rgba(255, 255, 255, .03) }
+.pse .t { color: var(--tx-3, #6b7480); font-family: var(--mono); font-size: 10px }
+.pse .k {
+  font-size: 10px; padding: 1px 5px; border-radius: 3px; text-align: center;
+  background: rgba(255, 255, 255, .06); color: var(--tx-2, #98a2b3); white-space: nowrap;
+}
+.pse.k-OPEN .k { background: rgba(14, 203, 129, .16); color: var(--gn, #0ecb81) }
+.pse.k-CLOSE .k { background: rgba(246, 70, 93, .14); color: var(--rd, #f6465d) }
+.pse.k-ADD .k { background: rgba(77, 141, 255, .16); color: var(--cy-2, #8ab4ff) }
+.pse.k-CUT .k { background: rgba(245, 165, 36, .14); color: var(--am, #f5a524) }
+.pse.k-FLIP .k { background: rgba(167, 139, 250, .16); color: var(--mg, #a78bfa) }
+.pse .w { display: flex; align-items: baseline; gap: 6px; min-width: 0; color: var(--tx, #e8ecf2) }
+.pse .w .mini { font-size: 9.5px; color: var(--tx-3, #6b7480) }
+.pse .c { grid-column: 1 / 3; font-family: var(--mono); font-size: 10.5px; white-space: nowrap; color: var(--tx-2, #98a2b3) }
+.pse .d { grid-column: 3 / -1; color: var(--tx-2, #98a2b3); font-size: 10.5px; line-height: 1.45; min-width: 0 }
+
+/* ── 共識標籤與擁擠度小條 */
+.sgtag { display: inline-block; font-size: 10px; padding: 0 5px; border-radius: 3px; background: rgba(255, 255, 255, .06); color: var(--tx-2, #98a2b3); white-space: nowrap }
+.sgtag.up { background: rgba(14, 203, 129, .14); color: var(--gn, #0ecb81) }
+.sgtag.down { background: rgba(246, 70, 93, .14); color: var(--rd, #f6465d) }
+.sgtag.neu { background: rgba(255, 255, 255, .06); color: var(--tx-3, #6b7480) }
+.ps-crowd { display: inline-block; width: 42px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; vertical-align: middle; margin-right: 5px }
+.ps-crowd i { display: block; height: 100%; background: var(--am, #f5a524) }
+
+/* ── 累積異動史（每錢包每日淨名目）*/
+.ps-hist { overflow: auto; padding: 4px 10px 8px; max-height: clamp(230px, 34vh, 430px) }
+.ps-hrow {
+  display: grid; gap: 8px; align-items: center; padding: 4px 2px; font-size: 11px; font-family: var(--mono);
+  grid-template-columns: minmax(120px, 1.25fr) 96px 100px minmax(80px, 150px);
+  border-bottom: 1px solid rgba(255, 255, 255, .04);
+}
+.ps-hrow.p1 { grid-template-columns: minmax(120px, 1.25fr) 96px minmax(80px, 150px) }
+.ps-hrow.hd { color: var(--tx-3, #6b7480); font-size: 9.5px; letter-spacing: .04em; position: sticky; top: 0; background: #151a21; z-index: 2 }
+.ps-hrow .nm { display: flex; flex-direction: column; min-width: 0; color: var(--tx, #e8ecf2); font-family: var(--font, inherit) }
+.ps-hrow .nm .mini { font-size: 9.5px; color: var(--tx-3, #6b7480) }
+.ps-hrow .up { color: var(--gn, #0ecb81) }
+.ps-hrow .down { color: var(--rd, #f6465d) }
+.ps-hrow .mid { display: flex; align-items: flex-end; height: 22px }
+.ps-spark { display: flex; align-items: flex-end; gap: 2px; height: 22px; width: 100%; max-width: 150px }
+.ps-spark i { flex: 1 1 0; min-width: 3px; border-radius: 2px 2px 0 0; background: var(--gn, #0ecb81); display: block }
+.ps-spark i.down { background: var(--rd, #f6465d) }
+
+/* ── 大戶實際績效卡 */
+.ps-wgrid { display: grid; gap: 10px; padding: 10px 12px 4px; grid-template-columns: repeat(auto-fit, minmax(212px, 1fr)) }
+.ps-wcard {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 12px;
+  border: 1px solid var(--p-line, rgba(255, 255, 255, .055)); border-radius: 8px;
+  background: var(--p-s1, #0f1319); box-shadow: var(--p-lit, none);
+}
+.ps-wcard label { font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--p-t3, #68717e) }
+.ps-wcard > b { font-family: var(--mono); font-size: 19px; font-weight: 600; color: var(--p-t1, #e8ecf3); line-height: 1.15 }
+.ps-wcard > b.up { color: var(--p-up, #0ecb81) }
+.ps-wcard > b.down { color: var(--p-dn, #f6465d) }
+.ps-wcard .mini { font-size: 10px; color: var(--p-t3, #68717e); line-height: 1.4 }
+.ps-wcard .ps-kv { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--p-t3, #68717e) }
+.ps-wcard .ps-kv b { font-family: var(--mono); font-size: 12px; color: var(--p-t2, #9aa4b2) }
+.ps-wcard .ps-kv b.up { color: var(--p-up, #0ecb81) }
+.ps-wcard .ps-kv b.down { color: var(--p-dn, #f6465d) }
+
+/* ── 狀態列：切換訊息時的 tickIn 會把文字往下推 6px，
+      而 .ticker 的行框只有 15px（狀態列高 26px）——底部會被切掉一瞬間。
+      v3.css 已經關掉大部分裝飾動畫，這裡把這一個也關掉（只影響這一頁）。 ── */
+.statusbar .ticker span { animation: none !important }
+
+/* ── 說明文字 ── */
+.ps-note { padding: 8px 12px 10px; font-size: 10.5px; color: var(--p-t3, #68717e); line-height: 1.7 }
+.ps-note code { font-family: var(--mono); font-size: 10px; color: var(--p-t2, #9aa4b2) }
+.ps-note a { color: var(--p-accent, #5b8cff); text-decoration: none }
+.ps-note a:hover { text-decoration: underline }
+
+/* ── 窄螢幕：改成單欄，長面板給固定的內部捲動高度 ── */
+@media (max-width: 1560px) {
+  .ps-split, .ps-cols { grid-template-columns: minmax(0, 1fr) }
+  /* 三欄（異動流水＋兩個排行）在 1264px 這種寬度還放得下（每欄約 400px），
+     所以只在更窄時才疊起來；兩個排行橫向並排，不要各佔一整列。 */
+  .ps-split.ps-3col { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .ps-ranks { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto }
+  .ps-tw, .ps-tw-open, .ps-tw-ledger { max-height: 340px }
+  .ps-bars, .ps-feed, .ps-hist { max-height: 320px }
+}
+@media (max-width: 1120px) {
+  .ps-split.ps-3col { grid-template-columns: minmax(0, 1fr) }
+}
+@media (max-width: 900px) {
+  .ps-wgrid { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)) }
+  .ps-ranks { grid-template-columns: minmax(0, 1fr) }
+  .ps-hrow, .ps-hrow.p1 { grid-template-columns: minmax(110px, 1fr) 88px 92px }
+  .ps-hrow .mid { display: none }
+}

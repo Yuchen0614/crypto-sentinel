@@ -1,7 +1,10 @@
-/* signalsboot.js — 帶單頁的啟動與輪詢
+/* signalsboot.js — 持倉分析頁的啟動與輪詢
    ─────────────────────────────────────────────────────────────
    這一頁刻意不載入 chainui / chainboot：不需要 DEX 掃描（保留 GeckoTerminal 額度），
-   只要「持倉輪詢 → 回合追蹤」與「成交輪詢 → 真實盈虧」。
+   只要「持倉輪詢 → 回合追蹤」與「成交輪詢 → 真實盈虧」（畫面渲染在 js/positions.js）。
+
+   這一頁已經移除跟單模擬：不再有模擬本金／每筆名目／跟單對象／重建歷史等控制項，
+   所以這裡也不再綁那些按鈕，狀態列訊息只講真實數字。
 
    請求節奏（總計約 70 次/分，與鏈上頁相同等級）：
      * 持倉：每 6 秒 4 個錢包（52 個約 80 秒輪完一輪）
@@ -27,6 +30,8 @@
       const s = OC.hl.states.get(addr);
       if (s) SG.observePosition(addr, s, nameOf(addr));
     });
+    /* 舊版這裡會叫 G.feed() 重畫「帶單流水」；那個容器已移除（流水改由 positions.js
+       以真實欄位渲染），G.feed() 找不到容器會自己結束，留著是防禦性的。 */
     S.on('sig-event', e => {
       if (e.kind === 'OPEN' || e.kind === 'CLOSE' || e.kind === 'FLIP') G.feed();
     });
@@ -71,43 +76,12 @@
     SG.save();
   }
 
-  /* ── 設定列 ─────────────────────────────────────────── */
+  /* ── 設定列 ───────────────────────────────────────────────
+     舊版這裡綁「模擬本金／每筆名目／記錄門檻／匯出 CSV／清除記錄」與錢包明細彈窗；
+     這些控制項隨著跟單模擬一起從 signals.html 移除（新的排序／顯示門檻由
+     js/positions.js 綁在自己的容器上），所以這裡不再綁任何事件。 */
   function settingsUI() {
-    const wireSeg = (sel, attr, fn) => {
-      const el = document.querySelector(sel); if (!el) return;
-      el.addEventListener('click', e => {
-        const b = e.target.closest('button'); if (!b) return;
-        Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
-        fn(+b.dataset[attr]);
-        G.all();
-      });
-    };
-    wireSeg('#sgCopySeg', 'copy', v => { SG.cfg.copyNotional = v; SG.save(); });
-    wireSeg('#sgMinSeg', 'min', v => { SG.cfg.minNotional = v; SG.save(); });
-
-    const ex = document.getElementById('sgExport');
-    if (ex) ex.addEventListener('click', () => {
-      const rows = SG.stats({ minNotional: 0 }).rows.slice().sort((a, b) => b.closedAt - a.closedAt).slice(0, 300);
-      const csv = SG.toCSV({ minNotional: 0 });
-      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'sentinel-signals-' + new Date().toISOString().slice(0, 10) + '.csv';
-      document.body.appendChild(a); a.click(); a.remove();
-      U.text('#sgTicker', '已匯出 ' + rows.length + ' 筆平倉記錄（CSV）');
-    });
-
-    const cl = document.getElementById('sgClear');
-    if (cl) cl.addEventListener('click', () => {
-      if (!confirm('確定要清除本機的帶單帳本嗎？（伺服器端的每日快照不受影響）')) return;
-      SG.clear(); G.all(); tick('已清除本機記錄');
-    });
-
-    /* 點錢包 → 看該錢包的明細 */
-    document.addEventListener('click', e => {
-      const row = e.target.closest('[data-addr]');
-      if (row && document.getElementById('sgOverlay')) G.walletModal(row.dataset.addr);
-    });
+    SG.cfg.minNotional = SG.cfg.minNotional || 250000;   // 帳本的回合門檻（畫面會標示）
   }
 
   /* ── 啟動 ───────────────────────────────────────────── */
@@ -172,16 +146,19 @@
     setInterval(() => {
       SG.save();
       const st = SG.stats({ minNotional: 0 });
+      /* 訊息刻意保持短：狀態列只有一行（.ticker 是 nowrap + 省略號），
+         太長會在中間被截掉，使用者會覺得「字被吃掉」。 */
+      const real = st.totalReal;
       const msgs = [
-        '本帳本：已記錄 ' + st.rows.length + ' 筆平倉 · 開倉中 ' + SG.openPositions(SG.cfg.minNotional).length + ' 個持倉 ≥ ' + U.usd(SG.cfg.minNotional),
-        '模擬跟單累計 ' + U.signed(st.totalSim, v => '$' + U.money(Math.abs(v))) + '（每筆 ' + U.usd(SG.cfg.copyNotional) + ' 名目）· 錢包實際已實現 ' + U.signed(st.totalReal, v => '$' + U.money(Math.abs(v))),
-        '追蹤 ' + OC.hl.wallets.length + ' 個大戶錢包 · 成交樣本 ' + SB.fillsAdded + ' 筆 · 真實盈虧取自 Hyperliquid 成交 closedPnl',
-        '記錄存在這台裝置的瀏覽器；長期保存請用「匯出 CSV」或看每日績效快照'
+        '帳本 ' + st.rows.length + ' 筆平倉 · 持倉 ≥ ' + U.usd(SG.cfg.minNotional) + ' 有 ' + SG.openPositions(SG.cfg.minNotional).length + ' 個',
+        '大戶真實已實現 ' + (real > 0 ? '+' : real < 0 ? '−' : '') + '$' + U.money(Math.abs(real)) + '（' + st.realSample + ' 筆）',
+        '追蹤 ' + OC.hl.wallets.length + ' 個大戶 · 成交樣本 ' + SB.fillsAdded + ' 筆',
+        '這一頁不做跟單模擬 · 部位快照每天 00:10 UTC 更新'
       ];
       tick(msgs[Math.floor(Date.now() / 6000) % msgs.length]);
     }, 3000);
 
-    // 診斷（自動化檢查用）
+    // 診斷（自動化檢查用）；畫面渲染的細節另外由 js/positions.js 的 __SENTINEL_POS_STATUS 提供
     w.__SENTINEL_STATUS = () => {
       const st = SG.stats({ minNotional: 0 });
       return {
@@ -189,14 +166,14 @@
         wallets: OC.hl.wallets.length, states: OC.hl.states.size,
         rounds: SG.rounds.length, closed: st.closed, open: st.open, tracked: st.tracked,
         seeded: SB.seeded, fillsAdded: SB.fillsAdded, events: SG.events.length,
-        totalSim: Math.round(st.totalSim), totalReal: Math.round(st.totalReal),
+        totalReal: Math.round(st.totalReal),
         winRate: isFinite(st.winRate) ? +st.winRate.toFixed(3) : null,
-        simSample: st.simSample, realSample: st.realSample,
+        realSample: st.realSample,
         openPositions: SG.openPositions(SG.cfg.minNotional).length,
-        ledgerRows: document.querySelectorAll('#sgLedgerBody tr.sg-row').length,
-        openRows: document.querySelectorAll('#sgOpenBody tr.sg-row').length,
-        feedRows: document.querySelectorAll('#sgFeed .sge').length,
-        walletRows: document.querySelectorAll('#sgWalletPerf .wl-perf').length,
+        ledgerRows: document.querySelectorAll('#psLedgerBody tr[data-addr]').length,
+        openRows: document.querySelectorAll('#psOpenBody tr[data-addr]').length,
+        diffRows: document.querySelectorAll('#psDiff .pse').length,
+        walletRows: document.querySelectorAll('#psWalletPerf .wl-perf').length,
         dailyRows: document.querySelectorAll('#sgDaily .dr').length,
         mids: SG.mids ? Object.keys(SG.mids).length : 0,
         persisted: !!(function () { try { return localStorage.getItem('cs.signals.v2'); } catch (e) { return null; } })(),

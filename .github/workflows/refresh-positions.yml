@@ -1,0 +1,45 @@
+name: refresh positions snapshot
+
+# 每日 00:10 UTC 產生 data/positions-YYYY-MM-DD.json（每個錢包每個幣的即時持倉）
+# 並更新 data/positions-daily.json（每錢包每日總淨名目，供長期趨勢）。
+# 前端「持倉方向總覽」與「倉位異動分析」靠這兩份檔案算共識度、擁擠度與異動排行。
+# Hyperliquid /info 很容易回 429，腳本內已做節流（每個請求間隔 ≥0.55 秒）與指數退避。
+
+on:
+  schedule:
+    - cron: "10 0 * * *"      # 每天 00:10 UTC（台北 08:10）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-positions
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 抓取大戶部位快照
+        run: python3 scripts/snapshot_positions.py
+
+      - name: 有變更才提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/positions-daily.json
+          git add -A data/positions-*.json
+          if git diff --cached --quiet; then
+            echo "沒有變更，略過提交"
+          else
+            git commit -m "chore: refresh daily positions snapshot ($(date -u +%Y-%m-%d))"
+            git push
+          fi
