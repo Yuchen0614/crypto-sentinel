@@ -1,0 +1,70 @@
+name: refresh strategy trades
+
+# 每週一次產生 data/trades.json：八個策略在 10 個幣上的逐筆歷史報單
+# （開倉價／初始止損／TP1~TP4／出場價與出場原因），供「回測報表」頁的
+# 「策略報單（歷史進出場）」區塊使用。
+#
+# 為什麼是每週：這一區的 K 線是 1d 訊號 + 4h 出場模擬，單筆最長持有 30 天，
+# 一天跑一次只是把同一批單重算一遍（訊號看日線收盤，日內不會變），
+# 每天重跑徒增 Hyperliquid 的請求量（這個 API 很容易回 429）。
+# 想立刻更新可以按 Run workflow 手動觸發。
+#
+# 腳本內的節流：請求間隔 ≥0.55 秒、429 走指數退避；K 線快取在 .cache/kline/
+# （.gitignore 已排除，不會進 repo）。CI 每次都是全新環境、沒有快取，
+# 所以每週會完整重抓約 10 幣 × 2 個週期的 K 線（約 450 根 1d + 2,700 根 4h／幣）。
+# 母體幣種固定由 data/positions-2026-10-27.json 決定（已進版控），
+# 所以這一支的輸出是可重現的，不會因為每日更新的持倉快照而換幣。
+
+on:
+  schedule:
+    - cron: "30 2 * * 1"      # 每週一 02:30 UTC（台北 週一 10:30）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-trades
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 逐筆策略回測（產生 data/trades.json）
+        run: python3 scripts/trades.py
+
+      - name: 檢查輸出檔可讀（讀不到就不要提交）
+        run: |
+          python3 - <<'PY'
+          import json
+          d = json.load(open("data/trades.json", encoding="utf-8"))
+          u = d.get("universe") or {}
+          sts = d.get("strategies") or []
+          print("產出時間：%s" % d.get("generated_at"))
+          print("母體幣種：%d 幣 %s" % (len(u.get("coins") or []), "、".join(u.get("coins") or [])))
+          print("策略：%d 組 · 逐筆 %d 筆" % (len(sts), sum(len(s.get("trades") or []) for s in sts)))
+          for s in sts:
+              print("  %-7s %s" % (s.get("key"), " / ".join(
+                  "%s天 n=%s" % (w, (s.get("byWindow") or {}).get(str(w), {}).get("n")) for w in u.get("windows") or [])))
+          assert sts, "strategies 是空的，輸出檔不完整"
+          PY
+
+      - name: 有變更才提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/trades.json
+          if git diff --cached --quiet; then
+            echo "沒有變更，略過提交"
+          else
+            git commit -m "chore: refresh strategy trades ($(date -u +%Y-%m-%d))"
+            git push
+          fi

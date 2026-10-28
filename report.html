@@ -89,6 +89,38 @@
     <div id="rpStrFull"></div>
   </section>
 
+  <!-- 策略報單（歷史進出場）：逐筆開倉價／初始止損／TP1~TP4／出場原因 -->
+  <section class="panel" id="rpTkPanel">
+    <div class="panel-head">
+      <h2><i class="ic ic-pos"></i>策略報單（歷史進出場）</h2>
+      <span class="mini" id="rpTkMeta">—</span>
+      <span class="mini" style="margin-left:auto" title="表上每一列就是這個策略的一筆歷史單：開倉價、初始止損、TP1～TP4 的價位、出場價與出場原因，點一整列看進場依據">逐筆報單 · 點一整列看進場依據</span>
+    </div>
+
+    <div class="rp-tools">
+      <div class="seg seg-sm rp-tk-seg" id="rpTkSeg" title="策略清單由 data/trades.json 動態產生（依 order 排序）"></div>
+      <div class="seg seg-sm rp-tk-win" id="rpTkWin" title="只看開倉時間落在該視窗內的單；滑鼠移到按鈕上看該策略在這個視窗裡實際涵蓋幾天"></div>
+      <span class="sp"></span>
+      <button class="ghost" id="rpTkCsv" title="匯出目前策略＋視窗的逐筆報單（CSV，含完整未進位價格，Excel 可直接開啟）">匯出 CSV</button>
+    </div>
+
+    <div class="rp-tk-rule" id="rpTkRule">
+      <b>這張報單的規則</b>
+      <p>每一筆都是 <code>scripts/trades.py</code> 用 Hyperliquid 的真實 K 線重算的：1d 訊號成立那根的收盤價就是<b>開倉價</b>；<b>初始止損</b>＝開倉價 ∓ 1.5×ATR(14)（1d ATR、Wilder 平滑）；1R＝開倉價到初始止損的距離，TP1／TP2／TP3／TP4 分別掛在 1R／2R／3R／4R。每筆固定名目 <b>$10,000</b>，手續費吃單 <b>0.045%／邊</b>（來回 0.09%，已扣在損益裡），沒有算資金費率、滑價與部分成交。出場模擬走 4h K 線，<b>同一根 K 線同時觸及 TP 與止損時一律先算止損</b>；每筆最多持有 30 天，時間到以最後一根 4h 收盤價出場（記「逾時」）。停損會跟著行情走：TP1 觸及後移到開倉價（保本）、TP2 移到 TP1、TP3 移到 TP2，所以被移動後的止損收掉會記成「保本出場」「TP1 出場」「TP2 出場」，打到 TP4 直接以 TP4 出場。<b>MACD 那四條變體的原始研究沒有止損</b>，這一區照同一套風控加掛，所以數字不會和原始研究一樣。時間一律換算成<b>台北時間（UTC+8）</b>：開倉時間是日線收盤、出場時間是 4h K 線收完的那一刻，滑鼠移上去可以看到同一時刻的 UTC。</p>
+      <div class="rp-tk-key">
+        <span title="這一列最後是被初始止損收掉的"><i class="rp-tkbar sl"></i>被初始止損收掉</span>
+        <span title="保本出場：TP1 觸及後停損移到開倉價，之後被收掉"><i class="rp-tkbar be"></i>保本出場</span>
+        <span title="指標出場：MACD 系列在指標轉向時出場"><i class="rp-tkbar ind"></i>指標出場</span>
+        <span title="視窗內還在倉、沒有出場紀錄"><i class="rp-tkbar open"></i>仍在倉</span>
+        <span>價格欄滑鼠移上去看完整值</span>
+      </div>
+    </div>
+
+    <div id="rpTkInfo" class="rp-tk-info" hidden></div>
+    <div id="rpTkSum"></div>
+    <div id="rpTkBody"><div class="empty" style="padding:14px">正在讀取報單…</div></div>
+  </section>
+
   <!-- 錢包排行 -->
   <section class="panel">
     <div class="panel-head">

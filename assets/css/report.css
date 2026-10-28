@@ -12,8 +12,9 @@
    ══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* 規格指定的 token 名稱；既有設計系統用的是 --p-line-2，這裡補一個同色票的別名 */
+  /* 規格指定的 token 名稱；既有設計系統用的是 --p-line-2 / --p-dn，這裡補同色票的別名 */
   --p-line-soft: rgba(255, 255, 255, .075);
+  --p-down: var(--p-dn);
 }
 
 /* ══ 頁面骨架 ══════════════════════════════════════════════ */
@@ -243,3 +244,125 @@ table.rp .up { color: var(--p-up) } table.rp .down { color: var(--p-dn) } table.
 .rp-bh .rp-strname b { font-weight: 600 }
 .rp-basis { margin-top: 7px; line-height: 1.6; color: var(--p-t3) }
 .rp-basis b { color: var(--p-t2); font-weight: 600 }
+
+/* ══════════════════════════════════════════════════════════════
+   策略報單（歷史進出場）
+   ──────────────────────────────────────────────────────────────
+   這一區的版面原則和上面幾張表一樣：表格一律包在 .rp-tw（自己的
+   橫向捲動容器）裡，欄位多到比版面寬是正常的；面板本身不會因此
+   被撐開或把字裁掉。分段鈕比既有 .seg 多，所以允許換行。
+   ══════════════════════════════════════════════════════════════ */
+
+/* 策略分段鈕：8 個策略名稱比既有 .seg 長很多，改成可換行、不被 overflow:hidden 裁掉 */
+.rp-tk-seg { flex-wrap: wrap !important; overflow: visible !important; height: auto !important; max-width: 100% }
+.rp-tk-seg button, .rp-tk-win button { white-space: nowrap }
+
+/* 規則說明（靜態文字，資料檔不在也看得到） */
+.rp-tk-rule { padding: 9px 12px 10px; border-bottom: 1px solid var(--p-line) }
+.rp-tk-rule > b { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 600; color: var(--p-t1) }
+.rp-tk-rule p { margin: 0; max-width: 1420px; font-size: 11.5px; line-height: 1.75; color: var(--p-t2) }
+.rp-tk-rule code {
+  padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, .06);
+  font-family: var(--mono); font-size: 10.5px; color: var(--p-t2);
+}
+.rp-tk-key {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  margin-top: 7px; font-size: 10.5px; color: var(--p-t3);
+}
+.rp-tk-key i { display: inline-block; width: 4px; height: 11px; margin-right: 5px; vertical-align: -1px; border-radius: 2px }
+.rp-tkbar.sl { background: var(--p-dn) }
+.rp-tkbar.be { background: rgba(91, 140, 255, .8) }
+.rp-tkbar.ind { background: var(--p-warn) }
+.rp-tkbar.open { background: var(--p-t3) }
+
+/* 策略資訊條（參數、時間框、出處） */
+.rp-tk-info { padding: 9px 12px 10px; border-bottom: 1px solid var(--p-line); background: var(--p-s2) }
+.rp-tk-info .rp-tk-idesc { max-width: 1420px; font-size: 11.5px; line-height: 1.7; color: var(--p-t2) }
+.rp-tk-info .rp-tk-idesc b { color: var(--p-t1) }
+.rp-tk-info a { color: #c9d8ff; text-decoration: underline; text-underline-offset: 2px }
+.rp-tk-info .rp-tk-iparams {
+  display: block; margin-top: 4px; font-family: var(--mono);
+  font-size: 10.5px; line-height: 1.6; color: var(--p-t3);
+}
+.rp-tk-info .mini { font-size: 10.5px; color: var(--p-t3) }
+
+/* 摘要條：KPI 牆（沿用 .kpi-grid .rp-wkpi）＋ 出場原因分布 ＋ 視窗備註 */
+.rp-tk-sum { border-bottom: 1px solid var(--p-line) }
+.rp-tk-sum .kpi b { white-space: nowrap }
+.rp-tk-mix { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 16px; padding: 10px 12px 9px }
+.rp-tk-mixlab { font-size: 10.5px; color: var(--p-t3); white-space: nowrap }
+.rp-tk-mixbar {
+  display: flex; flex: 1 1 260px; min-width: 180px; height: 14px;
+  border-radius: 3px; overflow: hidden; background: rgba(255, 255, 255, .045);
+}
+.rp-tk-mixbar i { display: block; height: 100% }
+.rp-tk-mixbar i + i { box-shadow: inset 1px 0 0 rgba(10, 12, 17, .55) }
+.rp-tk-mixleg { display: flex; flex-wrap: wrap; gap: 3px 13px; font-size: 10.5px; color: var(--p-t3) }
+.rp-tk-mixleg > span { white-space: nowrap }
+.rp-tk-mixleg b { color: var(--p-t1); font-weight: 600; font-variant-numeric: tabular-nums }
+.rp-tk-mixleg .dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 2px }
+.rp-tk-notes {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 0 12px 11px; font-size: 10.5px; line-height: 1.7; color: var(--p-t3);
+}
+.rp-tk-notes b { color: var(--p-t2); font-weight: 600 }
+.rp-tk-notes .warn { color: var(--p-warn) }
+
+/* 顏色（出場原因）：tp* 用同一個綠階、保本藍、指標琥珀、逾時灰、止損紅 */
+.mx-tp4 { background: #0ecb81 } .mx-tp3 { background: #12b877 } .mx-tp2 { background: #1aa06c } .mx-tp1 { background: #238a62 }
+.mx-be { background: #5b8cff } .mx-ind { background: #f5a524 } .mx-timeout { background: #7a838f } .mx-sl { background: #f6465d }
+.dot.mx-tp4, .dot.mx-tp3, .dot.mx-tp2, .dot.mx-tp1 { background: #0ecb81 }
+.dot.mx-be { background: #5b8cff } .dot.mx-ind { background: #f5a524 } .dot.mx-timeout { background: #7a838f } .dot.mx-sl { background: #f6465d }
+
+/* 筆數標示列 */
+.rp-tk-count {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  padding: 8px 12px; border-top: 1px solid var(--p-line); background: var(--p-s2);
+  font-size: 10.5px; color: var(--p-t3);
+}
+.rp-tk-count b { color: var(--p-t1); font-weight: 600 }
+
+/* 報單主表：欄位多（16 欄），一定要包在 .rp-tw 裡；每格不換行並帶 title */
+table.rp.rp-tk tbody td, table.rp.rp-tk thead th { white-space: nowrap }
+table.rp.rp-tk tbody tr { cursor: pointer }
+table.rp.rp-tk .rp-tkpx { text-align: right; font-family: var(--mono); font-size: 11.5px }
+table.rp.rp-tk .rp-tkrk { width: 30px; text-align: right; font-family: var(--mono); font-size: 10.5px; color: var(--p-t4) }
+table.rp.rp-tk thead th.rp-tkrk { text-align: right }
+table.rp.rp-tk .rp-tkdt { font-size: 11.5px; color: var(--p-t2) }
+table.rp.rp-tk tbody td b { font-weight: 600 }
+/* 左側色條與仍在倉的灰字：選擇器要壓過 table.rp tbody td（既有檔案的規則） */
+table.rp.rp-tk tbody tr.rp-tk-sl > td:first-child { box-shadow: inset 3px 0 0 var(--p-dn) }
+table.rp.rp-tk tbody tr.rp-tk-ind > td:first-child { box-shadow: inset 3px 0 0 var(--p-warn) }
+table.rp.rp-tk tbody tr.rp-tk-be > td:first-child { box-shadow: inset 3px 0 0 rgba(91, 140, 255, .8) }
+table.rp.rp-tk tbody tr.rp-tk-open > td:first-child { box-shadow: inset 3px 0 0 var(--p-t3) }
+table.rp.rp-tk tbody tr.rp-tk-open > td { color: var(--p-t3) }
+table.rp.rp-tk tbody tr.rp-tk-open > td b { color: var(--p-t2) }
+.rp-tk-tag {
+  display: inline-block; padding: 0 6px; border-radius: var(--r999);
+  border: 1px solid var(--p-line); font-size: 9.5px; line-height: 15px; white-space: nowrap;
+}
+.rp-tk-tag.tp { color: var(--p-up); border-color: rgba(14, 203, 129, .3); background: rgba(14, 203, 129, .09) }
+.rp-tk-tag.sl { color: var(--p-dn); border-color: rgba(246, 70, 93, .3); background: rgba(246, 70, 93, .09) }
+.rp-tk-tag.be { color: #9db9ff; border-color: rgba(91, 140, 255, .32); background: rgba(91, 140, 255, .1) }
+.rp-tk-tag.ind { color: var(--p-warn); border-color: rgba(245, 165, 36, .3); background: rgba(245, 165, 36, .09) }
+.rp-tk-tag.timeout { color: var(--p-t3); border-color: var(--p-line-2); background: rgba(255, 255, 255, .03) }
+.rp-tk-tag.open { color: var(--p-t3); border-color: var(--p-line-2); background: rgba(255, 255, 255, .03) }
+.rp-tk-dim { color: var(--p-t3) }
+
+/* 明細彈窗（沿用 rpOv／rpOvCard）：TP／止損一覽 */
+.rp-tk-lv td, .rp-tk-lv thead th { white-space: nowrap }
+.rp-tk-lv .rp-tkpx { text-align: right; font-family: var(--mono); font-size: 11.5px }
+.rp-tk-hit { color: var(--p-up); font-weight: 600 }
+.rp-tk-miss { color: var(--p-t4) }
+.rp-ov .rp-tk-why { max-width: 1000px; font-size: 11.5px; line-height: 1.75; color: var(--p-t2) }
+.rp-ov .rp-tk-why b { color: var(--p-t1) }
+.rp-ov .rp-tk-note {
+  margin-top: 4px; padding: 8px 10px; border-radius: 0 var(--r6) var(--r6) 0;
+  border-left: 2px solid var(--p-ax); background: var(--p-s3);
+  font-size: 11.5px; line-height: 1.7; color: var(--p-t2); white-space: pre-wrap;
+}
+
+@media (max-width: 1120px) {
+  .rp-tk-mixbar { flex: 1 1 100% }
+  .rp-tk-rule p, .rp-tk-info .rp-tk-idesc { max-width: none }
+}
