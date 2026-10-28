@@ -341,3 +341,42 @@ table.sg .mini { font-size: 9.5px; color: var(--tx-3) }
   .ps-hrow, .ps-hrow.p1 { grid-template-columns: minmax(110px, 1fr) 88px 92px }
   .ps-hrow .mid { display: none }
 }
+
+
+/* ══ 幣種表區塊版面重做（使用者回報「欄位之間大片空白、最後一列被切」）════════
+   成因：
+   ① .ps-split 是 1.35fr + 1fr 兩欄，但窄到 1264px 就疊成單欄，
+      而 table.sg 是 width:100% + 自動欄寬 → 剩餘寬度被平均分到各欄，
+      文字靠左/靠右各自貼邊，中間就出現大片空隙（看起來像欄位沒對齊）。
+   ② .ps-tw 的 max-height 只有 340px，60 列的表格捲到最後會露出一半的列，
+      看起來像被面板裁掉。
+   修法：表格改成滿寬、欄寬固定比例（table-layout: fixed），
+   兩個排行框移到表格下方並排（原本在右側只分到 1fr，又窄又擠），
+   並把表格高度放寬、底部加上漸層陰影暗示「還有內容可以捲」。 */
+.ps-split.ps-coin-split { grid-template-columns: minmax(0, 1fr) }
+.ps-coin-split .ps-ranks { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto }
+.ps-tw-coin { max-height: clamp(320px, 46vh, 620px); box-shadow: inset 0 -16px 14px -14px rgba(0, 0, 0, .5) }
+.ps-tw-coin table.sg { table-layout: fixed }
+.ps-tw-coin table.sg th, .ps-tw-coin table.sg td { padding: 6px 10px; overflow: hidden; text-overflow: ellipsis }
+/* 7 欄固定比例：幣種 / 方向共識 / 淨名目 / 總名目 / 錢包數 / 擁擠度 / 平均槓桿
+   共識欄最寬（要放「空共識 多 2 · 空 9」），其餘依數字長度配 — 總和 100%。 */
+.ps-tw-coin table.sg th:nth-child(1) { width: 9% }
+.ps-tw-coin table.sg th:nth-child(2) { width: 21% }
+.ps-tw-coin table.sg th:nth-child(3) { width: 15% }
+.ps-tw-coin table.sg th:nth-child(4) { width: 14% }
+.ps-tw-coin table.sg th:nth-child(5) { width: 16% }
+.ps-tw-coin table.sg th:nth-child(6) { width: 16% }
+.ps-tw-coin table.sg th:nth-child(7) { width: 9% }
+/* 擁擠度的長條要能在固定欄寬裡伸縮 */
+.ps-tw-coin table.sg td .ps-crowd, .ps-tw-coin table.sg td .bar { max-width: 100%; min-width: 0 }
+@media (max-width: 1264px) {
+  /* 窄螢幕：表格仍滿寬，兩個排行維持並排（內容較短，這裡不放寬） */
+  .ps-coin-split .ps-ranks { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) }
+  .ps-tw-coin { max-height: 400px }
+  .ps-tw-coin table.sg th, .ps-tw-coin table.sg td { padding: 6px 7px }
+  .ps-tw-coin table.sg th:nth-child(2) { width: 20% }
+  .ps-tw-coin table.sg th:nth-child(5) { width: 14% }
+}
+@media (max-width: 900px) {
+  .ps-coin-split .ps-ranks { grid-template-columns: minmax(0, 1fr) }
+}
