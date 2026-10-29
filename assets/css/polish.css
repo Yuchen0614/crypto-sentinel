@@ -1,0 +1,99 @@
+/* ══════════════════════════════════════════════════════════════════════
+   polish.css — 最後載入的統一樣式層（必須排在該頁所有 CSS 之後）
+   ──────────────────────────────────────────────────────────────────────
+   1. 視窗尺寸與縮放：超寬螢幕的內容最大寬度、窄螢幕表格改橫向捲動、
+      矮視窗不讓上方控制列吃掉整個畫面。
+   2. 四頁一致性：面板標題、間距節奏、數字對齊、sticky 表頭、
+      互動狀態、空狀態與載入文字、捲軸。
+   3. 載入時不跳版：KPI 磚／表格／canvas 先保留高度。
+   這一層只覆蓋（override），不改任何既有模組的結構。
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* 間距節奏：面板內距、面板間距、KPI 磚間距共用同一組 */
+  --cs-gap: 10px;
+  --cs-pad-x: 11px;
+  --cs-pad-y: 8px;
+  --cs-head-h: 34px;
+  /* 超寬螢幕的內容上限：2560 時不再出現超長橫線與過寬表格 */
+  --cs-maxw: 2200px;
+  --cs-line: rgba(255, 255, 255, .07);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   1. 視窗尺寸與縮放
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── 超寬螢幕（1920～2560）：內容置中並設上限 ─────────────────────────
+   原本版面會一路拉寬到 2560，表格欄位之間出現大片空白、面板邊框變成
+   超長橫線。這裡只限制「內容區」，頂部 HUD 與底部狀態列維持滿寬
+   （滿寬的頂部列＋置中的內容是常見的作法，也不會讓狀態列的資訊被切斷）。 */
+.layout,
+.oc-page,
+.sg-page,
+.rp-page,
+.entry-wrap,
+.oc-note {
+  max-width: var(--cs-maxw);
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* 超寬時三欄比例不再無限放大：中欄留給圖表，兩側固定寬（既有規則），
+   這裡只補上「欄內內容」的最大寬，避免極寬的表格與長條被拉散。 */
+@media (min-width: 2200px) {
+  .layout { padding-inline: 16px }
+}
+
+/* ── 窄螢幕（1024～1180）：表格放不下時改用橫向捲動，而不是把欄位壓成 0 ──
+   這些容器本來就是縱向捲動容器（sticky 表頭的基準不變），只是把橫向
+   由 hidden 改成 auto：塞得下時不會出現捲軸，塞不下時使用者捲得到。 */
+.table-wrap,
+.hl-table-wrap,
+.ps-tw,
+.rp-tw,
+.sg-table-wrap,
+.chain-tape {
+  overflow-x: auto;
+}
+
+/* 表格欄位不得被壓成 0 寬：真的放不下就讓上面的容器橫向捲動 */
+.scan thead th,
+.scan tbody td,
+table.sg thead th,
+table.sg tbody td,
+table.hl thead th,
+table.hl tbody td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── 鏈上聰明錢頁在 ≤1560（兩欄／單欄）時：面板改回依內容高度 ──────────
+   onchain.css 在窄螢幕把捲動交給 .oc-page、欄位本身不再捲動，
+   但面板仍然是 flex:1 1 0（會被壓縮）＋ overflow:hidden：
+   實測 1366×768 時「大戶持倉表」整張表被切掉、「鏈上大額換幣即時流」
+   的成交列完全看不到（資料有載入，只是被裁掉且捲不到）。
+   這裡讓面板保有內容高度；清單類區塊各自的內部捲動與高度上限不變，
+   整頁由 .oc-page 捲動，所以內容不會再被吃掉。 */
+@media (max-width: 1560px) {
+  .oc-col > .panel { flex: 0 0 auto !important; min-height: 0 !important }
+  .oc-col > .panel.oc-grow { flex: 0 0 auto !important }
+  .oc-col.a > .panel.oc-grow .hl-table-wrap { max-height: 360px }
+  .oc-col .chain-tape { max-height: 300px }
+}
+
+/* ── 矮視窗（768 / 900）：上方 KPI 與控制列不得吃掉整個高度 ─────────────
+   1080 以上維持原本的舒服間距；900 以下把上方區塊的垂直內距收緊，
+   確保下面的內容一定看得到。 */
+@media (max-height: 950px) {
+  .chart-stats > div { padding: 4px 8px }
+  .kpi-grid .kpi { padding: 7px 9px }
+  .ps-block > .panel-head,
+  .panel > .panel-head { min-height: var(--cs-head-h) }
+}
+@media (max-height: 820px) {
+  .hud { min-height: 48px !important; padding: 4px 12px !important }
+  .chart-stats > div { padding: 3px 7px }
+  .chart-stats b { font-size: 12px }
+  .oc-note { max-height: 72px; overflow-y: auto; padding-block: 6px }
+}
