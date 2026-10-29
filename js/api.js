@@ -29,7 +29,7 @@
   api.jget = jget;
 
   const cache = new Map();
-  async /* 快取：記憶體 Map + sessionStorage 兩層。
+  /* 快取：記憶體 Map + sessionStorage 兩層。
    為什麼要 sessionStorage：這是多頁靜態站，換頁＝整頁重載，記憶體快取一定消失，
    所以每次點回行情總覽都要重抓一次全市場報價（24hr tickers 是最大的一包），
    使用者看到的就是「每次都在轉圈」。把高 TTL、體積可控的結果寫進 sessionStorage，
@@ -57,7 +57,7 @@
       drop.forEach(k => { try { sessionStorage.removeItem(SS_PREFIX + k); } catch (e) { } });
     } catch (e) { /* 配額滿或無 sessionStorage：靜默略過 */ }
   }
-  function cached(key, ttl, fn) {
+  async function cached(key, ttl, fn) {
     let e = cache.get(key);
     if (!e && ttl >= 20e3) { const d = ssRead(key); if (d) { e = d; cache.set(key, d); } }
     if (e && Date.now() - e.t < ttl) return e.v;
