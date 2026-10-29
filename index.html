@@ -294,67 +294,8 @@
     </aside>
 </main>
 
-<!-- ── 鏈上聰明錢：入口卡（完整即時內容在獨立頁 onchain.html）──── -->
-<div class="entry-wrap">
-  <section class="panel chain-entry">
-    <div class="panel-head">
-      <h2><i class="ic ic-chain"></i>鏈上聰明錢追蹤</h2>
-      <span class="mini" id="entryMeta">名單載入中…</span>
-      <a class="entry-btn" href="onchain.html" target="_blank" rel="noopener">開啟獨立頁面 ↗</a>
-    </div>
-    <div class="entry-body">
-      <div class="entry-stats">
-        <div><label>追蹤大戶錢包</label><b id="entryWallets">—</b></div>
-        <div><label>名單更新</label><b id="entryDate">—</b></div>
-        <div><label>最大持倉錢包</label><b id="entryTop">—</b></div>
-      </div>
-      <p class="entry-desc">
-        即時持倉與倉位變化偵測（Hyperliquid 大戶錢包）、鏈上大額換幣即時流與雷達（以太坊／Solana／Base／BNB）、聰明錢錢包評分榜。
-        鏈上輪詢與掃描已整併到獨立頁面：主控台不再佔用鏈上 API 額度，該頁的鏈上資料也更即時。
-      </p>
-    </div>
-  </section>
-
-  <section class="panel chain-entry">
-    <div class="panel-head">
-      <h2><i class="ic ic-smart"></i>開倉平倉帶單記錄</h2>
-      <span class="mini" id="entrySigMeta">大戶開倉／平倉與盈虧</span>
-      <a class="entry-btn" href="signals.html" target="_blank" rel="noopener">開啟獨立頁面 ↗</a>
-    </div>
-    <div class="entry-body">
-      <div class="entry-stats">
-        <div><label>追蹤錢包</label><b id="entrySigWallets">—</b></div>
-        <div><label>盈虧來源</label><b>成交 closedPnl</b></div>
-        <div><label>長期保存</label><b>CSV · 每日快照</b></div>
-      </div>
-      <p class="entry-desc">
-        大戶一開倉、加碼、減碼、翻倉、平倉就記一筆流水，並把開倉與平倉配對成回合：
-        <b>錢包自己的實際已實現盈虧</b>（Hyperliquid 成交紀錄）與<b>固定名目模擬跟單的損益</b>同時記錄，
-        附勝率、持有時間、累計盈虧曲線與錢包績效排行，可匯出 CSV。
-      </p>
-    </div>
-  </section>
-
-  <section class="panel chain-entry">
-    <div class="panel-head">
-      <h2><i class="ic ic-scan"></i>回測報表 · 實際績效與策略對照</h2>
-      <span class="mini" id="entryRepMeta">績效資料載入中…</span>
-      <a class="entry-btn" href="report.html">開啟獨立頁面 ↗</a>
-    </div>
-    <div class="entry-body">
-      <div class="entry-stats">
-        <div><label>追蹤錢包</label><b id="entryRepWallets">—</b></div>
-        <div><label>權益曲線資料</label><b id="entryRepPerf">—</b></div>
-        <div><label>策略回測</label><b id="entryRepBt">—</b></div>
-      </div>
-      <p class="entry-desc">
-        用 Hyperliquid 的<b>真實權益曲線</b>算出每個追蹤大戶 30／60／180／360 天的實際報酬、最大回撤、夏普與勝率，
-        再和規則化策略的回測（等權持有、淨值前 10、動能輪換、反向、低回撤）並排對照；
-        附可排序的錢包排行、每個錢包的權益曲線，以及方法論與已知限制。
-      </p>
-    </div>
-  </section>
-</div>
+<!-- 三張跳轉入口卡（鏈上聰明錢／開倉平倉記單／回測報表）已移除：
+     上方 .pagenav 導覽列已提供全部頁面連結，這裡重複又佔版面。 -->
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
