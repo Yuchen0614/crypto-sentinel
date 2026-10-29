@@ -29,14 +29,47 @@
   api.jget = jget;
 
   const cache = new Map();
-  async function cached(key, ttl, fn) {
-    const e = cache.get(key);
+  async /* 快取：記憶體 Map + sessionStorage 兩層。
+   為什麼要 sessionStorage：這是多頁靜態站，換頁＝整頁重載，記憶體快取一定消失，
+   所以每次點回行情總覽都要重抓一次全市場報價（24hr tickers 是最大的一包），
+   使用者看到的就是「每次都在轉圈」。把高 TTL、體積可控的結果寫進 sessionStorage，
+   換頁回來就能先沿用同一份資料立即出圖，背景再照原本的 TTL 決定要不要更新。
+   只持久化 ttl >= 20 秒且序列化後 <= 250KB 的項目（每幣 K 線這種大包不寫），
+   並限制最多 60 筆、超過就砍最舊的，避免把 5MB 配額塞爆；任何存取失敗都靜默回退。 */
+  const SS_PREFIX = 'cs.cache.';
+  function ssRead(key) {
+    try {
+      const raw = sessionStorage.getItem(SS_PREFIX + key);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      return (o && typeof o.t === 'number') ? o : null;
+    } catch (e) { return null; }
+  }
+  function ssWrite(key, entry) {
+    try {
+      const raw = JSON.stringify(entry);
+      if (raw.length > 400000) return;                 // 太大不寫（例如整批 K 線；24hr tickers 約 200KB 要留）
+      const idx = JSON.parse(sessionStorage.getItem(SS_PREFIX + '__idx') || '[]');
+      sessionStorage.setItem(SS_PREFIX + key, raw);
+      const next = idx.filter(k => k !== key).concat(key).slice(-60);
+      sessionStorage.setItem(SS_PREFIX + '__idx', JSON.stringify(next));
+      const drop = idx.filter(k => next.indexOf(k) < 0);
+      drop.forEach(k => { try { sessionStorage.removeItem(SS_PREFIX + k); } catch (e) { } });
+    } catch (e) { /* 配額滿或無 sessionStorage：靜默略過 */ }
+  }
+  function cached(key, ttl, fn) {
+    let e = cache.get(key);
+    if (!e && ttl >= 20e3) { const d = ssRead(key); if (d) { e = d; cache.set(key, d); } }
     if (e && Date.now() - e.t < ttl) return e.v;
     const v = await fn();
-    if (v !== null && v !== undefined) cache.set(key, { t: Date.now(), v });
-    else if (e) return e.v;              // 失敗時沿用舊資料
+    if (v !== null && v !== undefined) {
+      const entry = { t: Date.now(), v };
+      cache.set(key, entry);
+      if (ttl >= 20e3) ssWrite(key, entry);
+    } else if (e) return e.v;            // 失敗時沿用舊資料（含跨頁帶回來的）
     return v;
   }
+  api.cacheKeys = () => Array.from(cache.keys());
   api.cached = cached;
 
   /* ── 幣種宇宙（全市場）────────────────────────────── */
@@ -48,7 +81,7 @@
     try {
       const [info, tickers] = await Promise.all([
         cached('exinfo', 6 * 3600e3, () => jget(B.SPOT + '/api/v3/exchangeInfo')),
-        jget(B.SPOT + '/api/v3/ticker/24hr', 15000)
+        cached('tk24', 60e3, () => jget(B.SPOT + '/api/v3/ticker/24hr', 15000))
       ]);
       const ok = new Map();
       (info.symbols || []).forEach(s => {
@@ -86,7 +119,7 @@
     }
     // 備：Bybit
     try {
-      const d = await jget(B.BYBIT + '/v5/market/tickers?category=spot', 15000);
+      const d = await cached('bybitTk', 60e3, () => jget(B.BYBIT + '/v5/market/tickers?category=spot', 15000));
       const list = (d.result.list || []).filter(t => /USDT$/.test(t.symbol)).map(t => {
         const base = t.symbol.replace(/USDT$/, '');
         return {
