@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>即時報單 · 全市場訊號掃描 · CRYPTO SENTINEL</title>
+<meta name="description" content="用 Hyperliquid 全部永續幣當幣種宇宙，前端即時算 EMA／RSI／ATR／MACD 與擺動點，最新一根已收完的 K 線一出現訊號就吐報單卡：開倉價、止損、TP1～TP4、價位階梯與目前狀態。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305070e'/%3E%3Cpath d='M6 22 L12 10 L18 20 L26 6' stroke='%2338f6ff' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/fx.css">
+<link rel="stylesheet" href="assets/css/v2.css">
+<link rel="stylesheet" href="assets/css/v3.css">
+<link rel="stylesheet" href="assets/css/pro.css">
+<link rel="stylesheet" href="assets/css/report.css">
+<link rel="stylesheet" href="assets/css/orders.css">
+</head>
+<body>
+
+<!-- ── 頁首 ─────────────────────────────────────────────── -->
+<div class="hud oc-hud rp-hud">
+  <div class="hud-brand">
+    <h1><span class="dot"></span>CRYPTO SENTINEL <b>／ 即時報單</b></h1>
+  </div>
+  <div class="oc-status" id="odMeta">正在連線 Hyperliquid 取幣種宇宙…</div>
+  <div class="oc-actions">
+    <nav class="pagenav">
+      <a href="index.html"><i class="nd"></i>行情總覽</a>
+      <a href="onchain.html"><i class="nd"></i>鏈上聰明錢</a>
+      <a href="signals.html"><i class="nd"></i>持倉分析</a>
+      <a href="report.html"><i class="nd"></i>回測報表</a>
+    </nav>
+    <div class="clock"><span id="odClock">--:--:--</span><small id="odDate">台北</small></div>
+  </div>
+</div>
+
+<div class="oc-note">
+  <b>這一頁在做什麼：</b>
+  ① 把 Hyperliquid 的<b>全部永續幣</b>抓下來當幣種宇宙（預設 24 小時名目成交額 ≥ 300 萬美元，通常上百檔），不是只有 BTC／ETH 這種大幣；
+  ② 前端自己算 EMA／RSI／ATR／MACD 與擺動點，用<b>最新一根已收完的 K 線</b>判定 7 個策略訊號；
+  ③ 訊號一成立就吐一張報單卡：開倉價（觸發當下的參考價）、止損、TP1～TP4、1R 距離、價位階梯與目前狀態。
+  <b>先知道三件事：</b>這一頁<b>只產生訊號、不會下任何單</b>；判定用的是已收完的 K 線，所以是「剛收完就出現」而不是每秒跳動；
+  公開 API 有速率限制，宇宙上百檔要慢慢把 K 線補齊，控制列會顯示「K 線 N／M 檔」，補齊之前只有部分幣種有訊號。
+</div>
+
+<!-- ── 主體 ─────────────────────────────────────────────── -->
+<main class="rp-page" id="odRoot">
+
+  <!-- ══ 控制列（sticky）══ -->
+  <section class="panel od-bar" id="odBar">
+    <div class="od-row">
+      <div class="od-grp">
+        <label>時間框</label>
+        <div class="seg seg-sm" id="odTf" title="訊號用哪個週期的 K 線判定。15m 最快也最吵、1d 最慢；切換後 K 線會重新補齊">
+          <button data-v="15m">15m 積極</button>
+          <button data-v="1h" class="on">1h 標準</button>
+          <button data-v="4h">4h 穩健</button>
+          <button data-v="1d">1d 慢</button>
+        </div>
+      </div>
+      <div class="od-grp">
+        <label>風控模式</label>
+        <div class="seg seg-sm" id="odMode" title="止損幾倍 ATR、TP 掛在幾 R；下方參數列會同步顯示實際數字">
+          <button data-v="agg">積極</button>
+          <button data-v="std" class="on">標準</button>
+          <button data-v="wide">寬鬆</button>
+        </div>
+      </div>
+      <div class="od-grp">
+        <label>方向</label>
+        <div class="seg seg-sm" id="odSide" title="所有策略都支援雙向；這裡只是過濾要看哪一種方向的報單">
+          <button data-v="both" class="on">雙向</button>
+          <button data-v="long">只做多</button>
+          <button data-v="short">只做空</button>
+        </div>
+      </div>
+      <div class="od-grp">
+        <label>幣種宇宙</label>
+        <div class="seg seg-sm" id="odUni" title="依 24 小時名目成交額篩選；「中小型與迷因」是 300 萬～5,000 萬美元、成交額由小到大">
+          <button data-v="all" class="on">全部 ≥$3M</button>
+          <button data-v="active">活躍 ≥$20M</button>
+          <button data-v="major">主流 ≥$200M</button>
+          <button data-v="small">中小型與迷因</button>
+        </div>
+      </div>
+    </div>
+    <div class="od-row">
+      <label class="chk" title="只留還沒被止損或過期的報單"><input type="checkbox" id="odOpenOnly"> 只顯示未平倉</label>
+      <button class="ghost" id="odRescan" title="立刻重掃一輪：略過 K 線快取的時間限制，重新抓取目前宇宙">重新掃描</button>
+      <span class="sp"></span>
+      <div class="od-prog" title="宇宙內已取得 K 線的幣種進度">
+        <i id="odProgBar"></i>
+        <span id="odProgTxt">K 線 0／0</span>
+      </div>
+      <span class="mini" id="odUniMeta">宇宙 0 檔</span>
+    </div>
+    <div class="od-params" id="odParams">
+      <span>止損 <b id="odpSl">1.5×ATR14</b></span>
+      <span>TP1～TP4 <b id="odpTp">1／2／3／4R</b></span>
+      <span>名目 <b>$10,000</b>（不加槓桿）</span>
+      <span>吃單手續費 <b>0.045%／邊</b></span>
+      <span class="sp"></span>
+      <span class="mini" id="odpRule">用最新一根已收完的 1h K 線判定 · 觸發時間＝該根收完的那一刻</span>
+    </div>
+  </section>
+
+  <!-- ══ 最新報單（最重要，放最上面）══ -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-pos"></i>最新報單</h2>
+      <span class="count" id="odSigCount">0</span>
+      <span class="mini" id="odSigMeta">等待第一輪掃描…</span>
+      <span class="mini" style="margin-left:auto" title="開倉價是觸發當下的標記價（參考價），不是成交價；點卡片展開完整依據與指標數值">
+        點卡片展開依據 · 新報單左側有色條與 NEW
+      </span>
+    </div>
+    <div class="od-cards" id="odCards">
+      <div class="empty" style="padding:14px">正在建立幣種宇宙與補齊 K 線…</div>
+    </div>
+  </section>
+
+  <!-- ══ 本次掃描統計 ══ -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-brain"></i>本次掃描統計</h2>
+      <span class="mini" id="odStMeta">—</span>
+      <span class="mini" style="margin-left:auto" title="只算這台機器這次工作階段累積的報單（存在本機，上限 300 筆），樣本很小，不當勝率看">
+        僅本次工作階段 · 樣本很小
+      </span>
+    </div>
+    <div class="od-stats" id="odStats"></div>
+    <div class="od-stratrows" id="odStratRows"></div>
+  </section>
+
+  <!-- ══ 全部幣種掃描表 ══ -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><i class="ic ic-scan"></i>全部幣種掃描表</h2>
+      <span class="count" id="odTblCount">0</span>
+      <span class="mini" id="odTblMeta">—</span>
+    </div>
+    <div class="rp-tools">
+      <input type="search" id="odQ" placeholder="搜尋幣種…（按 / 跳到這裡）" spellcheck="false" autocomplete="off">
+      <label class="chk"><input type="checkbox" id="odOnlySig"> 只看有訊號的幣</label>
+      <span class="sp"></span>
+      <span class="mini">點欄位標題切換排序 · 點一整列看該幣指標</span>
+    </div>
+    <div class="rp-tw rp-tw-full">
+      <table class="rp od-tbl" id="odTbl">
+        <thead>
+          <tr>
+            <th class="od-th-s" data-sk="coin">幣種</th>
+            <th class="ta-r" data-sk="px">現價</th>
+            <th class="ta-r" data-sk="chg">24h 漲跌</th>
+            <th class="ta-r" data-sk="vol">24h 成交額</th>
+            <th class="rp-c" data-sk="brk20" title="突破（20 根或 10 根高低點）">突破</th>
+            <th class="rp-c" data-sk="ma2060" title="均線動能（MA20／MA60）">均線</th>
+            <th class="rp-c" data-sk="rsi_pb" title="RSI14 回檔買入">RSI 回檔</th>
+            <th class="rp-c" data-sk="macd_hist" title="MACD(12,26,9) 柱狀體翻正／翻負">柱狀體</th>
+            <th class="rp-c" data-sk="macd_zero" title="MACD(12,17,9) 訊號線穿越零軸＋量能＋RSI">零軸量能</th>
+            <th class="rp-c" data-sk="macd_ema200" title="MACD(12,26,9) 訊號線交叉＋EMA200 過濾">訊號線×EMA200</th>
+            <th class="rp-c" data-sk="macd_div" title="MACD 擺動點背離＋突破確認">背離</th>
+            <th class="ta-r" data-sk="last">最新訊號</th>
+          </tr>
+        </thead>
+        <tbody id="odTbody">
+          <tr><td colspan="12"><div class="empty" style="padding:12px">正在讀取幣種宇宙…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 規則與限制 ══ -->
+  <section class="panel od-note">
+    <div class="panel-head">
+      <h2><i class="ic ic-book"></i>規則與限制</h2>
+      <span class="mini" id="odRuleMeta">—</span>
+    </div>
+    <h4>訊號怎麼算（7 個策略，全部雙向）</h4>
+    <ul class="rp-ul">
+      <li><b>突破</b>：收盤創 20 根新高 → 做多、創 20 根新低 → 做空。切到「15m 積極」時自動縮成 10 根，訊號較多也較吵。</li>
+      <li><b>均線</b>：MA20 上穿 MA60 → 做多、下穿 → 做空（用收盤價的簡單移動平均）。</li>
+      <li><b>RSI 回檔</b>：收盤站在 MA60 之上的上升趨勢中 RSI14 &lt; 35 → 做多；MA60 之下的下降趨勢中 RSI14 &gt; 65 → 做空。</li>
+      <li><b>柱狀體</b>：MACD(12,26,9) 柱狀體由負轉正 → 做多、由正轉負 → 做空。</li>
+      <li><b>零軸量能</b>：MACD(12,17,9) 訊號線上穿零軸＋該根量 &gt; 20 根均量 ×1.5＋RSI &gt; 50 → 做多；反向條件 → 做空。</li>
+      <li><b>訊號線×EMA200</b>：MACD(12,26,9) 上穿訊號線且收盤 &gt; EMA200 → 做多；反向條件 → 做空。</li>
+      <li><b>背離</b>：擺動高低點左右各 3 根，價格創更低低點但 MACD 線創更高低點 → 等收盤突破前一個擺動高才做多；反向做空（30 根內沒突破就作廢）。</li>
+    </ul>
+    <h4>價位怎麼算</h4>
+    <ul class="rp-ul">
+      <li><b>開倉價</b>＝訊號那根收完當下的標記價（畫面顯示的是<b>參考價</b>，不是成交價，也沒有模擬滑價）。</li>
+      <li><b>1R</b>＝開倉價到止損的距離；止損＝開倉價 ∓ 風控模式的倍數 × ATR14（Wilder 平滑），TP1～TP4 掛在設定的 R 倍數上。</li>
+      <li>三種模式的實際數字都寫在控制列的參數列上：積極＝1.0×ATR／0.5・1・1.5・2.5R、標準＝1.5×ATR／1・2・3・4R、寬鬆＝2.0×ATR／1・2・3・4R。</li>
+      <li>狀態只看 K 線的高低點：觸及 TP1～TP4 依序標記，先打到止損就記「觸發止損」，太久沒動靜記「已過期」。同一根同時觸及止損與目標一律先算止損。</li>
+      <li>名目固定 <b>$10,000</b>、吃單手續費 <b>0.045%／邊</b>（來回 0.09%），這一頁只顯示價位與 R 倍數，<b>不算損益金額</b>。</li>
+    </ul>
+    <h4>已知限制</h4>
+    <ul class="rp-ul">
+      <li>K 線要一檔一檔補（請求間隔 ≥0.4 秒，HIT 429 會指數退避），宇宙上百檔時第一次開啟要等幾分鐘；已抓過的 K 線存在瀏覽器本機，時間框 TTL 內不重抓。</li>
+      <li>分頁被切到背景時改成降頻輪詢（不停更），回到前景會再加速。</li>
+      <li>指標與訊號全部在前端算，和 <code>scripts/trades.py</code> 的回測同一套規則，但時間框與幣種宇宙不同，數字不會和回測報表一樣。</li>
+      <li>不含資金費率、滑價與部分成交；報單是訊號記錄，<b>不是投資建議</b>。</li>
+    </ul>
+  </section>
+
+</main>
+
+<div class="statusbar">
+  <div class="ticker" id="statusTicker"><span>即時報單啟動中…</span></div>
+  <div class="disc">資料來源：Hyperliquid 公開 /info（metaAndAssetCtxs、candleSnapshot）· 本頁只產生訊號與視覺化，不下單、不構成投資建議</div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="js/util.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/orders.js"></script>
+</body>
+</html>

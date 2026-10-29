@@ -1,0 +1,285 @@
+/* ══════════════════════════════════════════════════════════════
+   orders.css — 「即時報單」頁專用樣式（只載入 orders.html）
+   ──────────────────────────────────────────────────────────────
+   設計 token 一律沿用 pro.css 的 --p-* 系列（表面階層、文字階層、
+   漲跌色、型階、圓角、緩動曲線），report.css 提供 .rp-page / .rp-tw /
+   table.rp / .rp-tools / .rp-legend / .rp-empty / .rp-ul 這些既有骨架。
+   這一支只補「即時報單」自己需要的東西：
+
+     1. 頁面骨架（body 是 flex column，扣掉頁首／說明列／狀態列後
+        把剩餘高度交給 .rp-page，捲動留在 .rp-page 內）
+     2. 控制列 .od-bar（sticky 在 .rp-page 捲動容器頂端）
+     3. 報單卡片 .od-card（資訊密度高，但任何一格都不得被裁掉：
+        數字格用 auto-fit 自適應、每個價格都帶 title 完整值）
+     4. 價位階梯 .od-lv（止損→開倉→TP1~TP4＋現價位置）
+     5. 掃描表與圖例
+
+   版面稽核的硬規則（這個專案踩過很多次）：
+     任何 white-space:nowrap 的格子都要有足夠寬度或省略號＋title；
+     flex/grid 子項一律 min-width:0，讓它可以自己縮，不要撐破父層。
+   ══════════════════════════════════════════════════════════════ */
+
+/* ══ 頁面骨架 ══════════════════════════════════════════════ */
+html, body { height: 100% }
+body {
+  display: flex; flex-direction: column; min-height: 0;
+  overflow: hidden;                        /* 捲動一律留在 .rp-page 內 */
+}
+.hud.oc-hud { flex: 0 0 auto }
+.oc-note { flex: 0 0 auto }
+.rp-page { flex: 1 1 auto; min-height: 0 }
+.statusbar { flex: 0 0 auto }
+
+/* 導覽列現在有五頁，窄一點的視窗不要讓它撐破頁首 */
+.pagenav a { min-width: 0 }
+@media (max-width: 1560px) {
+  .oc-hud .pagenav a { padding: 4px 10px; font-size: 11px }
+}
+@media (max-width: 1180px) {
+  .oc-hud .pagenav a { padding: 4px 8px; font-size: 10.5px }
+}
+@media (max-width: 1040px) {
+  .oc-hud .pagenav a .nd { display: none }
+}
+
+/* ══ 控制列（sticky）═══════════════════════════════════════ */
+.od-bar {
+  position: sticky; top: 0; z-index: 7;
+  border-radius: var(--r8) !important;
+  background: rgba(15, 19, 25, .97) !important;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: var(--p-lit), 0 6px 16px rgba(0, 0, 0, .35) !important;
+}
+.od-bar .od-row {
+  display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap;
+  padding: 9px 12px 8px;
+}
+.od-bar .od-row + .od-row { border-top: 1px solid var(--p-line); padding-top: 7px }
+.od-grp { display: flex; align-items: center; gap: 6px; min-width: 0 }
+.od-grp > label {
+  font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--p-t4); white-space: nowrap;
+}
+.od-bar .seg { flex: 0 1 auto; min-width: 0 }
+.od-bar .seg button { padding: 3px 9px !important; font-size: 11px !important; white-space: nowrap }
+.od-bar .sp { margin-left: auto }
+.od-bar .chk { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--p-t2); white-space: nowrap }
+.od-bar .chk input { margin: 0 }
+
+/* 模式參數列：把「止損幾倍 ATR、TP 幾 R」直接寫出來，不必猜 */
+.od-params {
+  display: flex; align-items: baseline; gap: 4px 16px; flex-wrap: wrap;
+  padding: 6px 12px 8px; border-top: 1px solid var(--p-line);
+  font-size: 11px; line-height: 1.6; color: var(--p-t2);
+}
+.od-params b { color: var(--p-t1); font-weight: 600; font-variant-numeric: tabular-nums }
+.od-params .mini { font-size: 10.5px; color: var(--p-t3) }
+.od-params .sp { margin-left: auto }
+.od-params .ok { color: var(--p-up) } .od-params .warn { color: var(--p-warn) } .od-params .bad { color: var(--p-dn) }
+
+/* 進度條：宇宙 K 線補齊進度 */
+.od-prog { display: flex; align-items: center; gap: 8px; min-width: 190px; flex: 1 1 220px }
+.od-prog > i {
+  display: block; height: 3px; border-radius: 3px; background: var(--p-ax);
+  transition: width 260ms var(--ease); min-width: 2px;
+}
+.od-prog::before { content: ''; flex: 1 1 auto; order: 2; height: 3px; border-radius: 3px; background: var(--p-line) }
+.od-prog > span { order: 3; font-size: 10.5px; color: var(--p-t3); white-space: nowrap; font-variant-numeric: tabular-nums }
+.od-prog > i { order: 1 }
+
+/* ══ 報單卡片清單 ══════════════════════════════════════════ */
+.od-cards { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px }
+.od-card {
+  position: relative; min-width: 0;
+  border: 1px solid var(--p-line); border-radius: var(--r8);
+  background: var(--p-s2); padding: 9px 11px 10px 14px;
+  transition: border-color var(--t), background var(--t);
+  cursor: pointer;
+}
+.od-card:hover { border-color: var(--p-line-2) }
+/* 新出現的報單：左側色條（規格要求「明顯標記、不要用聲音」） */
+.od-card.new::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  border-radius: var(--r8) 0 0 var(--r8); background: var(--p-t3);
+}
+.od-card.new.long::before { background: var(--p-up) }
+.od-card.new.short::before { background: var(--p-dn) }
+.od-card.new { background: linear-gradient(90deg, rgba(255, 255, 255, .035), transparent 42%), var(--p-s2) }
+.od-card.closed { opacity: .78 }
+
+.od-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0 }
+.od-coin {
+  font-family: var(--disp); font-size: 15px; font-weight: 700; letter-spacing: .01em;
+  color: var(--p-t1); white-space: nowrap;
+}
+.od-dir {
+  display: inline-flex; align-items: center; padding: 1px 8px; border-radius: var(--r999);
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.od-dir.long { color: var(--p-up); background: rgba(14, 203, 129, .12); box-shadow: inset 0 0 0 1px rgba(14, 203, 129, .3) }
+.od-dir.short { color: var(--p-dn); background: rgba(246, 70, 93, .12); box-shadow: inset 0 0 0 1px rgba(246, 70, 93, .3) }
+.od-strat { font-size: 11.5px; color: var(--p-t2); min-width: 0 }
+.od-tf {
+  font-family: var(--mono); font-size: 10px; color: var(--p-t3);
+  padding: 0 6px; border: 1px solid var(--p-line); border-radius: var(--r999); white-space: nowrap;
+}
+.od-newtag {
+  font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  color: #05070e; background: var(--p-up); border-radius: 3px; padding: 1px 5px; white-space: nowrap;
+}
+.od-card.short .od-newtag { background: var(--p-dn); color: #fff }
+.od-when { font-family: var(--mono); font-size: 10.5px; color: var(--p-t3); white-space: nowrap }
+.od-head .od-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end }
+.od-state {
+  font-size: 10.5px; padding: 1px 8px; border-radius: var(--r999); white-space: nowrap;
+  border: 1px solid var(--p-line-2); color: var(--p-t2); background: rgba(255, 255, 255, .03);
+}
+.od-state.wait { color: var(--p-t2) }
+.od-state.tp { color: var(--p-up); border-color: rgba(14, 203, 129, .32); background: rgba(14, 203, 129, .09) }
+.od-state.sl { color: var(--p-dn); border-color: rgba(246, 70, 93, .32); background: rgba(246, 70, 93, .09) }
+.od-state.exp { color: var(--p-t3) }
+.od-state.nodata { color: var(--p-warn); border-color: rgba(245, 165, 36, .3) }
+
+/* 即時價與未實現 R：卡片右上角，跟著輪詢跳 */
+.od-live { display: flex; align-items: baseline; gap: 7px; font-variant-numeric: tabular-nums; white-space: nowrap }
+.od-live .px { font-size: 13px; color: var(--p-t1); font-weight: 600 }
+.od-live .r { font-size: 11px; color: var(--p-t3) }
+
+/* ══ 價位格（開倉／止損／TP1~TP4）：auto-fit，不裁字 ═══════ */
+.od-nums {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 1px; margin-top: 8px;
+  background: var(--p-line); border: 1px solid var(--p-line); border-radius: var(--r6);
+  overflow: hidden;
+}
+.od-cell { background: var(--p-s1); padding: 5px 9px 6px; min-width: 0 }
+.od-cell label {
+  display: block; font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--p-t4); white-space: nowrap;
+}
+.od-cell b {
+  display: block; font-size: 12.5px; font-weight: 600; color: var(--p-t1);
+  font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0;
+}
+.od-cell .s {
+  display: block; font-size: 10px; color: var(--p-t3);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.od-cell.entry b { color: #dbe6ff }
+.od-cell.sl b { color: var(--p-dn) }
+.od-cell.tp b { color: var(--p-up) }
+.od-cell.hit { background: rgba(14, 203, 129, .07) }
+.od-cell.cur b { color: var(--p-ax) }
+
+/* ══ 價位階梯 ══════════════════════════════════════════════ */
+.od-lv { position: relative; height: 40px; margin: 11px 6px 2px }
+.od-lv .trk {
+  position: absolute; left: 0; right: 0; top: 20px; height: 4px; border-radius: 3px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .1));
+}
+.od-lv .seg-fill { position: absolute; top: 20px; height: 4px; border-radius: 3px; opacity: .5 }
+.od-lv .seg-fill.long { background: linear-gradient(90deg, rgba(14, 203, 129, .25), rgba(14, 203, 129, .7)) }
+.od-lv .seg-fill.short { background: linear-gradient(90deg, rgba(246, 70, 93, .7), rgba(246, 70, 93, .25)) }
+.od-tick { position: absolute; top: 20px; width: 2px; height: 9px; margin-top: -3px; background: var(--p-t3); border-radius: 1px }
+.od-tick.entry { height: 13px; margin-top: -5px; background: #dbe6ff; width: 2px }
+.od-tick.sl { background: var(--p-dn) }
+.od-tick.tp { background: var(--p-up) }
+.od-tick.tp.hit { height: 13px; margin-top: -5px }
+.od-lbl {
+  position: absolute; top: 27px; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 9px; color: var(--p-t3); white-space: nowrap;
+}
+.od-lbl.entry { color: #dbe6ff }
+.od-lbl.sl { color: var(--p-dn) }
+.od-lbl.tp { color: var(--p-up) }
+.od-cur {
+  position: absolute; top: 0; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.od-cur i { display: block; width: 1px; height: 7px; background: var(--p-ax) }
+.od-cur span {
+  font-family: var(--mono); font-size: 9.5px; color: var(--p-ax);
+  background: var(--p-s1); border: 1px solid rgba(91, 140, 255, .4);
+  border-radius: 3px; padding: 0 4px; white-space: nowrap;
+}
+
+/* ══ 展開區（訊號依據＋指標數值）═══════════════════════════ */
+.od-more {
+  margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--p-line-2);
+  font-size: 11.5px; line-height: 1.75; color: var(--p-t2);
+  white-space: normal; word-break: break-word;
+}
+.od-more .kv {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
+  gap: 3px 14px; margin-top: 6px;
+}
+.od-more .kv > div { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
+.od-more .kv span { color: var(--p-t4); font-size: 10.5px; white-space: nowrap }
+.od-more .kv b {
+  color: var(--p-t1); font-size: 11.5px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; min-width: 0;
+}
+.od-more .why { color: var(--p-t1) }
+.od-more .hint { font-size: 10.5px; color: var(--p-t4) }
+.od-more code {
+  background: rgba(255, 255, 255, .06); border-radius: 4px; padding: 0 4px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--p-t2);
+}
+
+/* ══ 統計面板 ══════════════════════════════════════════════ */
+.od-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(152px, 1fr)); gap: 1px; background: var(--p-line) }
+.od-stats .kpi { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: var(--p-s1) !important }
+.od-stats .kpi b { font-size: 18px !important }
+.od-stratrows { padding: 9px 12px 11px; border-top: 1px solid var(--p-line); display: flex; flex-direction: column; gap: 5px }
+.od-srow {
+  display: grid; grid-template-columns: minmax(150px, 220px) minmax(60px, 1fr) 44px 58px;
+  align-items: center; gap: 10px; font-size: 11.5px; color: var(--p-t2);
+}
+.od-srow .nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.od-srow .bb { height: 8px; border-radius: 3px; background: rgba(255, 255, 255, .05); overflow: hidden }
+.od-srow .bb > i { display: block; height: 100%; border-radius: 3px; background: var(--p-ax) }
+.od-srow .nn { text-align: right; font-variant-numeric: tabular-nums; color: var(--p-t1) }
+.od-srow .dd { text-align: right; font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--p-t3) }
+
+/* ══ 掃描表 ════════════════════════════════════════════════ */
+table.rp.od-tbl thead th, table.rp.od-tbl tbody td { white-space: nowrap }
+table.rp.od-tbl thead th[data-sk] { cursor: pointer }
+table.rp.od-tbl thead th[data-sk]:hover { color: var(--p-t1) }
+table.rp.od-tbl tbody tr { cursor: pointer }
+table.rp.od-tbl .od-bias { text-align: center; font-size: 12px; font-weight: 600 }
+table.rp.od-tbl .od-bias.long { color: var(--p-up) }
+table.rp.od-tbl .od-bias.short { color: var(--p-dn) }
+table.rp.od-tbl .od-bias.none { color: var(--p-t4); font-weight: 400 }
+table.rp.od-tbl td.coin b { font-size: 12.5px }
+table.rp.od-tbl tr.od-nokline td { color: var(--p-t4) }
+table.rp.od-tbl thead th.od-th-s { cursor: pointer }
+.od-tbl .newdot {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--p-up); margin-right: 5px; vertical-align: 1px;
+}
+
+/* ══ 說明條 ════════════════════════════════════════════════ */
+.od-note { padding: 11px 12px 13px }
+.od-note h4 { margin: 0 0 8px; font-size: 12.5px; color: var(--p-t1); font-weight: 600 }
+.od-note h4 + ul { margin-top: 0 }
+.od-note ul + h4 { margin-top: 13px }
+.od-note .rp-ul {
+  display: flex; flex-direction: column; gap: 6px; margin: 0;
+  padding-left: 18px; font-size: 11.5px; line-height: 1.72; color: var(--p-t2);
+}
+.od-note .rp-ul li::marker { color: var(--p-t4) }
+.od-note .rp-ul b { color: var(--p-t1) }
+
+/* ══ 響應式 ════════════════════════════════════════════════ */
+@media (max-width: 1120px) {
+  .od-bar .od-row { padding: 8px 10px 7px }
+  .od-srow { grid-template-columns: minmax(110px, 1fr) minmax(48px, 1fr) 38px 50px; gap: 8px }
+}
+@media (max-width: 860px) {
+  .od-nums { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)) }
+  .od-lv { height: 46px }
+  .od-lbl { font-size: 8.5px }
+  .od-cards { padding: 9px 9px 10px }
+  .od-srow { grid-template-columns: minmax(90px, 1fr) 34px 44px }
+  .od-srow .bb { display: none }
+}
