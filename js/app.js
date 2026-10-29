@@ -50,6 +50,47 @@
     }
   };
 
+  /* ══════ 介面狀態還原（換頁回來＝離開前的畫面）══════
+     全部在第一次 render 之前設定完，不會先畫預設再跳過去。
+     K 線週期只還原「設定值」，實際的 K 線抓取交給後面的 S.select，避免白抓一次。 */
+  function restoreUi() {
+    const P = U.pref, qs = new URLSearchParams(w.location.search);
+    /* 掃描表：排序 */
+    const sort = qs.get('sort') || P.get('scanSort', null);
+    if (sort) {
+      S.ui.scan.sort = sort;
+      const box = document.getElementById('scanSort');
+      const b = box && box.querySelector('button[data-sort="' + sort + '"]');
+      if (b) Array.prototype.forEach.call(box.children, x => x.classList.toggle('on', x === b));
+    }
+    /* 掃描表：搜尋字串、僅合約、只看收藏 */
+    const q = P.get('scanQ', null);
+    if (q) { S.ui.scan.q = String(q); const el = document.getElementById('scanSearch'); if (el) el.value = String(q); }
+    const of = P.get('scanOnlyFut', null);
+    if (of !== null) { S.ui.scan.onlyFut = !!of; const el = document.getElementById('onlyFutures'); if (el) el.checked = !!of; }
+    const fo = P.get('scanFavOnly', null);
+    if (fo !== null) S.ui.scan.favOnly = !!fo;
+    /* 巨鯨門檻 */
+    const wm = P.get('whaleMin', null);
+    if (wm !== null) {
+      S.ui.whale.min = wm === 'auto' ? 'auto' : +wm;
+      const box = document.getElementById('whaleFilter');
+      const b = box && box.querySelector('button[data-min="' + wm + '"]');
+      if (b) Array.prototype.forEach.call(box.children, x => x.classList.toggle('on', x === b));
+    }
+    /* K 線週期（含「更多」下拉裡的冷門週期）：URL 參數優先於還原值 */
+    const tf = qs.get('tf') || P.get('tf', null);
+    if (tf) {
+      const seg = document.getElementById('tfSeg'), more = document.getElementById('tfMore');
+      const b = seg && seg.querySelector('button[data-tf="' + tf + '"]');
+      if (b || (more && more.querySelector('option[value="' + tf + '"]'))) {
+        S.chart.tf = tf;
+        if (seg) Array.prototype.forEach.call(seg.children, x => x.classList.toggle('on', x === b));
+        if (more) { more.value = b ? '' : tf; more.classList.toggle('picked', !b); }
+      }
+    }
+  }
+
   /* ══════ 選幣 ══════ */
   S.select = async function (sym, quiet) {
     if (!sym) return;
@@ -58,6 +99,7 @@
     const switching = S.state.symbol !== sym;
     S.state.symbol = sym;
     S.state.cur = c;
+    U.pref.set('symbol', sym);      // 記住選中的交易對，切頁回來直接還原
     A.reset();
     S.chart.markers = [];
     S.ui.whale.count = 0;
@@ -140,6 +182,7 @@
 
   /* ══════ 事件綁定 ══════ */
   function wire() {
+    restoreUi();   // 必須在任何一次 render 之前（含 loadFavs 的星號同步）
     S.on('trade', t => { if (t.symbol === S.state.symbol) { A.Trades.add(t); S.chart.setPrice(t.price); drawDirty = true; } });
     S.on('trade-new', t => { if (t.symbol !== S.state.symbol) return; pend.trades.push(t); });
     S.on('depth', d => { if (S.state.symbol) A.Book.setWs(d); });
@@ -185,11 +228,16 @@
       S.state.tickMap = map;
     });
 
-    document.getElementById('scanSearch').addEventListener('input', U.debounce(e => { S.ui.scan.q = e.target.value.trim(); S.ui.scan.render(true); }, 180));
-    document.getElementById('onlyFutures').addEventListener('change', e => { S.ui.scan.onlyFut = e.target.checked; S.ui.scan.render(true); });
+    document.getElementById('scanSearch').addEventListener('input', U.debounce(e => {
+      S.ui.scan.q = e.target.value.trim(); U.pref.set('scanQ', e.target.value.trim()); S.ui.scan.render(true);
+    }, 180));
+    document.getElementById('onlyFutures').addEventListener('change', e => {
+      S.ui.scan.onlyFut = e.target.checked; U.pref.set('scanOnlyFut', e.target.checked); S.ui.scan.render(true);
+    });
     document.getElementById('scanSort').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       S.ui.scan.sort = b.dataset.sort;
+      U.pref.set('scanSort', b.dataset.sort);
       Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
       S.ui.scan.render(true);
     });
@@ -200,6 +248,7 @@
     const applyTf = async (tf, btn) => {
       if (!tf) return;
       S.chart.tf = tf;
+      U.pref.set('tf', tf);
       if (tfSeg) Array.prototype.forEach.call(tfSeg.children, x => x.classList.toggle('on', x === btn));
       if (tfMore) tfMore.classList.toggle('picked', !btn);
       const k = await S.api.klines(S.state.symbol, tf, 300);
@@ -217,6 +266,7 @@
     S.ui.scan.loadFavs();
     document.getElementById('favChip').addEventListener('click', () => {
       S.ui.scan.favOnly = !S.ui.scan.favOnly;
+      U.pref.set('scanFavOnly', S.ui.scan.favOnly);
       S.ui.scan.syncFavUI();
       S.ui.scan.render(true);
     });
@@ -232,6 +282,7 @@
       const b = e.target.closest('button'); if (!b) return;
       Array.prototype.forEach.call(b.parentNode.children, x => x.classList.toggle('on', x === b));
       S.ui.whale.min = b.dataset.min === 'auto' ? 'auto' : +b.dataset.min;
+      U.pref.set('whaleMin', b.dataset.min);
       S.ui.whale.thrNow = S.ui.whale.threshold();
       S.ui.whale.renderNetflow();
     });
@@ -453,7 +504,11 @@
     S.ui.hud.breadth(uni.filter(x => x.changePct > 0).length, uni.filter(x => x.changePct < 0).length, uni.length);
     S.boot.prog(62);
 
-    const start = uni.find(x => x.symbol === 'BTCUSDT') ? 'BTCUSDT' : uni[0].symbol;
+    /* 起始交易對：網址參數 ?symbol= 優先，其次還原上次的選擇，最後才回預設 BTC */
+    const qs = new URLSearchParams(w.location.search);
+    const want = String(qs.get('symbol') || U.pref.get('symbol', '') || '').toUpperCase();
+    const start = (want && S.state.bySym.has(want)) ? want
+      : (uni.find(x => x.symbol === 'BTCUSDT') ? 'BTCUSDT' : uni[0].symbol);
     S.stream.startGlobal();
     S.api.bybitLinear().then(lin => {
       if (!lin) return;

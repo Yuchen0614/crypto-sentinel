@@ -109,6 +109,19 @@
   /* ── 節流／去抖 ───────────────────────────────────── */
   U.raf = f => { let q = false, l = null; return function () { l = arguments; if (q) return; q = true; requestAnimationFrame(() => { q = false; f.apply(null, l); }); }; };
   U.debounce = (f, ms) => { let t; return function () { clearTimeout(t); const a = arguments; t = setTimeout(() => f.apply(null, a), ms); }; };
+  /* 拖曳視窗時的重繪策略：邊拖邊畫（最多每 100ms 一次，畫面不會變形或殘影），
+     放手後 140ms 再補最後一次（尺寸一定是最終值）。
+     單純 debounce 會讓拖曳過程中畫布被瀏覽器拉伸變形，單純 rAF 又等於每個事件都重畫。 */
+  U.resizeRedraw = (f, ms) => {
+    const wait = ms || 140;
+    let last = 0, t = null;
+    return function () {
+      const now = performance.now();
+      if (t) clearTimeout(t);
+      if (now - last >= 100) { last = now; f(); }
+      t = setTimeout(() => { t = null; last = performance.now(); f(); }, wait);
+    };
+  };
 
   /* ── sparkline（迷你走勢）──────────────────────────── */
   U.spark = (canvas, data, color, fill) => {
@@ -167,4 +180,245 @@
   };
 
   S.ready = (fn) => document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn();
+
+  /* ════════════════════════════════════════════════════════════
+     介面偏好保存與還原（localStorage，鍵名一律 cs.ui.<key>）
+     ────────────────────────────────────────────────────────────
+     目的：換頁或重新整理回來時，選中的交易對、K 線週期、排序／篩選、
+     捲動位置跟離開前一樣，而且是在第一次渲染之前就還原（不先畫預設再跳過去）。
+
+     鍵名一覽：
+       cs.ui.symbol        行情總覽選中的交易對
+       cs.ui.tf            K 線週期（含「更多」下拉的冷門週期）
+       cs.ui.scanSort      掃描表排序        cs.ui.scanQ    搜尋字串
+       cs.ui.scanOnlyFut   僅合約            cs.ui.scanFavOnly 只看收藏
+       cs.ui.whaleMin      巨鯨門檻
+       cs.ui.index.scroll  行情總覽捲動位置（.0 主視窗 / .1 中欄 / .2 右欄 / .3 掃描表）
+       cs.ui.oc.chain      鏈上頁選鏈        cs.ui.oc.min   鏈上門檻      cs.ui.oc.scroll
+       cs.ui.sg.sort       持倉分析排序      cs.ui.sg.openMin 持倉門檻    cs.ui.sg.scroll
+       cs.ui.rp.*          回測報表各分段鈕、搜尋、只看可靠資料、捲動位置
+     檢視：SENTINEL.util.pref.keys()      清空：SENTINEL.util.pref.reset()
+     ════════════════════════════════════════════════════════════ */
+  const PFX = 'cs.ui.';
+  /* 捲動容器可以用 id、CSS 選擇器或 'window' 指定（不必為了記位置去改 HTML 標記） */
+  const pick = sel => sel === 'window' ? w : (document.getElementById(sel) || document.querySelector(sel));
+  const pickAll = list => (list && list.length ? list.map(pick).filter(Boolean) : [w]);
+  const LS = (function () {                     // localStorage 不可用（隱私模式等）時全部靜靜略過
+    try { w.localStorage.setItem(PFX + '__t', '1'); w.localStorage.removeItem(PFX + '__t'); return w.localStorage; } catch (e) { return null; }
+  })();
+
+  const Pref = U.pref = {
+    PFX,
+    raw(key) { if (!LS) return null; try { return LS.getItem(PFX + key); } catch (e) { return null; } },
+    get(key, dflt) {
+      const s = this.raw(key); if (s === null || s === undefined) return dflt;
+      try { return JSON.parse(s); } catch (e) { return dflt; }
+    },
+    set(key, val) {
+      if (!LS) return;
+      try { if (val === undefined || val === null) LS.removeItem(PFX + key); else LS.setItem(PFX + key, JSON.stringify(val)); } catch (e) { }
+    },
+    del(key) { if (!LS) return; try { LS.removeItem(PFX + key); } catch (e) { } },
+    keys() {
+      const o = {}; if (!LS) return o;
+      try { for (let i = 0; i < LS.length; i++) { const k = LS.key(i); if (k && k.indexOf(PFX) === 0) o[k.slice(PFX.length)] = this.raw(k.slice(PFX.length)); } } catch (e) { }
+      return o;
+    },
+    reset() {
+      const n = Object.keys(this.keys()).length;
+      Object.keys(this.keys()).forEach(k => this.del(k));
+      try { console.info('[CS] 已清空 ' + n + ' 筆介面偏好（' + PFX + '*），重新整理就回到預設。'); } catch (e) { }
+      return n;
+    },
+
+    /* ── 分段鈕（.seg）───────────────────────────────────
+       各頁的按鈕用的 data-* 屬性名不同（data-sort／data-tf／data-win／data-key…），
+       一律取「第一個 data-* 的值」當作辨識值，不必逐頁設定。 */
+    segVal(btn) {
+      if (!btn || !btn.attributes) return null;
+      for (let i = 0; i < btn.attributes.length; i++) { const a = btn.attributes[i]; if (a.name.indexOf('data-') === 0) return a.value; }
+      return btn.value || null;
+    },
+    bindSeg(id, key) {
+      const box = document.getElementById(id); if (!box || box.__prefBound) return;
+      box.__prefBound = true;
+      box.addEventListener('click', e => {
+        const b = e.target && e.target.closest ? e.target.closest('button') : null;
+        if (!b || !box.contains(b)) return;
+        const v = this.segVal(b); if (v !== null) this.set(key, v);
+      });
+    },
+    /* 按下去等同使用者自己按：沿用各頁原本的 click 處理（狀態、重繪一起做）。
+       requireLive：容器裡還沒出現任何 .on 按鈕時先不動（代表那一頁還沒綁好事件）。 */
+    restoreSeg(id, key, requireLive) {
+      const want = this.get(key, null);
+      if (want === null || want === undefined) return true;
+      const box = document.getElementById(id); if (!box) return true;
+      const bs = box.querySelectorAll('button'); if (!bs.length) return false;
+      if (requireLive !== false && !box.querySelector('button.on')) return false;
+      for (let i = 0; i < bs.length; i++) {
+        if (this.segVal(bs[i]) === String(want)) {
+          if (!bs[i].classList.contains('on')) bs[i].click();
+          return true;
+        }
+      }
+      return true;    // 存的值在這個版本已經不存在（選項被移除）→ 當成完成
+    },
+    /* 分段鈕是後端資料到齊才由 JS 產生時（回測報表的策略清單），等它長出來再還原 */
+    watchSeg(id, key) {
+      if (this.restoreSeg(id, key)) return;
+      if (!LS) return;
+      const box = document.getElementById(id); if (!box) return;
+      const t0 = Date.now();
+      const tryIt = () => this.restoreSeg(id, key);
+      if (w.MutationObserver) {
+        const mo = new MutationObserver(() => { if (tryIt() || Date.now() - t0 > 30000) mo.disconnect(); });
+        mo.observe(box, { childList: true });
+      }
+      let n = 0;
+      const iv = setInterval(() => { if (tryIt() || ++n > 60) clearInterval(iv); }, 500);
+    },
+
+    bindInput(id, key) {
+      const el = document.getElementById(id); if (!el || el.__prefBound) return;
+      el.__prefBound = true;
+      const save = () => this.set(key, el.value);
+      el.addEventListener('input', save); el.addEventListener('change', save);
+    },
+    restoreInput(id, key, fire) {
+      const v = this.get(key, null);
+      if (v === null || v === undefined || v === '') return;
+      const el = document.getElementById(id); if (!el) return;
+      el.value = String(v);
+      /* 這一頁是把輸入框的值讀進自己的 state，所以要補一次事件讓它同步 */
+      if (fire && el.__prefBound) { try { el.dispatchEvent(new w.Event('input', { bubbles: true })); } catch (e) { } }
+    },
+    bindCheck(id, key) {
+      const el = document.getElementById(id); if (!el || el.__prefBound) return;
+      el.__prefBound = true;
+      el.addEventListener('change', () => this.set(key, !!el.checked));
+    },
+    restoreCheck(id, key, fire) {
+      const v = this.get(key, null); if (v === null || v === undefined) return;
+      const el = document.getElementById(id); if (!el) return;
+      el.checked = !!v;
+      if (fire && el.__prefBound) { try { el.dispatchEvent(new w.Event('change', { bubbles: true })); } catch (e) { } }
+    },
+
+    /* ── 捲動位置 ──────────────────────────────────────────
+       targets：捲動容器陣列（第 0 個是主視窗時傳 window；後面幾個各自加索引後綴）。
+       還原期間先把該容器的寫入鎖住，否則內容還沒長出來時我們自己捲到 0
+       會被當成「使用者捲到最上面」而把偏好值蓋掉。 */
+    bindScroll(key, targets) {
+      const list = (targets && targets.length) ? targets : [w];
+      list.forEach((t, i) => {
+        if (!t || t.__prefScroll) return;
+        t.__prefScroll = true;
+        const k = key + (i ? '.' + i : '');
+        t.addEventListener('scroll', () => {
+          if (t.__prefLock || t.__prefRaf) return;
+          t.__prefRaf = requestAnimationFrame(() => {
+            t.__prefRaf = 0;
+            if (t.__prefLock) return;
+            const v = (t === w) ? w.scrollY : t.scrollTop;
+            this.set(k, Math.round(v));
+          });
+        }, { passive: true });
+      });
+    },
+    restoreScroll(key, targets) {
+      const list = (targets && targets.length) ? targets : [w];
+      list.forEach((t, i) => {
+        if (!t || t.__prefDone) return;
+        const k = key + (i ? '.' + i : '');
+        const want = this.get(k, null);
+        if (!want || !isFinite(want) || want < 4) { t.__prefDone = true; return; }
+        const t0 = Date.now();
+        t.__prefLock = true;
+        const put = v => { if (t === w) w.scrollTo(0, v); else t.scrollTop = v; };
+        const cur = () => (t === w) ? w.scrollY : t.scrollTop;
+        const apply = () => {
+          const max = (t === w) ? Math.max(0, document.documentElement.scrollHeight - w.innerHeight)
+                                : Math.max(0, t.scrollHeight - t.clientHeight);
+          /* 只在「內容真的夠長」而且確實捲到了才收工；
+             內容還沒長出來時先捲到能到的位置並繼續等，才不會把位置停在半路。 */
+          if (max > 8) {
+            const v = Math.min(want, max);
+            put(v);
+            if (max >= want - 2 && Math.abs(cur() - v) <= 3) { t.__prefLock = false; t.__prefDone = true; return; }
+          }
+          if (Date.now() - t0 < 9000) { setTimeout(apply, 350); return; }
+          /* 內容長不到那麼高（例如清單變短）→ 停在目前位置並把偏好值更新成實際值 */
+          t.__prefLock = false; t.__prefDone = true;
+          this.set(k, Math.round(cur()));
+        };
+        apply();
+      });
+    },
+
+    /* ── 每一頁要記住什麼 ───────────────────────────────────
+       restore:false 的頁面（行情總覽）由 app.js 在第一次渲染前自己還原，
+       這裡只做事件綁定，避免兩邊搶著還原而閃爍。 */
+    auto() {
+      const reg = REG[PAGE]; if (!reg) return;
+      (reg.segs || []).forEach(x => this.bindSeg(x[0], x[1]));
+      (reg.inputs || []).forEach(x => this.bindInput(x[0], x[1]));
+      (reg.checks || []).forEach(x => this.bindCheck(x[0], x[1]));
+      const scrolls = (reg.scroll || []).map(x => ({ key: x[0], els: pickAll(x[1]) }));
+      scrolls.forEach(s => this.bindScroll(s.key, s.els));
+      if (reg.restore === false) { setTimeout(() => scrolls.forEach(s => this.restoreScroll(s.key, s.els)), 0); return; }
+      /* 等所有頁面的 DOMContentLoaded 處理器都跑完（事件已綁好）再還原 */
+      setTimeout(() => {
+        (reg.segs || []).forEach(x => this.watchSeg(x[0], x[1]));
+        (reg.inputs || []).forEach(x => this.restoreInput(x[0], x[1], true));
+        (reg.checks || []).forEach(x => this.restoreCheck(x[0], x[1], true));
+        scrolls.forEach(s => this.restoreScroll(s.key, s.els));
+      }, 0);
+    }
+  };
+
+  const PAGE = (function () {
+    const f = (w.location.pathname.split('/').pop() || '').toLowerCase();
+    return f || 'index.html';
+  })();
+
+  const REG = {
+    'index.html': {
+      restore: false,     // app.js 在第一次 render 之前自己還原（不閃爍）
+      segs: [['scanSort', 'scanSort']],
+      inputs: [['scanSearch', 'scanQ']],
+      checks: [['onlyFutures', 'scanOnlyFut']],
+      /* 寬螢幕時捲的是中／右欄與掃描表，窄螢幕時整頁在主視窗捲動 */
+      scroll: [['index.scroll', ['window', '.col-b', '.col-c', '.col-a .table-wrap']]]
+    },
+    'onchain.html': {
+      segs: [['chainSeg', 'oc.chain'], ['chainMin', 'oc.min']],
+      scroll: [['oc.scroll', ['.oc-page']]]
+    },
+    'signals.html': {
+      segs: [['psSortSeg', 'sg.sort'], ['psOpenSeg', 'sg.openMin']],
+      scroll: [['sg.scroll', ['.sg-page']]]
+    },
+    'report.html': {
+      segs: [['rpDistSeg', 'rp.distWin'], ['rpDistMetric', 'rp.distMetric'], ['rpStrSeg', 'rp.strWin'],
+             ['rpDetSeg', 'rp.detWin'], ['rpTkSeg', 'rp.tkKey'], ['rpTkWin', 'rp.tkWin']],
+      inputs: [['rpQ', 'rp.q']],
+      checks: [['rpRel', 'rp.rel']],
+      scroll: [['rp.scroll', ['#rpRoot']]]
+    }
+  };
+
+  /* 讓使用者自己清掉偏好（不會有任何誤觸按鈕）：
+     console 執行 SENTINEL.resetUiPrefs() 就會清空 cs.ui.*，重新整理即回到預設。 */
+  S.resetUiPrefs = () => Pref.reset();
+  S.uiPrefs = () => Pref.keys();
+
+  S.ready(() => {
+    Pref.auto();
+    try {
+      const n = Object.keys(Pref.keys()).length;
+      if (n) console.info('[CS] 已還原 ' + n + ' 筆介面偏好（localStorage 的 cs.ui.* 鍵）。'
+        + '檢視：SENTINEL.uiPrefs()　清空：SENTINEL.resetUiPrefs()');
+    } catch (e) { }
+  });
 })(window);
