@@ -283,3 +283,156 @@ table.rp.od-tbl thead th.od-th-s { cursor: pointer }
   .od-srow { grid-template-columns: minmax(90px, 1fr) 34px 44px }
   .od-srow .bb { display: none }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   v2 — 版面改成「上到下：綜合營利 → 策略盈利列 → 艙位細項 →
+   報單卡 → 掃描表」，右側固定 328px 放即時事件流。
+   損益口徑：每筆固定 $100 艙位（不加槓桿）、吃單 0.045%／邊已扣。
+   窄螢幕（<1120px）事件流不是消失，而是移到控制列正下方（DOM 順序）。
+   ══════════════════════════════════════════════════════════════ */
+
+/* ══ 外層：兩欄 grid（左欄捲動、右欄 sticky 固定）═══════════ */
+.rp-page.od-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 328px;
+  grid-auto-rows: min-content;
+  gap: 10px; align-content: start;
+  overflow-y: auto; overflow-x: hidden;
+}
+.od-page > * { grid-column: 1; min-width: 0 }
+.od-page > .od-bar { z-index: 8 }
+.od-page > .od-side {
+  grid-column: 2; grid-row: 1 / -1;
+  position: sticky; top: 0; align-self: start;
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 128px); overflow: hidden; padding: 0;
+}
+.od-bar input[type=search] { width: 200px; max-width: 100%; flex: 0 1 200px }
+
+/* ══ 即時事件流 ════════════════════════════════════════════ */
+.od-events {
+  flex: 1 1 auto; min-height: 120px; overflow-y: auto;
+  padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.od-ev {
+  position: relative; min-width: 0; padding: 5px 8px 6px 9px;
+  background: var(--p-s1); border-radius: 0 var(--r6) var(--r6) 0;
+  border-left: 2px solid var(--p-line-2);
+  font-size: 11.5px; line-height: 1.5; color: var(--p-t2);
+}
+.od-ev.open { border-left-color: rgba(14, 203, 129, .55) }
+.od-ev.open.s-short { border-left-color: rgba(246, 70, 93, .55) }
+.od-ev.close.win { border-left-color: var(--p-up) }
+.od-ev.close.loss { border-left-color: var(--p-dn) }
+.od-ev.fresh { background: linear-gradient(90deg, rgba(91, 140, 255, .14), transparent 62%), var(--p-s1); box-shadow: inset 0 0 0 1px rgba(91, 140, 255, .22) }
+.od-ev .hd { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; min-width: 0 }
+.od-ev .t { font-family: var(--mono); font-size: 9.5px; color: var(--p-t4); white-space: nowrap }
+.od-ev .tag {
+  font-size: 9px; font-weight: 700; letter-spacing: .06em; border-radius: 3px;
+  padding: 0 4px; color: #05070e; background: var(--p-up); white-space: nowrap;
+}
+.od-ev.close .tag { background: var(--p-t3) }
+.od-ev .k { font-weight: 600; color: var(--p-t1) }
+.od-ev .row2 { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 2px; font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--p-t3) }
+.od-ev .row2 .up { color: var(--p-up) }
+.od-ev .row2 .down { color: var(--p-dn) }
+.od-ev .nd2 { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--p-ax); margin-right: 4px; vertical-align: 1px }
+
+/* ══ 綜合營利 KPI 磚＋累計損益曲線 ═════════════════════════ */
+.od-kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 1px; background: var(--p-line);
+}
+.od-kpis .kpi { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: var(--p-s1) !important }
+.od-kpis .kpi b { font-size: 18px !important }
+.od-kpis .kpi .mini { white-space: normal !important; line-height: 1.35 }
+.od-chart { margin: 10px 12px 6px }
+.od-chart canvas { display: block; width: 100%; height: 132px }
+.od-chartLegend { margin-top: 4px; font-size: 10.5px; color: var(--p-t3) }
+.od-chartLegend b { color: var(--p-t1); font-variant-numeric: tabular-nums }
+
+/* ══ 策略啟用勾選列 ════════════════════════════════════════ */
+.od-stratpick {
+  display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap;
+  padding: 8px 12px; border-bottom: 1px solid var(--p-line);
+  font-size: 11px; color: var(--p-t2);
+}
+.od-stratpick .lb {
+  font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--p-t4); white-space: nowrap;
+}
+.od-stratpick .picks { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; flex: 1 1 340px }
+.od-stratpick label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 11px }
+.od-stratpick label input { margin: 0 }
+.od-stratpick label.off { color: var(--p-t4) }
+.od-stratpick .sp { margin-left: auto }
+
+/* ══ 策略盈利列（一列一策略，點開看艙位細項）═══════════════ */
+.od-shead, .od-srow {
+  display: grid;
+  grid-template-columns: minmax(146px, 200px) 46px 52px 52px 52px 56px 70px minmax(78px, 1fr);
+  align-items: center; gap: 10px; min-width: 0;
+}
+.od-shead {
+  padding: 7px 12px 6px; border-bottom: 1px solid var(--p-line);
+  font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--p-t4);
+}
+.od-shead .nn { text-align: right; white-space: nowrap }
+.od-stratrows { padding: 4px 0 8px; gap: 0 }
+.od-srow {
+  padding: 5px 12px; font-size: 11.5px; color: var(--p-t2);
+  cursor: pointer; border-radius: var(--r6); transition: background var(--t);
+}
+.od-srow:hover { background: rgba(255, 255, 255, .03) }
+.od-srow.onrow { background: rgba(91, 140, 255, .08) }
+.od-srow .nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--p-t1) }
+.od-srow .nn, .od-srow .dd { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap }
+.od-srow .nn { color: var(--p-t1) }
+.od-srow .dd { font-size: 10.5px; color: var(--p-t3) }
+.od-srow .up { color: var(--p-up) }
+.od-srow .down { color: var(--p-dn) }
+.od-srow canvas { display: block; width: 100%; height: 18px }
+.od-srow.offstr { opacity: .5 }
+.od-pminis { padding: 0 12px 10px 20px; border-bottom: 1px solid var(--p-line) }
+.od-pminis .rp-tw { max-height: 250px }
+.od-pminis .mini { display: block; margin: 6px 0 5px; font-size: 10.5px; color: var(--p-t3) }
+.od-pminis table.rp tbody td, .od-pminis table.rp thead th { white-space: nowrap }
+
+/* ══ 艙位細項表 ════════════════════════════════════════════ */
+table.rp.od-ptbl thead th, table.rp.od-ptbl tbody td { white-space: nowrap }
+table.rp.od-ptbl thead th[data-sk] { cursor: pointer }
+table.rp.od-ptbl thead th[data-sk]:hover { color: var(--p-t1) }
+table.rp.od-ptbl td.side.long { color: var(--p-up); font-weight: 600 }
+table.rp.od-ptbl td.side.short { color: var(--p-dn); font-weight: 600 }
+table.rp.od-ptbl tr.closed td { color: var(--p-t3) }
+table.rp.od-ptbl tr.closed td.side { color: var(--p-t4) }
+table.rp.od-ptbl tr.opened td:nth-child(2) b { color: #dbe6ff }
+.od-chip {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: var(--r999);
+  font-size: 10px; white-space: nowrap; border: 1px solid var(--p-line-2); color: var(--p-t2);
+}
+.od-chip.live { color: #dbe6ff; border-color: rgba(91, 140, 255, .35); background: rgba(91, 140, 255, .1) }
+.od-chip.tp { color: var(--p-up); border-color: rgba(14, 203, 129, .32); background: rgba(14, 203, 129, .09) }
+.od-chip.sl { color: var(--p-dn); border-color: rgba(246, 70, 93, .32); background: rgba(246, 70, 93, .09) }
+.od-chip.be { color: var(--p-warn); border-color: rgba(245, 165, 36, .3); background: rgba(245, 165, 36, .09) }
+.od-chip.exp { color: var(--p-t3) }
+.od-ptbl .newdot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--p-ax); margin-right: 5px; vertical-align: 1px }
+
+/* ══ 說明（壓到兩行）══════════════════════════════════════ */
+.od-note { padding: 10px 12px 12px; font-size: 11.5px; line-height: 1.75; color: var(--p-t3) }
+.od-note b { color: var(--p-t2); font-weight: 600; white-space: nowrap }
+.od-note code { background: rgba(255, 255, 255, .06); border-radius: 4px; padding: 0 4px; font-family: var(--mono); font-size: 10.5px; color: var(--p-t2) }
+
+/* ══ 響應式：窄螢幕事件流移到上下（不消失）════════════════ */
+@media (max-width: 1120px) {
+  .rp-page.od-page { grid-template-columns: minmax(0, 1fr) }
+  .od-page > .od-side { grid-column: 1; grid-row: auto; position: static; max-height: none }
+  .od-page > .od-side .od-events { max-height: 42vh; flex: 0 1 auto }
+  .od-shead, .od-srow { grid-template-columns: minmax(118px, 1fr) 42px 46px 46px 48px 48px 62px minmax(60px, 1fr); gap: 7px }
+}
+@media (max-width: 860px) {
+  .od-shead, .od-srow { grid-template-columns: minmax(96px, 1fr) 40px 40px 40px 44px 44px 56px }
+  .od-srow canvas, .od-shead span:last-child { display: none }
+  .od-kpis { grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)) }
+  .od-stratpick .picks { flex: 1 1 100% }
+}
