@@ -45,10 +45,22 @@
       return (o && typeof o.t === 'number') ? o : null;
     } catch (e) { return null; }
   }
+  /* 只有「能被 JSON 完整還原」的值才寫進 sessionStorage。
+     踩過的坑：bybitLin 是 Set，JSON.stringify 之後變 {}，讀回來呼叫 .has() 就炸
+     （promise: lin.has is not a function）。Map／Set／class 實例一律不寫。 */
+  function ssSafe(v) {
+    if (v === null) return true;
+    const t = typeof v;
+    if (t === 'number' || t === 'string' || t === 'boolean') return true;
+    if (Array.isArray(v)) return true;
+    if (t === 'object' && Object.getPrototypeOf(v) === Object.prototype) return true;
+    return false;
+  }
   function ssWrite(key, entry) {
     try {
+      if (!ssSafe(entry.v)) return;                    // Set／Map 這種存了會壞
       const raw = JSON.stringify(entry);
-      if (raw.length > 400000) return;                 // 太大不寫（例如整批 K 線；24hr tickers 約 200KB 要留）
+      if (raw.length > 400000) return;                 // 太大不寫（例如整批 K 線）
       const idx = JSON.parse(sessionStorage.getItem(SS_PREFIX + '__idx') || '[]');
       sessionStorage.setItem(SS_PREFIX + key, raw);
       const next = idx.filter(k => k !== key).concat(key).slice(-60);
@@ -59,7 +71,7 @@
   }
   async function cached(key, ttl, fn) {
     let e = cache.get(key);
-    if (!e && ttl >= 20e3) { const d = ssRead(key); if (d) { e = d; cache.set(key, d); } }
+    if (!e && ttl >= 20e3) { const d = ssRead(key); if (d && ssSafe(d.v)) { e = d; cache.set(key, d); } }
     if (e && Date.now() - e.t < ttl) return e.v;
     const v = await fn();
     if (v !== null && v !== undefined) {
