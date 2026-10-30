@@ -1,0 +1,120 @@
+/* ══════════════════════════════════════════════════════════════
+   chart-tools.css — K 線圖的互動層（縮放/平移/十字線/繪圖工具列/全螢幕）
+   在 index.html 以最後一個 <link> 載入，覆蓋前面樣式檔。
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 左上圖例：游標所指 K 線的 開/高/低/收/漲跌/量 ─────────────── */
+.ct-legend {
+  position: absolute; left: 9px; top: 6px; z-index: 4;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px;
+  max-width: calc(100% - 24px);
+  padding: 3px 8px;
+  font-family: var(--mono); font-size: 10px; line-height: 1.5; color: var(--tx-2);
+  background: rgba(10, 13, 18, .72); border: 1px solid rgba(77, 141, 255, .16);
+  border-radius: 2px; pointer-events: none; white-space: nowrap;
+}
+.ct-legend b { font-weight: 700; color: #e8eef8 }
+.ct-legend i { font-style: normal; color: var(--cy); letter-spacing: .06em }
+.ct-legend span { display: inline-flex; align-items: center; gap: 3px }
+.ct-legend b.lg-up { color: var(--gn) }
+.ct-legend b.lg-dn { color: var(--rd) }
+.ct-legend .lg-up { color: var(--gn) }
+.ct-legend .lg-dn { color: var(--rd) }
+.ct-legend .lg-t { color: var(--tx-3) }
+
+/* ── 回到最新（一平移就出現；在跟隨最新模式時隱藏）─────────────── */
+.ct-live {
+  position: absolute; right: 74px; bottom: 26px; z-index: 5;
+  padding: 3px 9px; cursor: pointer;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+  color: #cfe0ff; background: rgba(28, 40, 64, .95);
+  border: 1px solid rgba(122, 163, 255, .55); border-radius: 2px;
+}
+.ct-live:hover { color: #0b0e13; background: var(--cy); border-color: var(--cy) }
+.ct-live[hidden] { display: none }
+
+/* ── 工具列（左側豎排，38px）＋畫布並排 ──────────────────────────
+   只有圖表面板啟用 flex：深度熱圖等其他 .canvas-wrap 不受影響。 */
+.chart-panel .canvas-wrap.ct-tools-on { display: flex; align-items: stretch }
+.chart-panel .canvas-wrap.ct-tools-on > #chart { flex: 1 1 auto; width: auto; min-width: 0 }
+/* 圖例排在 LIVE 標籤下方（左上角落不互蓋）；寬度扣掉右上樣式列，文字改用換行而不是被蓋掉 */
+.chart-panel .canvas-wrap.ct-tools-on .ct-legend { left: 47px; top: 28px; max-width: calc(100% - 264px) }
+.chart-panel .canvas-wrap.ct-tools-on .chart-badge { left: 47px }
+
+.ct-rail {
+  position: relative; flex: 0 0 38px; width: 38px;
+  border-right: 1px solid var(--line); background: rgba(9, 12, 18, .72);
+}
+/* 內層用絕對定位，讓工具列的內容高度不會撐高整個 flex 列（K 線圖高度才不會被改到） */
+.ct-rail-in {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  gap: 3px; padding: 4px; overflow-y: auto; overflow-x: hidden;
+}
+.ct-btn {
+  flex: 0 0 auto; width: 30px; height: 30px; padding: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--tx-2); background: rgba(255, 255, 255, .03);
+  border: 1px solid var(--line); border-radius: 3px;
+}
+.ct-btn svg { width: 15px; height: 15px; display: block }
+.ct-btn:hover { color: #eaf1ff; border-color: rgba(122, 163, 255, .5); background: rgba(77, 141, 255, .12) }
+.ct-btn.on { color: #0b0e13; background: var(--cy); border-color: var(--cy) }
+.ct-btn:disabled { opacity: .35; cursor: default }
+.ct-sep { flex: 0 0 auto; height: 1px; margin: 2px 1px; background: var(--line) }
+.ct-btn.ct-danger:hover { color: #fff; background: rgba(246, 70, 93, .8); border-color: var(--rd) }
+.ct-btn.arm { color: #0b0e13; background: var(--rd); border-color: var(--rd) }
+
+/* ── 樣式列（顏色／線寬／刪除／清除／全螢幕）貼在畫布右上 ───────── */
+.ct-actions {
+  position: absolute; right: 68px; top: 6px; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  padding: 3px 5px; background: rgba(10, 13, 18, .78);
+  border: 1px solid rgba(77, 141, 255, .16); border-radius: 2px;
+}
+.ct-actions .ct-btn { width: 24px; height: 24px; border-radius: 2px }
+.ct-actions .ct-btn svg { width: 13px; height: 13px }
+.ct-actions .ct-div { width: 1px; height: 18px; background: var(--line); margin: 0 2px }
+.ct-sw {
+  width: 18px; height: 18px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, .28);
+}
+.ct-sw.on { box-shadow: 0 0 0 2px rgba(255, 255, 255, .35) inset, 0 0 8px -1px currentColor }
+.ct-w { font-family: var(--mono); font-size: 10px; color: var(--tx-3); padding: 0 2px }
+
+/* 繪圖中的提示（畫趨勢線時告訴使用者下一步）*/
+.ct-hint {
+  position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 5;
+  padding: 2px 8px; font-family: var(--mono); font-size: 10px; color: #cfe0ff;
+  background: rgba(28, 40, 64, .95); border: 1px solid rgba(122, 163, 255, .4);
+  border-radius: 2px; pointer-events: none; white-space: nowrap;
+}
+.ct-hint[hidden] { display: none }
+
+/* ── 全螢幕：把圖表面板展開到整個視窗（Esc 退出）──────────────── */
+.chart-panel.ct-full {
+  position: fixed; inset: 6px; z-index: 9998; margin: 0;
+  box-shadow: 0 0 0 1px rgba(122, 163, 255, .35), 0 30px 80px -20px #000;
+}
+.chart-panel.ct-full #chart { height: calc(100vh - 200px) }
+.chart-panel.ct-full .ct-rail-in { gap: 4px }
+body.ct-full-on { overflow: hidden }
+
+/* ── 矮螢幕：工具列按鈕縮小，確保整條工具列不會被面板裁掉 ──────── */
+@media (max-height: 1050px) { .ct-btn { width: 27px; height: 27px } .ct-btn svg { width: 14px; height: 14px } }
+@media (max-height: 900px) {
+  .ct-btn { width: 24px; height: 24px }
+  .ct-btn svg { width: 13px; height: 13px }
+  .ct-rail-in { gap: 2px; padding: 3px }
+}
+@media (max-height: 800px) {
+  .ct-btn { width: 23px; height: 23px }
+  .ct-btn svg { width: 13px; height: 13px }
+  .ct-rail-in { gap: 1px; padding: 3px }
+  .ct-actions .ct-btn { width: 21px; height: 21px }
+  .ct-legend { font-size: 9.5px; padding: 2px 6px }
+}
+/* 觸控裝置：按鈕至少 28px 可點 */
+@media (pointer: coarse) {
+  .ct-btn, .ct-actions .ct-btn { width: 28px; height: 28px }
+  .ct-btn svg { width: 15px; height: 15px }
+}
