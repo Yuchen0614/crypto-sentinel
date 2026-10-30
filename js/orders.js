@@ -1320,4 +1320,6 @@
   }
   S.ready(boot);
   OD.ST = ST; OD.agg = agg; OD.numList = numList; OD.renderAll = renderAll;
+  /* 除錯用（也是驗證 K 線快取容量上限有沒有真的生效的入口） */
+  OD.diag = { klSize: klSize, klPrune: klPrune, stratOn: () => ST.stratOn };
 })(window);
