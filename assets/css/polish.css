@@ -287,6 +287,18 @@ td.empty, .rp-empty { line-height: 1.6 }
 #rpTkBody, #rpWalBody { min-height: 200px }
 #rpMethodBody { min-height: 120px }
 
+/* ── 底部狀態列：跑馬燈的內容盒要放得下中文的行框 ───────────────────
+   原本 .ticker 的內容盒只有 15px，中文行框會多出 2~5px 被 overflow:hidden
+   裁掉底部（實測 scrollHeight 17~20 > clientHeight 15）。
+   狀態列本身 26px 高、垂直置中，給 20px 的內容高度不會撐破版面。 */
+.statusbar .ticker, .statusbar .disc { min-height: 20px; line-height: 20px }
+/* 跑馬燈文字比狀態列還長時（窄螢幕常見）給省略號，而不是硬切一半 */
+.statusbar .ticker > span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+
+/* 即時倉位異動的明細行：字串長度會隨幣價位數變動，超出一點點不要讓它
+   溢出格線壓到下一個欄位（整列有 title 可以看完整內容）。 */
+#psDiff .pse .d { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+
 /* ── 捲軸：四頁一致（細、深色、軌道透明）───────────────────────────── */
 * { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .16) transparent }
 ::-webkit-scrollbar { width: 9px; height: 9px }
