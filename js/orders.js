@@ -821,7 +821,7 @@
     U.text('#odpRule', '用最新一根已收完的 ' + TF_TXT[ST.tf] + 'K 線判定 · 觸發時間＝該根收完的那一刻');
     U.$$('#odMode button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.mode));
     U.$$('#odTf button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.tf));
-    U.$$('#odSide button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.side));
+    U.$$('#odDir button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.side));
     U.$$('#odUni button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.uni));
   }
 
@@ -1012,7 +1012,9 @@
     const vals = [p.sl0, p.entryPx].concat(p.tps);
     let mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), cur = p.cur;
     if (cur < mn) mn = cur; if (cur > mx) mx = cur;
-    const span = (mx - mn) || 1, X = v => (v - mn) / span * 100;
+    /* 位置夾在 3%～97%：最左／最右的刻度與現價標籤是以中心對齊、寬度約 50px，
+       不夾的話會超出階梯左右邊界（版面稽核會抓到溢出） */
+    const span = (mx - mn) || 1, X = v => Math.max(3, Math.min(97, (v - mn) / span * 100));
     const lv = [];
     lv.push('<div class="trk"></div>');
     lv.push('<div class="seg-fill ' + p.side + '" style="left:' + X(p.side === 'long' ? p.sl0 : p.tps[3]) + '%;right:' + (100 - X(p.side === 'long' ? p.tps[3] : p.sl0)) + '%"></div>');
@@ -1230,7 +1232,7 @@
       KLQ.list = []; KLQ.i = 0; rebuildQueue(); pump(); renderAll();
     });
     seg('odMode', v => { ST.mode = v; renderAll(); });
-    seg('odSide', v => { ST.side = v; renderAll(); });
+    seg('odDir', v => { ST.side = v; renderAll(); });
     seg('odUni', v => { ST.uni = v; buildUni(); KLQ.list = []; KLQ.i = 0; rebuildQueue(); pump(); renderAll(); });
 
     const q = d('odQ');
