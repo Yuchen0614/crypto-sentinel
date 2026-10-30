@@ -39,6 +39,15 @@
   width: 100%;
 }
 
+/* ── 說明區塊要「看得見」（三頁都有的「這一頁在追蹤什麼／看什麼／算什麼」）──
+   v3.css 把 body::before 改成不透明的整頁底色層（position:fixed; z-index:0），
+   它依繪製順序會蓋掉 body 裡沒有定位（static）的內容。 .oc-note 是唯一一個
+   這種節點，所以整段說明在三頁都看不到：DOM 有、位置對、顏色對，但畫面上是空的
+   （以 headless Chrome 截圖做像素分析確認：該列最亮值 17，等於純背景；
+   強制加上 position 之後同一列最亮值 235、文字正常出現）。
+   給它 position:relative 就會和 body::before 落在同一層、依 DOM 順序畫在後面。 */
+.oc-note { position: relative }
+
 /* 超寬時三欄比例不再無限放大：中欄留給圖表，兩側固定寬（既有規則），
    這裡只補上「欄內內容」的最大寬，避免極寬的表格與長條被拉散。 */
 @media (min-width: 2200px) {
