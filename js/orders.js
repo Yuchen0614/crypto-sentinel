@@ -750,6 +750,396 @@
   }
   function t0ms() { const ts = ST.pos.map(p => p.entryTs); return ts.length ? Math.min.apply(null, ts) : Date.now(); }
 
+  /* ══ 格式化 ═════════════════════════════════════════ */
+  function usd2(v) { return (v >= 0 ? '+' : '−') + '$' + Math.abs(v).toFixed(2); }
+  function money2(v) { return (v >= 0 ? '+' : '−') + '$' + Math.abs(v).toFixed(2); }
+  function r2(v) { return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + 'R'; }
+  function pc1(v) { return (v * 100).toFixed(2) + '%'; }
+  function tsTxt(ts) {
+    const d1 = new Date(ts), n = new Date();
+    const hm = String(d1.getHours()).padStart(2, '0') + ':' + String(d1.getMinutes()).padStart(2, '0');
+    const same = d1.toDateString() === n.toDateString();
+    return same ? hm : (d1.getMonth() + 1) + '/' + d1.getDate() + ' ' + hm;
+  }
+  function tsFull(ts) {
+    const d1 = new Date(ts);
+    return tsTxt(ts) + ':' + String(d1.getSeconds()).padStart(2, '0');
+  }
+  function away(ts) { const s = Math.max(0, (Date.now() - ts) / 1000); return s < 60 ? Math.round(s) + ' 秒前' : (s < 3600 ? Math.round(s / 60) + ' 分鐘前' : Math.round(s / 3600) + ' 小時前'); }
+  function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])); }
+  function keepScroll(sel, fn) { const el = q1(sel), top = el ? el.scrollTop : 0; fn(); if (el && el.scrollTop !== top) el.scrollTop = top; }
+  function listSide(l) { return ST.side === 'both' ? l : l.filter(p => p.side === ST.side); }
+  function numList() { return listSide(ST.pos); }
+  function tblList() {
+    let l = numList();
+    if (ST.openOnly) l = l.filter(p => p.exitTs === null);
+    const q = ST.qtx.trim().toUpperCase();
+    if (q) l = l.filter(p => p.coin.indexOf(q) >= 0 || (STRATNM[p.strat] || '').indexOf(ST.qtx.trim()) >= 0);
+    return l;
+  }
+
+  /* ══ 頁首／控制列狀態 ═══════════════════════════════ */
+  let softN = 0;
+  function renderSoft() {
+    softN++;
+    renderHead();
+    renderProgress();
+    renderEvents();
+    if (softN % 3 === 0) { renderKpis(); renderCurve(); renderPositions(); renderCards(); }
+    if (softN % 6 === 0) { renderStrategies(); renderScan(); }
+  }
+  function renderHead() {
+    const n = ST.uniList.length, done = ST.prog.done, ago = ST.lastMeta ? Math.round((Date.now() - ST.lastMeta) / 1000) + ' 秒前' : '尚未取得';
+    const uniTxt = { all: '≥$3M', active: '≥$20M', major: '≥$200M', small: '$3M~$50M' }[ST.uni];
+    U.text('#odMeta', '宇宙 ' + n + ' 檔（' + uniTxt + '）· K 線 ' + done + '／' + n + ' · 報價 ' + ago
+      + (OD.net.fail ? ' · 失敗 ' + OD.net.fail + ' 次' : ''));
+    const live = numList().filter(p => p.exitTs === null).length;
+    U.text('#statusTicker', '即時報單 · ' + ST.tf + ' K 線 ' + done + '／' + n + ' · 艙位 ' + numList().length + '（進行中 ' + live + '）· '
+      + '請求 ' + OD.net.req + ' 次' + (OD.net.klOff ? ' · K 線快取已停用（配額滿）' : '') + ' · 最後更新 ' + (ST.lastMeta ? U.time(ST.lastMeta) : '—'));
+  }
+  function renderProgress() {
+    const n = ST.uniList.length, done = ST.prog.done, pct = n ? Math.round(done / n * 100) : 0;
+    const bar = d('odProgBar'); if (bar) bar.style.width = Math.max(1, pct) + '%';
+    U.text('#odProgTxt', 'K 線 ' + done + '／' + n);
+    U.text('#odUniMeta', '宇宙 ' + n + ' 檔（' + (OD.net.klOff ? '快取停用' : 'TTL ' + Math.round(TTL[ST.tf] / 1000) + 's') + '）');
+  }
+  function renderParams() {
+    const m = MODES[ST.mode];
+    U.text('#odpSl', m.mult.toFixed(1) + '×ATR14');
+    U.text('#odpTp', m.tps.map(v => v + 'R').join(' ／ '));
+    U.text('#odpRule', '用最新一根已收完的 ' + TF_TXT[ST.tf] + 'K 線判定 · 觸發時間＝該根收完的那一刻');
+    U.$$('#odMode button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.mode));
+    U.$$('#odTf button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.tf));
+    U.$$('#odSide button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.side));
+    U.$$('#odUni button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.uni));
+  }
+
+  /* ══ a. 綜合營利 KPI＋累計損益曲線 ══════════════════ */
+  function renderKpis() {
+    const box = d('odKpis'); if (!box) return;
+    const a = agg(numList());
+    const rows = [
+      { l: '合計損益', v: usd2(a.totalUsd), c: a.totalUsd >= 0 ? 'up' : 'down', m: '已實現 ' + usd2(a.sumUsd) + ' ／ 未實現 ' + usd2(a.liveUsd) },
+      { l: '合計 R', v: r2(a.sumR + a.liveR), c: (a.sumR + a.liveR) >= 0 ? 'up' : 'down', m: '已平倉平均 ' + (isFinite(a.avgR) ? r2(a.avgR) : '—') },
+      { l: '勝率', v: isFinite(a.winRate) ? (a.winRate * 100).toFixed(1) + '%' : '—', c: isFinite(a.winRate) ? (a.winRate >= .5 ? 'up' : 'down') : '', m: '已平倉 ' + a.nClosed + ' 筆 · 樣本很小' },
+      { l: '進行中艙位', v: a.nLive, c: '', m: '多 ' + a.live.filter(p => p.side === 'long').length + ' ／ 空 ' + a.live.filter(p => p.side === 'short').length },
+      { l: '訊號數', v: a.n, c: '', m: '多 ' + a.nLong + ' ／ 空 ' + a.nShort + ' · 已平倉 ' + a.nClosed },
+      { l: '觸及目標', v: 'T1 ' + a.nTp1 + '／T2 ' + a.nTp2, c: 'up', m: 'T3 ' + a.nTp3 + ' · T4 ' + a.nTp4 + ' · 止損 ' + a.nSl + ' · 逾時 ' + a.nTo }
+    ];
+    box.innerHTML = rows.map(r => '<div class="kpi"><label>' + r.l + '</label><b class="' + r.c + '">' + r.v + '</b><span class="mini">' + r.m + '</span></div>').join('');
+    U.text('#odAggMeta', agg(numList()).n ? '全部艙位 ' + agg(numList()).n + ' 筆（方向篩選後）· 平倉 ' + agg(numList()).nClosed + ' 筆' : '尚未有艙位');
+    const nowEl = d('odEqNow'); if (nowEl) nowEl.textContent = usd2(a.totalUsd);
+    const lg = d('odEqLegend');
+    if (lg) lg.innerHTML = '累計已實現損益 <b>' + usd2(a.sumUsd) + '</b> · 未實現合計 <b>' + usd2(a.liveUsd) + '</b> · 合計 <b>' + usd2(a.totalUsd) + '</b>';
+  }
+  function renderCurve() {
+    const cv = d('odEq'); if (!cv) return;
+    const f = S.fit(cv); if (!f) return;
+    const c = f.c, W = f.w, H = f.h, padL = 6, padR = 6, padT = 9, padB = 6;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    c.clearRect(0, 0, W, H);
+    const pts = equityCurve(numList()), a = agg(numList());
+    let mn = 0, mx = 0, acc = 0;
+    pts.forEach(p => { acc = p[1]; if (acc < mn) mn = acc; if (acc > mx) mx = acc; });
+    if (a.liveUsd < mn) mn = a.liveUsd; if (a.liveUsd > mx) mx = a.liveUsd;
+    if (mn === mx) { mx += 1; mn -= 1; }
+    const t0 = pts[0][0], t1 = Math.max(pts[pts.length - 1][0], t0 + 1);
+    const X = t => padL + (t - t0) / (t1 - t0) * iw, Y = v => padT + ih - (v - mn) / (mx - mn) * ih;
+    c.font = '9px ui-monospace, Menlo, Consolas, monospace';
+    c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,.07)';
+    for (let i = 0; i <= 2; i++) {
+      const v = mn + (mx - mn) * (i / 2), y = Y(v);
+      c.beginPath(); c.moveTo(padL, y); c.lineTo(W - padR, y); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,.34)'; c.fillText(money2(v), padL + 2, Math.max(8, y - 2));
+    }
+    if (mn < 0 && mx > 0) { const y0 = Y(0); c.strokeStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.moveTo(padL, y0); c.lineTo(W - padR, y0); c.stroke(); }
+    const lastV = pts[pts.length - 1][1], up = lastV >= 0;
+    const g = c.createLinearGradient(0, padT, 0, padT + ih);
+    g.addColorStop(0, up ? 'rgba(14,203,129,.34)' : 'rgba(246,70,93,.34)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.beginPath(); c.moveTo(X(pts[0][0]), Y(pts[0][1]));
+    for (let i = 1; i < pts.length; i++) c.lineTo(X(pts[i][0]), Y(pts[i][1]));
+    c.lineTo(X(t1), padT + ih); c.lineTo(X(pts[0][0]), padT + ih); c.closePath();
+    c.fillStyle = g; c.fill();
+    c.beginPath(); c.moveTo(X(pts[0][0]), Y(pts[0][1]));
+    for (let i = 1; i < pts.length; i++) c.lineTo(X(pts[i][0]), Y(pts[i][1]));
+    c.strokeStyle = up ? '#0ecb81' : '#f6465d'; c.lineWidth = 1.6; c.lineJoin = 'round'; c.stroke();
+    c.setLineDash([4, 3]); c.strokeStyle = 'rgba(91,140,255,.9)'; c.beginPath();
+    c.moveTo(padL, Y(a.liveUsd)); c.lineTo(W - padR, Y(a.liveUsd)); c.stroke(); c.setLineDash([]);
+    const lp = pts[pts.length - 1];
+    c.beginPath(); c.arc(X(lp[0]), Y(lp[1]), 2.4, 0, 6.284); c.fillStyle = up ? '#0ecb81' : '#f6465d'; c.fill();
+  }
+
+  /* ══ b. 各策略盈利狀況（一列一策略，可展開艙位）═══════ */
+  function renderStratPick() {
+    const box = d('odStratPick'); if (!box) return;
+    box.innerHTML = STRATS.map(s => '<label' + (ST.stratOn[s.k] ? '' : ' class="off"') + '><input type="checkbox" data-k="' + s.k + '"'
+      + (ST.stratOn[s.k] ? ' checked' : '') + '>' + esc(s.s) + '</label>').join('');
+  }
+  function stratSeries(list) {
+    const cs = list.filter(p => p.exitTs !== null).sort((a, b) => a.exitTs - b.exitTs);
+    let acc = 0; const out = [0]; cs.forEach(p => { acc += p.usd; out.push(acc); });
+    return out;
+  }
+  function renderStrategies() {
+    const box = d('odStratRows'); if (!box) return;
+    const all = numList();
+    const rows = STRATS.map(s => {
+      const l = all.filter(p => p.strat === s.k), a = agg(l);
+      return { s: s, a: a, l: l };
+    }).sort((x, y) => y.a.n - x.a.n || y.a.totalUsd - x.a.totalUsd);
+    const tot = agg(all);
+    box.innerHTML = rows.map(r => {
+      const a = r.a, on = ST.stratOn[r.s.k];
+      const sp = a.nClosed >= 2 ? '<canvas class="od-sp2" data-sp="' + r.s.k + '"></canvas>' : '<span class="dd">—</span>';
+      const head = '<div class="od-srow' + (ST.expand[r.s.k] ? ' onrow' : '') + (on ? '' : ' offstr') + '" data-row="' + r.s.k + '" title="' + esc(r.s.nm) + '：訊號 ' + a.n + ' · 進行中 ' + a.nLive + ' · 已平倉 ' + a.nClosed + ' · 總R ' + r2(a.sumR + a.liveR) + ' · 損益 ' + usd2(a.totalUsd) + (on ? '' : '（已停用，只看既有艙位）') + '">'
+        + '<span class="nm">' + esc(r.s.s) + ' <i>' + (on ? '' : '停用') + '</i></span>'
+        + '<span class="nn">' + a.n + '</span>'
+        + '<span class="nn">' + a.nLive + '</span>'
+        + '<span class="nn">' + a.nClosed + '</span>'
+        + '<span class="nn">' + (isFinite(a.winRate) ? (a.winRate * 100).toFixed(0) + '%' : '—') + '</span>'
+        + '<span class="nn ' + ((a.sumR + a.liveR) >= 0 ? 'up' : 'down') + '">' + r2(a.sumR + a.liveR) + '</span>'
+        + '<span class="nn ' + (a.totalUsd >= 0 ? 'up' : 'down') + '">' + usd2(a.totalUsd) + '</span>'
+        + sp + '</div>';
+      let det = '';
+      if (ST.expand[r.s.k]) {
+        const l = r.l.slice().sort((x, y) => y.entryTs - x.entryTs).slice(0, 60);
+        det = '<div class="od-pminis"><span class="mini">' + esc(r.s.nm) + ' · 訊號 ' + a.n + ' 筆（進行中 ' + a.nLive + '、已平倉 ' + a.nClosed + '）'
+          + ' · 觸及 TP1/2/3/4 ' + a.nTp1 + '/' + a.nTp2 + '/' + a.nTp3 + '/' + a.nTp4 + ' · 止損 ' + a.nSl + ' · 保本 ' + a.nBe + ' · 逾時 ' + a.nTo
+          + ' · 顯示最近 ' + l.length + ' 筆（共 ' + a.n + '）</span>'
+          + (l.length ? '<div class="rp-tw"><table class="rp"><thead><tr><th>時間</th><th>幣種</th><th>方向</th><th class="ta-r">開倉價</th><th class="ta-r">止損</th><th class="ta-r">TP1</th><th class="ta-r">現價</th><th class="ta-r">R</th><th class="ta-r">$</th><th>狀態</th></tr></thead><tbody>'
+            + l.map(p => miniRow(p)).join('') + '</tbody></table></div>' : '<div class="empty">這個策略還沒有艙位</div>')
+          + '</div>';
+      }
+      return head + det;
+    }).join('');
+    U.text('#odStMeta', '全部艙位 ' + tot.n + ' 筆 · 進行中 ' + tot.nLive + ' · 已平倉 ' + tot.nClosed
+      + ' · 合計 ' + usd2(tot.totalUsd) + '（僅本次工作階段）');
+    requestAnimationFrame(() => {
+      box.querySelectorAll('.od-sp2').forEach(cv => {
+        const k = cv.dataset.sp, a = agg(all.filter(p => p.strat === k));
+        if (a.nClosed >= 2) U.spark(cv, stratSeries(all.filter(p => p.strat === k)), a.totalUsd >= 0 ? '#0ecb81' : '#f6465d', true);
+      });
+    });
+  }
+  function miniRow(p) {
+    const ch = stateChip(p), d1 = p.side === 'long' ? 1 : -1;
+    return '<tr class="' + (p.exitTs === null ? 'opened' : 'closed') + '">'
+      + '<td class="num">' + tsTxt(p.entryTs) + '</td>'
+      + '<td class="coin"><b>' + esc(p.coin) + '</b></td>'
+      + '<td class="side ' + p.side + '">' + (p.side === 'long' ? '多' : '空') + '</td>'
+      + '<td class="ta-r num" title="' + p.entryPx + '">' + U.px(p.entryPx) + '</td>'
+      + '<td class="ta-r num" title="' + p.sl + '">' + U.px(p.sl) + '</td>'
+      + '<td class="ta-r num" title="' + p.tps[0] + '">' + U.px(p.tps[0]) + '</td>'
+      + '<td class="ta-r num" title="' + p.cur + '">' + U.px(p.cur) + '</td>'
+      + '<td class="ta-r num ' + (p.rNow >= 0 ? 'up' : 'down') + '">' + r2(p.rNow) + '</td>'
+      + '<td class="ta-r num ' + (p.usd >= 0 ? 'up' : 'down') + '">' + usd2(p.usd) + '</td>'
+      + '<td><span class="od-chip ' + ch.c + '">' + ch.t + '</span></td></tr>';
+  }
+
+  /* ══ c. 艙位細項（逐筆）═════════════════════════════ */
+  const PSK = { ts: p => p.entryTs, coin: p => p.coin, side: p => p.side, strat: p => p.strat, entryPx: p => p.entryPx, sl: p => p.sl, tp1: p => p.tps[0], tp2: p => p.tps[1], tp3: p => p.tps[2], tp4: p => p.tps[3], curPx: p => p.cur, rNow: p => p.rNow, usdNow: p => p.usd, state: p => (p.exitTs === null ? 2 : 1), exitPx: p => (p.exitPx === null ? -Infinity : p.exitPx), exitTs: p => (p.exitTs === null ? 9e15 : p.exitTs) };
+  function renderPositions() {
+    const tb = d('odPosBody'); if (!tb) return;
+    let l = tblList().slice();
+    const f = PSK[ST.posSort.k] || PSK.ts;
+    l.sort((a, b) => { const x = f(a), y = f(b); const c = (typeof x === 'string') ? String(x).localeCompare(String(y)) : (x - y); return ST.posSort.d ? -c : c; });
+    l = l.slice(0, 200);
+    keepScroll('#odPosPanel .rp-tw', () => {
+      if (!l.length) {
+        tb.innerHTML = '<tr><td colspan="16"><div class="empty" style="padding:12px">'
+          + (ST.pos.length ? '目前的篩選沒有符合的艙位（清掉搜尋或取消「只顯示未平倉」）' : '還沒有艙位：等 K 線補齊後，最新一根收完出現訊號就會寫進來') + '</div></td></tr>';
+        return;
+      }
+      tb.innerHTML = l.map(p => {
+        const ch = stateChip(p), slMoved = Math.abs(p.sl - p.sl0) > 1e-12;
+        const newTag = (p.new && Date.now() - p.entryTs < TF_MS[p.tf] * 4) ? '<i class="newdot" title="剛觸發的艙位"></i>' : '';
+        return '<tr class="' + (p.exitTs === null ? 'opened' : 'closed') + '">'
+          + '<td class="num" title="' + tsFull(p.entryTs) + '">' + tsTxt(p.entryTs) + '</td>'
+          + '<td class="coin">' + newTag + '<b title="' + esc(STRATNM[p.strat] || '') + '">' + esc(p.coin) + '</b></td>'
+          + '<td class="side ' + p.side + '">' + (p.side === 'long' ? '多' : '空') + '</td>'
+          + '<td title="' + esc(STRATNM[p.strat] || '') + '">' + esc((SMAP[p.strat] || {}).s || p.strat) + '</td>'
+          + '<td class="ta-r num" title="' + p.entryPx + '">' + U.px(p.entryPx) + '</td>'
+          + '<td class="ta-r num" title="止損 ' + p.sl + (slMoved ? '（已由 ' + p.sl0 + ' 移動）' : '（1R ' + pc1(p.rPct) + '）') + '">' + U.px(p.sl) + (slMoved ? ' <i class="mini">移</i>' : '') + '</td>'
+          + p.tps.slice(0, 4).map((t, i) => '<td class="ta-r num" title="' + t + '（' + p.mTps[i] + 'R）">' + U.px(t) + (p.maxTp >= i + 1 ? ' ✓' : '') + '</td>').join('')
+          + '<td class="ta-r num" title="' + p.cur + '">' + U.px(p.cur) + '</td>'
+          + '<td class="ta-r num ' + (p.rNow >= 0 ? 'up' : 'down') + '" title="' + (p.exitTs === null ? '未實現' : '已實現') + '">' + r2(p.rNow) + '</td>'
+          + '<td class="ta-r num ' + (p.usd >= 0 ? 'up' : 'down') + '" title="$100 艙位 · 1R=' + pc1(p.rPct) + ' → ' + usd2(NOTIONAL * p.rPct) + ' · 已扣來回手續費 ' + FEE_RT.toFixed(2) + ' 美元">' + usd2(p.usd) + '</td>'
+          + '<td><span class="od-chip ' + ch.c + '">' + ch.t + '</span></td>'
+          + '<td class="ta-r num">' + (p.exitPx === null ? '—' : U.px(p.exitPx)) + '</td>'
+          + '<td class="num">' + (p.exitTs === null ? '—' : tsFull(p.exitTs)) + '</td></tr>';
+      }).join('');
+    });
+    U.text('#odPosCount', tblList().length);
+    const a = agg(numList());
+    U.text('#odPosMeta', '全部 ' + a.n + ' 筆 · 進行中 ' + a.nLive + ' · 已平倉 ' + a.nClosed
+      + (ST.openOnly || ST.qtx ? '（篩選後顯示 ' + tblList().length + ' 筆）' : '') + ' · 每筆 $100 艙位');
+  }
+
+  /* ══ 報單卡（價位階梯）══════════════════════════════ */
+  function renderCards() {
+    const box = d('odCards'); if (!box) return;
+    let l = listSide(ST.pos).slice();
+    if (ST.openOnly) l = l.filter(p => p.exitTs === null);
+    const q = ST.qtx.trim().toUpperCase();
+    if (q) l = l.filter(p => p.coin.indexOf(q) >= 0);
+    l.sort((a, b) => b.entryTs - a.entryTs);
+    const show = l.slice(0, CARD_CAP);
+    keepScroll('#odCards', () => {
+      if (!show.length) {
+        box.innerHTML = '<div class="empty" style="padding:14px">還沒有報單：宇宙補齊中，或目前這個時間框／模式還沒有訊號</div>';
+        return;
+      }
+      box.innerHTML = show.map(card).join('');
+    });
+    U.text('#odSigCount', l.length);
+    U.text('#odSigMeta', (show.length < l.length ? '顯示最新 ' + show.length + ' 張／' : '') + '共 ' + l.length + ' 張 · '
+      + ST.tf + ' · ' + MODES[ST.mode].nm + '模式（止損 ' + MODES[ST.mode].mult + '×ATR、TP ' + MODES[ST.mode].tps.join('/') + 'R）');
+  }
+  function card(p) {
+    const ch = stateChip(p), dir = p.side === 'long' ? 1 : -1, fresh = p.new && Date.now() - p.entryTs < TF_MS[p.tf] * 4;
+    const px = (v, cls, lbl, extra) => '<div class="od-cell ' + cls + (extra || '') + '"><label>' + lbl + '</label><b title="' + v + '">' + U.px(v) + '</b><span class="s">' + (extra === ' hit' ? '已觸及' : '') + '</span></div>';
+    const vals = [p.sl0, p.entryPx].concat(p.tps);
+    let mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), cur = p.cur;
+    if (cur < mn) mn = cur; if (cur > mx) mx = cur;
+    const span = (mx - mn) || 1, X = v => (v - mn) / span * 100;
+    const lv = [];
+    lv.push('<div class="trk"></div>');
+    lv.push('<div class="seg-fill ' + p.side + '" style="left:' + X(p.side === 'long' ? p.sl0 : p.tps[3]) + '%;right:' + (100 - X(p.side === 'long' ? p.tps[3] : p.sl0)) + '%"></div>');
+    lv.push('<div class="od-tick sl" style="left:' + X(p.sl0) + '%"></div><div class="od-lbl sl" style="left:' + X(p.sl0) + '%">止損</div>');
+    lv.push('<div class="od-tick entry" style="left:' + X(p.entryPx) + '%"></div><div class="od-lbl entry" style="left:' + X(p.entryPx) + '%">開倉</div>');
+    p.tps.forEach((t, i) => {
+      const hit = p.maxTp >= i + 1 ? ' hit' : '';
+      lv.push('<div class="od-tick tp' + hit + '" style="left:' + X(t) + '%"></div><div class="od-lbl tp" style="left:' + X(t) + '%" title="' + t + '">TP' + (i + 1) + '</div>');
+    });
+    lv.push('<div class="od-cur" style="left:' + X(cur) + '%"><i></i><span>' + U.px(cur) + '</span></div>');
+    const ind = p.ind || {};
+    const kv = [
+      ['ATR14', U.px(ind.atr)], ['1R 距離', pc1(p.rPct)], ['1R 金額', '$' + (NOTIONAL * p.rPct).toFixed(2)],
+      ['RSI14', ind.rsi === undefined || ind.rsi === null ? '—' : ind.rsi.toFixed(1)],
+      ['MACD 線', ind.macd === undefined || ind.macd === null ? '—' : U.px(ind.macd)],
+      ['柱狀體', ind.hist === undefined || ind.hist === null ? '—' : U.px(ind.hist)],
+      ['20 根 VWAP', ind.vwap === undefined || ind.vwap === null ? '—' : U.px(ind.vwap)],
+      ['最高 R／最低 R', r2(p.mfe) + ' ／ ' + r2(p.mae)],
+      ['已走 K 線', p.bars + ' 根（上限 ' + MAX_HOLD[p.tf] + '）'],
+      ['資金費率', ind.funding === undefined || ind.funding === null ? '—' : (ind.funding * 100).toFixed(4) + '%／小時'],
+      ['模式／時間框', MODES[p.mode].nm + '（止損 ' + p.mMult + '×ATR、TP ' + p.mTps.join('/') + 'R）· ' + TF_TXT[p.tf]],
+      ['出場', p.exitTs === null ? '尚未出場' : (ch.t + ' ' + tsFull(p.exitTs) + ' @ ' + U.px(p.exitPx))]
+    ];
+    return '<div class="od-card' + (fresh ? ' new' : '') + ' ' + p.side + (p.exitTs === null ? '' : ' closed') + '" data-id="' + esc(p.id) + '">'
+      + '<div class="od-head">'
+      + '<span class="od-coin">' + esc(p.coin) + '</span>'
+      + '<span class="od-dir ' + p.side + '">' + (p.side === 'long' ? '做多' : '做空') + '</span>'
+      + '<span class="od-strat">' + esc(STRATNM[p.strat] || p.strat) + '</span>'
+      + '<span class="od-tf">' + p.tf + '</span>'
+      + '<span class="mini">' + esc((SMAP[p.strat] || {}).s || '') + '</span>'
+      + (fresh ? '<span class="od-newtag">NEW</span>' : '')
+      + '<span class="od-when" title="' + tsFull(p.entryTs) + '">' + tsTxt(p.entryTs) + '（' + away(p.entryTs) + '）</span>'
+      + '<span class="od-right"><span class="od-live"><span class="px">' + U.px(p.cur) + '</span><span class="r">' + r2(p.rNow) + ' · ' + usd2(p.usd) + '</span></span>'
+      + '<span class="od-state ' + (p.exitTs === null ? (p.maxTp >= 1 ? 'tp' : 'wait') : (p.why === 'sl' ? 'sl' : p.why === 'timeout' ? 'exp' : 'tp')) + '">' + ch.t + '</span></span>'
+      + '</div>'
+      + '<div class="od-nums">'
+      + px(p.entryPx, 'entry', '開倉價（參考）')
+      + px(p.sl0, 'sl', '止損 ' + p.mMult + '×ATR', '')
+      + p.tps.slice(0, 4).map((t, i) => px(t, 'tp', 'TP' + (i + 1) + '（' + p.mTps[i] + 'R）', p.maxTp >= i + 1 ? ' hit' : '')).join('')
+      + '</div>'
+      + '<div class="od-lv">' + lv.join('') + '</div>'
+      + '<div class="od-more" hidden><div class="why">訊號依據：' + esc(p.note) + '</div>'
+      + '<div class="kv">' + kv.map(x => '<div><span>' + x[0] + '</span><b>' + x[1] + '</b></div>').join('') + '</div>'
+      + '<div class="hint">開倉價是偵測到訊號當下的標記價（參考價，非成交價）；損益以 $100 艙位計算並已扣吃單手續費 0.045%／邊（來回 $' + FEE_RT.toFixed(2) + '）。</div>'
+      + '</div></div>';
+  }
+
+  /* ══ 全部幣種掃描表 ═════════════════════════════════ */
+  const SSK = {
+    coin: r => r.coin, px: r => r.px, chg: r => r.chg, vol: r => r.vol, funding: r => r.funding,
+    last: r => (r.last || 0), brk: r => biasNum(r, 'brk'), ma2060: r => biasNum(r, 'ma2060'), rsi_pb: r => biasNum(r, 'rsi_pb'),
+    macd_hist: r => biasNum(r, 'macd_hist'), macd_zero: r => biasNum(r, 'macd_zero'), macd_ema200: r => biasNum(r, 'macd_ema200'),
+    macd_div: r => biasNum(r, 'macd_div'), boll: r => biasNum(r, 'boll'), donchian: r => biasNum(r, 'donchian'),
+    ema821: r => biasNum(r, 'ema821'), vwap: r => biasNum(r, 'vwap'), atr_ch: r => biasNum(r, 'atr_ch'),
+    vol_brk: r => biasNum(r, 'vol_brk'), rsi_div: r => biasNum(r, 'rsi_div'), funding_rev: r => r.fbias
+  };
+  function biasNum(r, k) { return r.bias[k] === 'long' ? 1 : (r.bias[k] === 'short' ? -1 : 0); }
+  function renderScan() {
+    const tb = d('odTbody'); if (!tb) return;
+    const q = ST.qtx.trim().toUpperCase();
+    const lastBy = {};
+    ST.pos.forEach(p => { if (!lastBy[p.coin] || p.entryTs > lastBy[p.coin]) lastBy[p.coin] = p.entryTs; });
+    let rows = ST.uniList.filter(x => !q || x.coin.indexOf(q) >= 0).map(x => {
+      const c = ST.ctxs[x.coin], ok = !!(c && c.tf === ST.tf && c.x), xx = ok ? c.x : null, i = ok ? xx.n - 1 : 0;
+      const bias = {};
+      if (ok) STRATS.forEach(s => { if (s.k !== 'funding_rev') { try { bias[s.k] = s.b(xx, i) || ''; } catch (e) { bias[s.k] = ''; } } });
+      return {
+        coin: x.coin, px: x.px, chg: x.chg, vol: x.vol, funding: x.funding, ok: ok, n: ok ? xx.n : 0,
+        bias: bias, fbias: (x.funding >= FUND_X ? 1 : (x.funding <= -FUND_X ? -1 : 0)), last: lastBy[x.coin] || 0
+      };
+    });
+    const f = SSK[ST.scanSort.k] || SSK.vol;
+    rows.sort((a, b) => { const x = f(a), y = f(b); const c = (typeof x === 'string') ? String(x).localeCompare(String(y)) : ((isFinite(x) ? x : -9e9) - (isFinite(y) ? y : -9e9)); return ST.scanSort.d ? -c : c; });
+    rows = rows.slice(0, 240);
+    keepScroll('#odTblPanel .rp-tw', () => {
+      if (!rows.length) { tb.innerHTML = '<tr><td colspan="21"><div class="empty" style="padding:12px">沒有符合的幣種</div></td></tr>'; return; }
+      tb.innerHTML = rows.map(r => {
+        const cell = k => {
+          const v = r.bias[k];
+          return '<td class="od-bias ' + (v === 'long' ? 'long' : v === 'short' ? 'short' : 'none') + '">' + (v === 'long' ? '多' : v === 'short' ? '空' : '·') + '</td>';
+        };
+        const fb = r.fbias;
+        return '<tr' + (r.ok ? '' : ' class="od-nokline"') + ' title="' + esc(r.coin) + (r.ok ? '：已取得 ' + r.n + ' 根 ' + ST.tf + ' K 線' : '：K 線還沒補到') + '">'
+          + '<td class="coin"><b>' + esc(r.coin) + '</b></td>'
+          + '<td class="ta-r num" title="' + r.px + '">' + U.px(r.px) + '</td>'
+          + '<td class="ta-r num ' + U.cls(r.chg) + '">' + (isFinite(r.chg) ? U.pct(r.chg) : '—') + '</td>'
+          + '<td class="ta-r num" title="' + (r.vol ? r.vol.toFixed(0) + ' 美元' : '') + '">$' + U.money(r.vol) + '</td>'
+          + '<td class="ta-r num" title="每小時資金費率">' + (isFinite(r.funding) ? (r.funding * 100).toFixed(4) + '%' : '—') + '</td>'
+          + STRATS.map(s => s.k === 'funding_rev'
+            ? '<td class="od-bias ' + (fb > 0 ? 'short' : fb < 0 ? 'long' : 'none') + '">' + (fb > 0 ? '空' : fb < 0 ? '多' : '·') + '</td>'
+            : cell(s.k)).join('')
+          + '<td class="ta-r num" title="' + (r.last ? tsFull(r.last) : '') + '">' + (r.last ? away(r.last) : '—') + '</td></tr>';
+      }).join('');
+    });
+    U.text('#odTblCount', ST.uniList.length);
+    U.text('#odTblMeta', (q ? '搜尋「' + ST.qtx + '」符合 ' + ST.uniList.filter(x => x.coin.indexOf(q) >= 0).length + ' 檔 · ' : '')
+      + '已取得 K 線 ' + ST.prog.done + '／' + ST.uniList.length + ' · 多／空／無 依 15 個策略目前偏向');
+  }
+
+  /* ══ d. 即時事件流 ══════════════════════════════════ */
+  function renderEvents() {
+    const box = d('odEvents'); if (!box) return;
+    const l = ST.ev.filter(e => ST.side === 'both' || e.side === ST.side).slice(0, 80);
+    keepScroll('#odEvents', () => {
+      if (!l.length) {
+        box.innerHTML = '<div class="empty" style="padding:12px">還沒有事件。訊號一觸發（開單）或被止損／目標收掉（平倉）就會寫在這裡。</div>';
+        return;
+      }
+      box.innerHTML = l.map(e => {
+        const fresh = Date.now() - (e.det || e.ts) < 120000;
+        const dir = e.side === 'long' ? 1 : -1;
+        if (e.kind === 'open') {
+          return '<div class="od-ev open ' + (fresh ? 'fresh' : '') + (e.side === 'short' ? ' s-short' : '') + '">'
+            + '<div class="hd"><span class="t">' + tsFull(e.ts) + '</span><span class="tag">開單</span>'
+            + (fresh ? '<span class="nd2"></span>' : '')
+            + '<span class="k">' + esc(e.coin) + '</span><span>' + (e.side === 'long' ? '做多' : '做空') + '</span>'
+            + '<span class="v">' + esc((SMAP[e.strat] || {}).s || e.strat) + '</span></div>'
+            + '<div class="row2"><span>開倉 ' + U.px(e.px) + '</span><span>止損 ' + U.px(e.sl) + '</span>'
+            + '<span>TP1 ' + U.px(e.tp1) + '</span><span>1R ' + pc1(e.rPct) + '（$' + (NOTIONAL * e.rPct).toFixed(2) + '）</span></div></div>';
+        }
+        const whyTxt = e.why === 'sl' ? '觸發止損' : e.why === 'be' ? '保本離場' : e.why === 'timeout' ? '逾時平倉' : ('TP' + e.why.slice(2) + ' 出場');
+        return '<div class="od-ev close ' + (e.usd >= 0 ? 'win' : 'loss') + (fresh ? ' fresh' : '') + '">'
+          + '<div class="hd"><span class="t">' + tsFull(e.ts) + '</span><span class="tag">平倉</span>'
+          + (fresh ? '<span class="nd2"></span>' : '')
+          + '<span class="k">' + esc(e.coin) + '</span><span>' + (e.side === 'long' ? '多' : '空') + '</span>'
+          + '<span class="v">' + esc((SMAP[e.strat] || {}).s || e.strat) + ' · ' + whyTxt + '</span></div>'
+          + '<div class="row2"><span>平倉 ' + U.px(e.px) + '</span>'
+          + '<span class="' + (e.r >= 0 ? 'up' : 'down') + '">' + r2(e.r) + '</span>'
+          + '<span class="' + (e.usd >= 0 ? 'up' : 'down') + '">' + usd2(e.usd) + '（$100 艙位）</span>'
+          + '<span>最高 TP' + (e.maxTp || 0) + '</span></div></div>';
+      }).join('');
+    });
+    U.text('#odEvCount', ST.ev.length);
+    U.text('#odEvMeta', '開單／平倉即時寫入 · 最新在最上（藍點＝2 分鐘內）');
+  }
+
+  function renderAll() { renderSoft(); renderKpis(); renderCurve(); renderStrategies(); renderPositions(); renderCards(); renderScan(); renderParams(); }
+
   /* ══ 主輪詢：報價 7 秒（背景 45 秒）＋ K 線佇列 ════════ */
   async function loopMeta() {
     for (;;) {
@@ -772,4 +1162,113 @@
     U.text('#odDate', (now.getMonth() + 1) + '/' + now.getDate() + ' 台北');
     setTimeout(loopClock, 1000);
   }
+
+  /* ══ 介面事件 ═══════════════════════════════════════ */
+  let lastToast = 0;
+  OD.onOpen = function (p) {
+    if (Date.now() - lastToast < 3000) return;               // 只有視覺提示、沒有聲音，太多就自動節流
+    lastToast = Date.now();
+    if (S.fx && S.fx.toast) {
+      S.fx.toast({
+        tag: '新訊號', sev: p.side === 'long' ? 'low' : 'high',
+        title: p.coin + ' ' + (p.side === 'long' ? '做多' : '做空') + ' · ' + ((SMAP[p.strat] || {}).s || p.strat),
+        text: '開倉 ' + U.px(p.entryPx) + ' · 止損 ' + U.px(p.sl0) + ' · TP1 ' + U.px(p.tps[0]) + ' · 1R ' + pc1(p.rPct)
+      });
+    }
+  };
+  function seg(id, fn) {
+    const el = d(id); if (!el) return;
+    el.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
+      fn(b.dataset.v);
+      renderParams(); renderCards(); renderPositions();
+    });
+  }
+  function wireSort(tblId, obj) {
+    const t = d(tblId); if (!t) return;
+    t.querySelectorAll('thead th[data-sk]').forEach(th => {
+      if (!th.dataset.base) th.dataset.base = th.textContent;
+      if (obj.k === th.dataset.sk) { th.classList.add('on'); th.textContent = th.dataset.base + (obj.d ? ' ↓' : ' ↑'); }
+      th.addEventListener('click', () => {
+        const k = th.dataset.sk;
+        if (obj.k === k) obj.d = !obj.d; else { obj.k = k; obj.d = true; }
+        t.querySelectorAll('thead th[data-sk]').forEach(x => {
+          x.classList.remove('on'); x.textContent = x.dataset.base;
+          if (x === th) { x.classList.add('on'); x.textContent = x.dataset.base + (obj.d ? ' ↓' : ' ↑'); }
+        });
+        if (tblId === 'odTbl') renderScan(); else renderPositions();
+      });
+    });
+  }
+  function rescanCtx() {
+    for (const coin in ST.ctxs) {
+      const c = ST.ctxs[coin];
+      if (c && c.tf === ST.tf && c.x) { try { scanCoin(coin, c.x); } catch (e) { } }
+    }
+  }
+  function rebuildForce() {
+    ST.lastSweep = 0; ST.armFund = {};
+    KLQ.list = ST.uniList.map(x => x.coin); KLQ.i = 0;
+    pump(); renderAll();
+  }
+  function wire() {
+    seg('odTf', v => {
+      if (v === ST.tf) return;
+      ST.tf = v; ST.armFund = {};
+      KLQ.list = []; KLQ.i = 0; rebuildQueue(); pump(); renderAll();
+    });
+    seg('odMode', v => { ST.mode = v; renderAll(); });
+    seg('odSide', v => { ST.side = v; renderAll(); });
+    seg('odUni', v => { ST.uni = v; buildUni(); KLQ.list = []; KLQ.i = 0; rebuildQueue(); pump(); renderAll(); });
+
+    const q = d('odQ');
+    if (q) q.addEventListener('input', U.debounce(() => { ST.qtx = q.value; renderPositions(); renderScan(); renderCards(); }, 180));
+    const oo = d('odOpenOnly');
+    if (oo) oo.addEventListener('change', () => { ST.openOnly = oo.checked; renderPositions(); renderCards(); });
+    const rs = d('odRescan');
+    if (rs) rs.addEventListener('click', rebuildForce);
+    const pa = d('odPickAll'), pn = d('odPickNone');
+    if (pa) pa.addEventListener('click', () => { STRATS.forEach(s => ST.stratOn[s.k] = true); renderStratPick(); rescanCtx(); renderAll(); });
+    if (pn) pn.addEventListener('click', () => { STRATS.forEach(s => ST.stratOn[s.k] = false); renderStratPick(); renderAll(); });
+    const sp = d('odStratPick');
+    if (sp) sp.addEventListener('change', e => {
+      const c = e.target.closest('input[data-k]'); if (!c) return;
+      ST.stratOn[c.dataset.k] = c.checked;
+      renderStratPick();
+      if (c.checked) rescanCtx();
+      renderAll();
+    });
+    const rows = d('odStratRows');
+    if (rows) rows.addEventListener('click', e => {
+      const r = e.target.closest('.od-srow'); if (!r) return;
+      const k = r.dataset.row; ST.expand[k] = !ST.expand[k];
+      renderStrategies();
+    });
+    const cards = d('odCards');
+    if (cards) cards.addEventListener('click', e => {
+      const c = e.target.closest('.od-card'); if (!c) return;
+      const m = c.querySelector('.od-more'); if (m) m.hidden = !m.hidden;
+      c.classList.remove('new');
+      const t = c.querySelector('.od-newtag'); if (t) t.remove();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.activeElement !== q && !/input|textarea/i.test((document.activeElement || {}).tagName || '')) {
+        e.preventDefault(); if (q) q.focus();
+      }
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) { ST.lastSweep = 0; rebuildQueue(); pump(); renderAll(); }
+    });
+    window.addEventListener('resize', U.debounce(() => renderCurve(), 200));
+  }
+
+  function boot() {
+    loadStore();
+    wire(); wireSort('odPosTbl', ST.posSort); wireSort('odTbl', ST.scanSort);
+    renderParams(); renderStratPick(); renderAll();
+    loopClock(); loopMeta();
+    setInterval(() => { if (!document.hidden) { renderEvents(); renderKpis(); renderProgress(); } }, 15000);
+  }
+  S.ready(boot);
+  OD.ST = ST; OD.agg = agg; OD.numList = numList; OD.renderAll = renderAll;
 })(window);
