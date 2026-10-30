@@ -234,6 +234,57 @@ tbody tr:hover td { transition: background .12s }
 }
 td.empty, .rp-empty { line-height: 1.6 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   3. 載入時不跳版（layout shift）
+   ──────────────────────────────────────────────────────────────────────
+   這些容器在資料到齊前是空的，資料一到就長高，把下面整片內容往下推。
+   實測（1440×900，修正前）載入期間長高最多的是：
+     行情總覽 聰明錢壓力計 +299px、巨鯨即時動向 +178px、異常事件 +64px
+     持倉分析 持倉方向總覽 +570px（其中幣種表 +351、排行條 +204）
+   這裡先把「最終大小」保留起來，資料到了只換內容、不換高度。
+   ══════════════════════════════════════════════════════════════════════ */
+/* 行情總覽 */
+.smart-panel .comp-list { min-height: 186px }
+.chart-panel .chart-stats { min-height: 56px }
+.chart-panel .canvas-wrap { min-height: 210px }
+.heat-panel .canvas-wrap { min-height: 168px }
+.book-panel .book-cols { min-height: 180px }
+.whale-panel .tape { min-height: 150px }
+.liq-panel .tape { min-height: 92px }
+.liq-panel .liq-sum { min-height: 54px }
+.alert-panel .alert-list { min-height: 96px }
+.pos-panel .oi-chart { min-height: 64px }
+.pos-panel .signal-box { min-height: 84px }
+.entry-wrap .entry-stats { min-height: 52px }
+
+/* 鏈上聰明錢 */
+.hl-table-wrap { min-height: 210px }
+.chain-tape { min-height: 150px }
+.wallet-list { min-height: 120px }
+.coin-bars { min-height: 84px }
+.hl-events { min-height: 96px }
+/* 兩欄／單欄時面板改成依內容高度（見第 1 節），即時流水與錢包榜會
+   隨著成交筆數一路長高把下面推走，這裡先把高度留起來。 */
+@media (max-width: 1560px) {
+  .oc-col .chain-tape { min-height: 258px }
+  .oc-col .wallet-list { min-height: 190px }
+}
+
+/* 持倉分析 */
+.kpi-grid { min-height: 72px }
+.ps-tw-coin { min-height: 320px }
+.ps-ranks .ps-bars { min-height: 244px }
+.ps-tw-open, .ps-tw-ledger { min-height: 280px }
+.ps-feed { min-height: 140px }
+.ps-hist { min-height: 200px }
+.ps-wgrid { min-height: 140px }
+.sg-daily { min-height: 140px }
+
+/* 回測報表 */
+#rpAggBody, #rpDistBody, #rpStrBody { min-height: 168px }
+#rpTkBody, #rpWalBody { min-height: 200px }
+#rpMethodBody { min-height: 120px }
+
 /* ── 捲軸：四頁一致（細、深色、軌道透明）───────────────────────────── */
 * { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .16) transparent }
 ::-webkit-scrollbar { width: 9px; height: 9px }
