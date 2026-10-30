@@ -157,9 +157,11 @@
     return x.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   }
   function sig(x, n) {                       // 有效位數（避免 localStorage 塞滿長尾小數）
-    n = n || 10; if (!isFinite(x) || x === 0) return x;
+    n = n || 10;
+    if (!isFinite(x) || x === 0) return x;
     const p = n - 1 - Math.floor(Math.log10(Math.abs(x)));
-    return (p > -12 && p < 30) ? +x.toFixed(p) : x;
+    /* p 一定要落在 toFixed 允許的 0～20；負數或過大會丟 RangeError（這裡曾經讓整條輪詢中斷） */
+    return (p >= 0 && p <= 20) ? +x.toFixed(p) : x;
   }
 
   /* ══ 15 個策略（全部雙向；f＝觸發、b＝目前偏向）═══════════ */
