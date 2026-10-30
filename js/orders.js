@@ -679,8 +679,10 @@
       if (i0 < x.n) p.lastT = x.t[x.n - 1];
       if (p.bars >= MAX_HOLD[p.tf]) closePos(p, x.t[x.n - 1] + ms, x.c[x.n - 1], 'timeout');
     }
+    /* 只有還開著的艙位才用現價更新未實現；已平倉的 rNow／usd 是「已實現」，
+       被這裡覆寫的話平倉損益會全部變成 0（勝率也就跟著失真）。 */
     const q = ST.quotes[p.coin];
-    if (q) setCur(p, q.px);
+    if (q && p.exitTs === null) setCur(p, q.px);
   }
   function setCur(p, px) {
     const dir = p.side === 'long' ? 1 : -1;
