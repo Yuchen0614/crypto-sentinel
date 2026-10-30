@@ -268,15 +268,18 @@ td.empty, .rp-empty { line-height: 1.6 }
 .pos-panel .signal-box { min-height: 84px }
 .entry-wrap .entry-stats { min-height: 52px }
 
-/* 鏈上聰明錢 */
-.hl-table-wrap { min-height: 210px }
-.chain-tape { min-height: 150px }
-.wallet-list { min-height: 120px }
-.coin-bars { min-height: 84px }
-.hl-events { min-height: 96px }
-/* 兩欄／單欄時面板改成依內容高度（見第 1 節），即時流水與錢包榜會
-   隨著成交筆數一路長高把下面推走，這裡先把高度留起來。 */
+/* 鏈上聰明錢：只在「兩欄／單欄」時保留高度。
+   ≥1561 的三欄模式欄高是固定的（grid 1fr），把這些清單的 min-height 調高
+   會讓欄內面板加總超過欄高而被 overflow:hidden 裁掉（實測會多出 9px），
+   所以這一頁的最小高度一律留在 ≤1560： */
 @media (max-width: 1560px) {
+  .hl-table-wrap { min-height: 210px }
+  .chain-tape { min-height: 150px }
+  .wallet-list { min-height: 120px }
+  .coin-bars { min-height: 84px }
+  .hl-events { min-height: 96px }
+  /* 面板改成依內容高度（見第 1 節）後，即時流水與錢包榜會隨成交筆數
+     一路長高把下面推走，這裡先把高度留起來。 */
   .oc-col .chain-tape { min-height: 258px }
   .oc-col .wallet-list { min-height: 190px }
 }
