@@ -418,6 +418,11 @@ table.rp.od-ptbl tr.opened td:nth-child(2) b { color: #dbe6ff }
 .od-chip.exp { color: var(--p-t3) }
 .od-ptbl .newdot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--p-ax); margin-right: 5px; vertical-align: 1px }
 
+/* 排序狀態：目前排序欄位加亮（箭頭由 JS 接在標題後面） */
+table.rp.od-tbl thead th.on, table.rp.od-ptbl thead th.on { color: var(--p-t1) !important }
+table.rp.od-tbl thead th[data-sk], table.rp.od-ptbl thead th[data-sk] { cursor: pointer; user-select: none }
+.od-srow .nm i { font-style: normal; font-size: 9.5px; color: var(--p-warn); margin-left: 3px }
+
 /* ══ 說明（壓到兩行）══════════════════════════════════════ */
 .od-note { padding: 10px 12px 12px; font-size: 11.5px; line-height: 1.75; color: var(--p-t3) }
 .od-note b { color: var(--p-t2); font-weight: 600; white-space: nowrap }

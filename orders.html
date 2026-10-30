@@ -36,7 +36,7 @@
 </div>
 
 <div class="oc-note">
-  <b>這一頁：</b>全市場永續幣（24h 成交額 ≥ 300 萬美元）＋15 個策略，用<b>最新一根已收完的 K 線</b>即時開艙位、跟著報價更新未實現損益；
+  <b>這一頁：</b>全市場永續幣（預設 24h 成交額 ≥ 10 萬美元，實測 171 檔）＋15 個策略，用<b>最新一根已收完的 K 線</b>即時開艙位、跟著報價更新未實現損益；
   <b>每筆固定 $100 艙位</b>、吃單 0.045%／邊已扣；公開 API 有速率限制，K 線要慢慢補齊（控制列顯示進度）。
 </div>
 
@@ -73,8 +73,8 @@
       </div>
       <div class="od-grp">
         <label>幣種宇宙</label>
-        <div class="seg seg-sm" id="odUni" title="依 24 小時名目成交額篩選；「中小型與迷因」是 300 萬～5,000 萬美元、成交額由小到大">
-          <button data-v="all" class="on">全部 ≥$3M</button>
+        <div class="seg seg-sm" id="odUni" title="依 24 小時名目成交額篩選（實測全部永續 235 檔、≥$100K 有 171 檔）；「中小型與迷因」是 10 萬～5,000 萬美元、成交額由小到大">
+          <button data-v="all" class="on">全部 ≥$100K</button>
           <button data-v="active">活躍 ≥$20M</button>
           <button data-v="major">主流 ≥$200M</button>
           <button data-v="small">中小型與迷因</button>

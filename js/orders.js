@@ -31,7 +31,9 @@
   const FEE_RT = NOTIONAL * FEE_SIDE * 2;
   const FUND_X = 1e-4;              // 資金費率極端門檻（0.01%/小時）
   const THROTTLE = 400;             // 公開 API 請求間隔下限（毫秒）
-  const UNI_MIN = 3e6, UNI_ACTIVE = 2e7, UNI_MAJOR = 2e8, UNI_SMALL = 5e7;
+  /* 宇宙門檻：實測 Hyperliquid 全部永續有 235 檔，但 24h 名目成交額 ≥ $3M 只有 66 檔，
+     ≥ $100K 有 171 檔（真正的全市場長尾）。預設用 ≥ $100K，才符合「不是只做大幣」。 */
+  const UNI_MIN = 1e5, UNI_ACTIVE = 2e7, UNI_MAJOR = 2e8, UNI_SMALL = 5e7;
   const POS_CAP = 300, EV_CAP = 160, CARD_CAP = 30;
   const LSK = { pos: 'cs.od.pos.v1', ev: 'cs.od.ev.v1', kl: 'cs.od.kl1.' };
   const MODES = {
@@ -626,6 +628,13 @@
     savePos();
     if (OD.onOpen) OD.onOpen(p);
   }
+  /* 事件流：開單／平倉各自寫一筆扁平紀錄（存在 localStorage，重新整理還在） */
+  function pushEv(e) {
+    e.det = e.det || Date.now();
+    ST.ev.unshift(e);
+    if (ST.ev.length > EV_CAP) ST.ev.length = EV_CAP;
+    saveEv();
+  }
   function closePos(p, ts, px, why) {
     const dir = p.side === 'long' ? 1 : -1;
     p.exitTs = ts; p.exitPx = px; p.why = why; p.new = false;
@@ -790,7 +799,7 @@
   }
   function renderHead() {
     const n = ST.uniList.length, done = ST.prog.done, ago = ST.lastMeta ? Math.round((Date.now() - ST.lastMeta) / 1000) + ' 秒前' : '尚未取得';
-    const uniTxt = { all: '≥$3M', active: '≥$20M', major: '≥$200M', small: '$3M~$50M' }[ST.uni];
+    const uniTxt = { all: '≥$100K', active: '≥$20M', major: '≥$200M', small: '$100K~$50M' }[ST.uni];
     U.text('#odMeta', '宇宙 ' + n + ' 檔（' + uniTxt + '）· K 線 ' + done + '／' + n + ' · 報價 ' + ago
       + (OD.net.fail ? ' · 失敗 ' + OD.net.fail + ' 次' : ''));
     const live = numList().filter(p => p.exitTs === null).length;
