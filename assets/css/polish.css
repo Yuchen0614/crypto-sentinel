@@ -178,12 +178,14 @@ th.ta-c, td.ta-c, .ta-c { text-align: center }
   flex: 0 0 auto;
 }
 
-/* ── 即時流水線的時間欄：欄寬要放得下 8 字元的等寬時間戳 ──────────────
-   實測 11px 等寬字的 "07:46:01" 需要 53px，但清算流是 46px（字被擠出格線
-   壓到「多殺／空軋」欄）、巨鯨列表是 52px（差 1px）。
-   四個頁面的即時流水都用同一組欄寬：時間 58px，與鏈上頁既有的 58px 一致。 */
-.tape-head, .trow { grid-template-columns: 58px 34px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) }
-.lrow { grid-template-columns: 58px 40px minmax(0, 1fr) minmax(0, 1fr) }
+/* ── 即時流水線的欄寬：時間與價格都要放得下 8 字元 ────────────────────
+   實測 11px 等寬字 "07:46:01" 與 "77,070.6" 各需要 53px。
+   原本時間欄是 46px（清算流）／52px（巨鯨列表）→ 字被擠出格線壓到下一個欄位；
+   而把價格欄寫成 1fr 又會在右欄最窄的 1221~1360px 這一帶被壓到 46px（同樣疊字）。
+   所以：時間與方向給固定寬，價格欄的權重調高（1.18），其餘兩欄平均分掉剩下來的。
+   三欄版面右欄約 296px 時實測 54 + 30 + 55 + 47 + 47，全部放得下。 */
+.tape-head, .trow { grid-template-columns: 54px 30px minmax(0, 1.18fr) minmax(0, 1fr) minmax(0, 1fr) }
+.lrow { grid-template-columns: 54px 30px minmax(0, 1fr) minmax(0, 1fr) }
 .trow .t, .lrow .t, .ctrow .t, .hle .t { white-space: nowrap; font-variant-numeric: tabular-nums }
 
 /* ── Sticky 表頭：四頁同一套（底色、毛玻璃、底部髮絲線）────────────── */
