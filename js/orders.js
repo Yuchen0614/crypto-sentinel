@@ -1025,6 +1025,7 @@
     lv.push('<div class="od-cur" style="left:' + X(cur) + '%"><i></i><span>' + U.px(cur) + '</span></div>');
     const ind = p.ind || {};
     const kv = [
+      ['訊號那根收盤', p.barPx === undefined ? '—' : U.px(p.barPx) + '（' + tsFull(p.entryTs - TF_MS[p.tf]) + '）'],
       ['ATR14', U.px(ind.atr)], ['1R 距離', pc1(p.rPct)], ['1R 金額', '$' + (NOTIONAL * p.rPct).toFixed(2)],
       ['RSI14', ind.rsi === undefined || ind.rsi === null ? '—' : ind.rsi.toFixed(1)],
       ['MACD 線', ind.macd === undefined || ind.macd === null ? '—' : U.px(ind.macd)],

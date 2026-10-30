@@ -172,7 +172,8 @@ body {
 .od-cell.cur b { color: var(--p-ax) }
 
 /* ══ 價位階梯 ══════════════════════════════════════════════ */
-.od-lv { position: relative; height: 40px; margin: 11px 6px 2px }
+/* 左右各留 16px：止損／TP4 的刻度與標籤是以中心點對齊，沒留邊會被切掉（版面稽核會抓到溢出） */
+.od-lv { position: relative; height: 40px; margin: 11px 6px 2px; padding-left: 16px; padding-right: 16px }
 .od-lv .trk {
   position: absolute; left: 0; right: 0; top: 20px; height: 4px; border-radius: 3px;
   background: linear-gradient(90deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .1));
@@ -291,19 +292,24 @@ table.rp.od-tbl thead th.od-th-s { cursor: pointer }
    窄螢幕（<1120px）事件流不是消失，而是移到控制列正下方（DOM 順序）。
    ══════════════════════════════════════════════════════════════ */
 
-/* ══ 外層：兩欄 grid（左欄捲動、右欄 sticky 固定）═══════════ */
+/* ══ 外層：兩欄 flex（左欄自己捲、右欄 sticky 固定）═════════
+   註：原本用 grid + grid-row:1/-1 讓事件流跨列，結果那條「跨列項」把第 1 列
+   撐成 852px（等於事件流高度），控制列被拉伸、其餘面板全被推到螢幕外。
+   改成 flex 兩欄 + 左欄自帶捲動容器，版面就不會互相拉扯。 */
 .rp-page.od-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 328px;
-  grid-auto-rows: min-content;
-  gap: 10px; align-content: start;
-  overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: row; align-items: stretch;
+  gap: 10px; overflow: hidden; overflow-x: hidden;
 }
-.od-page > * { grid-column: 1; min-width: 0 }
-.od-page > .od-bar { z-index: 8 }
-.od-page > .od-side {
-  grid-column: 2; grid-row: 1 / -1;
-  position: sticky; top: 0; align-self: start;
+.rp-page.od-page > .od-col {
+  flex: 1 1 auto; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: 10px; overflow-y: auto; overflow-x: hidden;
+}
+.rp-page.od-page > .od-col > * { flex: 0 0 auto }
+.rp-page.od-page > .od-col > .od-bar { z-index: 8 }
+.rp-page.od-page > .od-side {
+  flex: 0 0 328px; width: 328px; min-width: 0;
+  position: sticky; top: 0; align-self: flex-start;
   display: flex; flex-direction: column;
   max-height: calc(100vh - 128px); overflow: hidden; padding: 0;
 }
@@ -430,9 +436,14 @@ table.rp.od-tbl thead th[data-sk], table.rp.od-ptbl thead th[data-sk] { cursor: 
 
 /* ══ 響應式：窄螢幕事件流移到上下（不消失）════════════════ */
 @media (max-width: 1120px) {
-  .rp-page.od-page { grid-template-columns: minmax(0, 1fr) }
-  .od-page > .od-side { grid-column: 1; grid-row: auto; position: static; max-height: none }
-  .od-page > .od-side .od-events { max-height: 42vh; flex: 0 1 auto }
+  /* 窄螢幕：整頁一起捲，事件流移到控制列上方（不消失、不必長捲） */
+  .rp-page.od-page { flex-direction: column; overflow-y: auto; overflow-x: hidden }
+  .rp-page.od-page > .od-col { flex: 0 0 auto; overflow: visible; overflow-x: hidden }
+  .rp-page.od-page > .od-side {
+    order: -1; flex: 0 0 auto; width: 100%; position: static;
+    max-height: none; align-self: auto;
+  }
+  .rp-page.od-page > .od-side .od-events { max-height: 40vh; flex: 0 1 auto }
   .od-shead, .od-srow { grid-template-columns: minmax(118px, 1fr) 42px 46px 46px 48px 48px 62px minmax(60px, 1fr); gap: 7px }
 }
 @media (max-width: 860px) {

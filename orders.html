@@ -40,69 +40,208 @@
   <b>每筆固定 $100 艙位</b>、吃單 0.045%／邊已扣；公開 API 有速率限制，K 線要慢慢補齊（控制列顯示進度）。
 </div>
 
-<!-- ── 主體：左＝資訊流（上到下），右＝即時事件流 ─────────── -->
+<!-- ── 主體：左＝資訊流（上到下）、右＝即時事件流 ─────────── -->
 <main class="rp-page od-page" id="odRoot">
 
-  <!-- ══ 控制列（sticky）══ -->
-  <section class="panel od-bar" id="odBar">
-    <div class="od-row">
-      <div class="od-grp">
-        <label>時間框</label>
-        <div class="seg seg-sm" id="odTf" title="訊號用哪個週期的 K 線判定。1m 最即時也最吵、1h 最慢；切換後 K 線會重新補齊">
-          <button data-v="1m">1m</button>
-          <button data-v="5m" class="on">5m</button>
-          <button data-v="15m">15m</button>
-          <button data-v="1h">1h</button>
-        </div>
-      </div>
-      <div class="od-grp">
-        <label>風控模式</label>
-        <div class="seg seg-sm" id="odMode" title="止損幾倍 ATR、TP 掛在幾 R；下方參數列會同步顯示實際數字">
-          <button data-v="agg">積極</button>
-          <button data-v="std" class="on">標準</button>
-          <button data-v="wide">寬鬆</button>
-        </div>
-      </div>
-      <div class="od-grp">
-        <label>方向</label>
-        <div class="seg seg-sm" id="odSide" title="15 個策略全部支援雙向；這裡只是過濾要看哪一種方向的艙位">
-          <button data-v="both" class="on">雙向</button>
-          <button data-v="long">只做多</button>
-          <button data-v="short">只做空</button>
-        </div>
-      </div>
-      <div class="od-grp">
-        <label>幣種宇宙</label>
-        <div class="seg seg-sm" id="odUni" title="依 24 小時名目成交額篩選（實測全部永續 235 檔、≥$100K 有 171 檔）；「中小型與迷因」是 10 萬～5,000 萬美元、成交額由小到大">
-          <button data-v="all" class="on">全部 ≥$100K</button>
-          <button data-v="active">活躍 ≥$20M</button>
-          <button data-v="major">主流 ≥$200M</button>
-          <button data-v="small">中小型與迷因</button>
-        </div>
-      </div>
-    </div>
-    <div class="od-row">
-      <input type="search" id="odQ" placeholder="搜尋幣種…（按 / 跳到這裡）" spellcheck="false" autocomplete="off" title="同時過濾「艙位細項」與「全部幣種掃描表」">
-      <label class="chk" title="只留還沒被止損／TP4／逾時平掉的艙位"><input type="checkbox" id="odOpenOnly"> 只顯示未平倉</label>
-      <button class="ghost" id="odRescan" title="立刻重掃一輪：忽略 K 線快取的時間限制，重新抓取目前宇宙">重新掃描</button>
-      <span class="sp"></span>
-      <div class="od-prog" title="宇宙內已取得 K 線的幣種進度">
-        <i id="odProgBar"></i>
-        <span id="odProgTxt">K 線 0／0</span>
-      </div>
-      <span class="mini" id="odUniMeta">宇宙 0 檔</span>
-    </div>
-    <div class="od-params" id="odParams">
-      <span>每筆艙位 <b>$100</b></span>
-      <span>止損 <b id="odpSl">1.5×ATR14</b></span>
-      <span>TP1～TP4 <b id="odpTp">1／2／3／4R</b></span>
-      <span>吃單手續費 <b>0.045%／邊</b>（來回已扣）</span>
-      <span class="sp"></span>
-      <span class="mini" id="odpRule">用最新一根已收完的 5m K 線判定 · 觸發時間＝該根收完的那一刻</span>
-    </div>
-  </section>
+  <div class="od-col" id="odCol">
 
-  <!-- ══ 側邊：即時開單／平倉事件流（寬螢幕固定在右側）══ -->
+    <!-- ══ 控制列（sticky）══ -->
+    <section class="panel od-bar" id="odBar">
+      <div class="od-row">
+        <div class="od-grp">
+          <label>時間框</label>
+          <div class="seg seg-sm" id="odTf" title="訊號用哪個週期的 K 線判定。1m 最即時也最吵、1h 最慢；切換後 K 線會重新補齊">
+            <button data-v="1m">1m</button>
+            <button data-v="5m" class="on">5m</button>
+            <button data-v="15m">15m</button>
+            <button data-v="1h">1h</button>
+          </div>
+        </div>
+        <div class="od-grp">
+          <label>風控模式</label>
+          <div class="seg seg-sm" id="odMode" title="止損幾倍 ATR、TP 掛在幾 R；下方參數列會同步顯示實際數字（新開的艙位才適用）">
+            <button data-v="agg">積極</button>
+            <button data-v="std" class="on">標準</button>
+            <button data-v="wide">寬鬆</button>
+          </div>
+        </div>
+        <div class="od-grp">
+          <label>方向</label>
+          <div class="seg seg-sm" id="odSide" title="15 個策略全部支援雙向；這裡只是過濾要看哪一種方向的艙位與事件">
+            <button data-v="both" class="on">雙向</button>
+            <button data-v="long">只做多</button>
+            <button data-v="short">只做空</button>
+          </div>
+        </div>
+        <div class="od-grp">
+          <label>幣種宇宙</label>
+          <div class="seg seg-sm" id="odUni" title="依 24 小時名目成交額篩選（實測全部永續 235 檔、≥$100K 有 171 檔）；「中小型與迷因」是 10 萬～5,000 萬美元、成交額由小到大">
+            <button data-v="all" class="on">全部 ≥$100K</button>
+            <button data-v="active">活躍 ≥$20M</button>
+            <button data-v="major">主流 ≥$200M</button>
+            <button data-v="small">中小型與迷因</button>
+          </div>
+        </div>
+      </div>
+      <div class="od-row">
+        <input type="search" id="odQ" placeholder="搜尋幣種…（按 / 跳到這裡）" spellcheck="false" autocomplete="off" title="同時過濾「艙位細項」與「全部幣種掃描表」">
+        <label class="chk" title="只留還沒被止損／TP4／逾時平掉的艙位（只影響列表，統計仍然算全部艙位）"><input type="checkbox" id="odOpenOnly"> 只顯示未平倉</label>
+        <button class="ghost" id="odRescan" title="立刻重掃一輪：忽略 K 線快取的時間限制，重新抓取目前宇宙">重新掃描</button>
+        <span class="sp"></span>
+        <div class="od-prog" title="宇宙內已取得 K 線的幣種進度">
+          <i id="odProgBar"></i>
+          <span id="odProgTxt">K 線 0／0</span>
+        </div>
+        <span class="mini" id="odUniMeta">宇宙 0 檔</span>
+      </div>
+      <div class="od-params" id="odParams">
+        <span>每筆艙位 <b>$100</b></span>
+        <span>止損 <b id="odpSl">1.5×ATR14</b></span>
+        <span>TP1～TP4 <b id="odpTp">1／2／3／4R</b></span>
+        <span>吃單手續費 <b>0.045%／邊</b>（來回已扣）</span>
+        <span class="sp"></span>
+        <span class="mini" id="odpRule">用最新一根已收完的 5m K 線判定 · 觸發時間＝該根收完的那一刻</span>
+      </div>
+    </section>
+
+    <!-- ══ a. 全策略綜合營利＋累計損益曲線 ══ -->
+    <section class="panel" id="odKpiPanel">
+      <div class="panel-head">
+        <h2><i class="ic ic-smart"></i>全策略綜合營利</h2>
+        <span class="mini" id="odAggMeta">—</span>
+        <span class="mini" style="margin-left:auto" title="每筆固定 $100 艙位（不加槓桿）、吃單 0.045%／邊已扣；只算這台機器本次工作階段產生的艙位，樣本很小">$100 艙位口徑 · 僅本次工作階段</span>
+      </div>
+      <div class="od-kpis" id="odKpis"></div>
+      <div class="od-chart" title="累計已實現損益（折線，$100 艙位口徑）依平倉時間累積；藍色虛線＝進行中艙位的未實現合計">
+        <canvas id="odEq"></canvas>
+        <div class="od-chartLegend" id="odEqLegend">累計已實現損益 —</div>
+      </div>
+    </section>
+
+    <!-- ══ b. 各策略盈利狀況（點一列展開艙位細項）══ -->
+    <section class="panel" id="odStratPanel">
+      <div class="panel-head">
+        <h2><i class="ic ic-brain"></i>各策略盈利狀況</h2>
+        <span class="mini" id="odStMeta">—</span>
+        <span class="mini" style="margin-left:auto">點一列展開該策略的艙位細項 · 迷你走勢＝該策略累計損益</span>
+      </div>
+      <div class="od-stratpick">
+        <span class="lb">啟用策略</span>
+        <div class="picks" id="odStratPick"></div>
+        <span class="sp"></span>
+        <button class="ghost" id="odPickAll" title="15 個策略全部啟用">全選</button>
+        <button class="ghost" id="odPickNone" title="全部停用（只留畫面上的既有艙位）">全不選</button>
+      </div>
+      <div class="od-shead" id="odStHead">
+        <span>策略</span><span class="nn">訊號</span><span class="nn">進行中</span><span class="nn">已平倉</span><span class="nn">勝率</span><span class="nn">總R</span><span class="nn">損益$</span><span>累計損益</span>
+      </div>
+      <div class="od-stratrows" id="odStratRows">
+        <div class="empty" style="padding:12px">等待掃描…</div>
+      </div>
+    </section>
+
+    <!-- ══ c. 艙位細項（逐筆）══ -->
+    <section class="panel" id="odPosPanel">
+      <div class="panel-head">
+        <h2><i class="ic ic-pos"></i>艙位細項</h2>
+        <span class="count" id="odPosCount">0</span>
+        <span class="mini" id="odPosMeta">—</span>
+        <span class="mini" style="margin-left:auto">未實現 R／$ 用現價即時算 · 點欄位標題排序</span>
+      </div>
+      <div class="rp-tw rp-tw-full">
+        <table class="rp od-ptbl" id="odPosTbl">
+          <thead>
+            <tr>
+              <th data-sk="ts">開倉時間</th>
+              <th data-sk="coin">幣種</th>
+              <th data-sk="side">方向</th>
+              <th data-sk="strat">策略</th>
+              <th class="ta-r" data-sk="entryPx">開倉價</th>
+              <th class="ta-r" data-sk="sl">止損</th>
+              <th class="ta-r" data-sk="tp1">TP1</th>
+              <th class="ta-r" data-sk="tp2">TP2</th>
+              <th class="ta-r" data-sk="tp3">TP3</th>
+              <th class="ta-r" data-sk="tp4">TP4</th>
+              <th class="ta-r" data-sk="curPx">現價</th>
+              <th class="ta-r" data-sk="rNow">未實現R</th>
+              <th class="ta-r" data-sk="usdNow">未實現$</th>
+              <th data-sk="state">狀態</th>
+              <th class="ta-r" data-sk="exitPx">平倉價</th>
+              <th data-sk="exitTs">平倉時間</th>
+            </tr>
+          </thead>
+          <tbody id="odPosBody">
+            <tr><td colspan="16"><div class="empty" style="padding:12px">正在建立幣種宇宙與補齊 K 線…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ 報單卡（價位階梯視覺）══ -->
+    <section class="panel" id="odCardPanel">
+      <div class="panel-head">
+        <h2><i class="ic ic-scan"></i>最新報單</h2>
+        <span class="count" id="odSigCount">0</span>
+        <span class="mini" id="odSigMeta">—</span>
+        <span class="mini" style="margin-left:auto" title="開倉價是觸發當下的標記價（參考價），不是成交價；點卡片展開完整依據與指標數值">點卡片展開依據 · 新報單左側有色條與 NEW</span>
+      </div>
+      <div class="od-cards" id="odCards">
+        <div class="empty" style="padding:14px">正在建立幣種宇宙與補齊 K 線…</div>
+      </div>
+    </section>
+
+    <!-- ══ 全部幣種掃描表 ══ -->
+    <section class="panel" id="odTblPanel">
+      <div class="panel-head">
+        <h2><i class="ic ic-book"></i>全部幣種掃描表</h2>
+        <span class="count" id="odTblCount">0</span>
+        <span class="mini" id="odTblMeta">—</span>
+        <span class="mini" style="margin-left:auto">各策略目前偏向 · 搜尋在控制列</span>
+      </div>
+      <div class="rp-tw rp-tw-full">
+        <table class="rp od-tbl" id="odTbl">
+          <thead>
+            <tr>
+              <th class="od-th-s" data-sk="coin">幣種</th>
+              <th class="ta-r" data-sk="px">現價</th>
+              <th class="ta-r" data-sk="chg">24h 漲跌</th>
+              <th class="ta-r" data-sk="vol">24h 成交額</th>
+              <th class="ta-r" data-sk="funding">資金費率</th>
+              <th class="rp-c" data-sk="brk">突破</th>
+              <th class="rp-c" data-sk="ma2060">均線</th>
+              <th class="rp-c" data-sk="rsi_pb">RSI回檔</th>
+              <th class="rp-c" data-sk="macd_hist">柱狀</th>
+              <th class="rp-c" data-sk="macd_zero">零軸</th>
+              <th class="rp-c" data-sk="macd_ema200">訊號線</th>
+              <th class="rp-c" data-sk="macd_div">背離</th>
+              <th class="rp-c" data-sk="boll">布林</th>
+              <th class="rp-c" data-sk="donchian">唐奇安</th>
+              <th class="rp-c" data-sk="ema821">EMA8/21</th>
+              <th class="rp-c" data-sk="vwap">VWAP</th>
+              <th class="rp-c" data-sk="atr_ch">ATR通道</th>
+              <th class="rp-c" data-sk="vol_brk">量價</th>
+              <th class="rp-c" data-sk="rsi_div">RSI背離</th>
+              <th class="rp-c" data-sk="funding_rev">資金費反轉</th>
+              <th class="ta-r" data-sk="last">最新訊號</th>
+            </tr>
+          </thead>
+          <tbody id="odTbody">
+            <tr><td colspan="21"><div class="empty" style="padding:12px">正在讀取幣種宇宙…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ 說明（兩行，細節放 title）══ -->
+    <section class="panel od-note" id="odRuleMeta">
+      <b>規則：</b>15 個策略全部雙向、以最新一根已收完的 K 線判定，開倉價＝觸發當下的標記價（參考價）。
+      <b>出場：</b>TP1 觸及止損移開倉價、TP2 移 TP1、TP3 移 TP2、TP4 直接出場，逾時以最後收盤價平倉（同一根先算止損）。
+      <b>限制：</b>只產生訊號、不下單；不含資金費率與滑價；每筆固定 $100 艙位、吃單 0.045%／邊已扣；樣本僅本次工作階段。
+    </section>
+
+  </div><!-- /.od-col -->
+
+  <!-- ══ d. 側邊：即時開單／平倉事件流 ══ -->
   <aside class="panel od-side" id="odSide">
     <div class="panel-head">
       <h2><i class="ic ic-whale"></i>即時事件流</h2>
@@ -113,140 +252,6 @@
       <div class="empty" style="padding:12px">等待第一批 K 線…</div>
     </div>
   </aside>
-
-  <!-- ══ a. 全策略綜合營利＋累計損益曲線 ══ -->
-  <section class="panel" id="odKpiPanel">
-    <div class="panel-head">
-      <h2><i class="ic ic-smart"></i>全策略綜合營利</h2>
-      <span class="mini" id="odAggMeta">—</span>
-      <span class="mini" style="margin-left:auto" title="每筆固定 $100 艙位（不加槓桿）、吃單 0.045%／邊已扣；只算這台機器本次工作階段產生的艙位，樣本很小">$100 艙位口徑 · 僅本次工作階段</span>
-    </div>
-    <div class="od-kpis" id="odKpis"></div>
-    <div class="od-chart" title="累計已實現損益（$100 艙位口徑），依平倉時間累積；進行中的艙位另以虛線標出未實現合計">
-      <canvas id="odEq"></canvas>
-      <div class="od-chartLegend" id="odEqLegend">累計已實現損益 · 目前 <b id="odEqNow">$0.00</b></div>
-    </div>
-  </section>
-
-  <!-- ══ b. 各策略盈利狀況（點一列展開艙位細項）══ -->
-  <section class="panel" id="odStratPanel">
-    <div class="panel-head">
-      <h2><i class="ic ic-brain"></i>各策略盈利狀況</h2>
-      <span class="mini" id="odStMeta">—</span>
-      <span class="mini" style="margin-left:auto">點一列展開該策略的艙位細項 · 迷你走勢＝該策略累計損益</span>
-    </div>
-    <div class="od-stratpick">
-      <span class="lb">啟用策略</span>
-      <div class="picks" id="odStratPick"></div>
-      <span class="sp"></span>
-      <button class="ghost" id="odPickAll" title="15 個策略全部啟用">全選</button>
-      <button class="ghost" id="odPickNone" title="全部停用（只留畫面上的既有艙位）">全不選</button>
-    </div>
-    <div class="od-shead" id="odStHead">
-      <span>策略</span><span class="nn">訊號</span><span class="nn">進行中</span><span class="nn">已平倉</span><span class="nn">勝率</span><span class="nn">總R</span><span class="nn">損益$</span><span>累計損益</span>
-    </div>
-    <div class="od-stratrows" id="odStratRows">
-      <div class="empty" style="padding:12px">等待掃描…</div>
-    </div>
-  </section>
-
-  <!-- ══ c. 艙位細項（逐筆）══ -->
-  <section class="panel" id="odPosPanel">
-    <div class="panel-head">
-      <h2><i class="ic ic-pos"></i>艙位細項</h2>
-      <span class="count" id="odPosCount">0</span>
-      <span class="mini" id="odPosMeta">—</span>
-      <span class="mini" style="margin-left:auto">未實現 R／$ 用現價即時算 · 點欄位標題排序</span>
-    </div>
-    <div class="rp-tw rp-tw-full">
-      <table class="rp od-ptbl" id="odPosTbl">
-        <thead>
-          <tr>
-            <th data-sk="ts">開倉時間</th>
-            <th data-sk="coin">幣種</th>
-            <th data-sk="side">方向</th>
-            <th data-sk="strat">策略</th>
-            <th class="ta-r" data-sk="entryPx">開倉價</th>
-            <th class="ta-r" data-sk="sl">止損</th>
-            <th class="ta-r" data-sk="tp1">TP1</th>
-            <th class="ta-r" data-sk="tp2">TP2</th>
-            <th class="ta-r" data-sk="tp3">TP3</th>
-            <th class="ta-r" data-sk="tp4">TP4</th>
-            <th class="ta-r" data-sk="curPx">現價</th>
-            <th class="ta-r" data-sk="rNow">未實現R</th>
-            <th class="ta-r" data-sk="usdNow">未實現$</th>
-            <th data-sk="state">狀態</th>
-            <th class="ta-r" data-sk="exitPx">平倉價</th>
-            <th data-sk="exitTs">平倉時間</th>
-          </tr>
-        </thead>
-        <tbody id="odPosBody">
-          <tr><td colspan="16"><div class="empty" style="padding:12px">正在建立幣種宇宙與補齊 K 線…</div></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ══ 報單卡（價位階梯視覺）══ -->
-  <section class="panel" id="odCardPanel">
-    <div class="panel-head">
-      <h2><i class="ic ic-scan"></i>最新報單</h2>
-      <span class="count" id="odSigCount">0</span>
-      <span class="mini" id="odSigMeta">—</span>
-      <span class="mini" style="margin-left:auto" title="開倉價是觸發當下的標記價（參考價），不是成交價；點卡片展開完整依據與指標數值">點卡片展開依據 · 新報單左側有色條與 NEW</span>
-    </div>
-    <div class="od-cards" id="odCards">
-      <div class="empty" style="padding:14px">正在建立幣種宇宙與補齊 K 線…</div>
-    </div>
-  </section>
-
-  <!-- ══ 全部幣種掃描表 ══ -->
-  <section class="panel" id="odTblPanel">
-    <div class="panel-head">
-      <h2><i class="ic ic-book"></i>全部幣種掃描表</h2>
-      <span class="count" id="odTblCount">0</span>
-      <span class="mini" id="odTblMeta">—</span>
-      <span class="mini" style="margin-left:auto">各策略目前偏向 · 搜尋在控制列</span>
-    </div>
-    <div class="rp-tw rp-tw-full">
-      <table class="rp od-tbl" id="odTbl">
-        <thead>
-          <tr>
-            <th class="od-th-s" data-sk="coin">幣種</th>
-            <th class="ta-r" data-sk="px">現價</th>
-            <th class="ta-r" data-sk="chg">24h 漲跌</th>
-            <th class="ta-r" data-sk="vol">24h 成交額</th>
-            <th class="ta-r" data-sk="funding">資金費率</th>
-            <th class="rp-c" data-sk="brk">突破</th>
-            <th class="rp-c" data-sk="ma2060">均線</th>
-            <th class="rp-c" data-sk="rsi_pb">RSI回檔</th>
-            <th class="rp-c" data-sk="macd_hist">柱狀</th>
-            <th class="rp-c" data-sk="macd_zero">零軸</th>
-            <th class="rp-c" data-sk="macd_ema200">訊號線</th>
-            <th class="rp-c" data-sk="macd_div">背離</th>
-            <th class="rp-c" data-sk="boll">布林</th>
-            <th class="rp-c" data-sk="donchian">唐奇安</th>
-            <th class="rp-c" data-sk="ema821">EMA8/21</th>
-            <th class="rp-c" data-sk="vwap">VWAP</th>
-            <th class="rp-c" data-sk="atr_ch">ATR通道</th>
-            <th class="rp-c" data-sk="vol_brk">量價</th>
-            <th class="rp-c" data-sk="rsi_div">RSI背離</th>
-            <th class="rp-c" data-sk="funding_rev">資金費反轉</th>
-            <th class="ta-r" data-sk="last">最新訊號</th>
-          </tr>
-        </thead>
-        <tbody id="odTbody">
-          <tr><td colspan="21"><div class="empty" style="padding:12px">正在讀取幣種宇宙…</div></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ══ 說明（壓到 2 行，細節放 title）══ -->
-  <section class="panel od-note" id="odRuleMeta">
-    <b>規則：</b>15 個策略全部雙向、以最新一根已收完的 K 線判定；開倉價＝觸發當下的標記價（參考價）。<b>出場：</b>同 trades.py 的階梯——TP1 觸及止損移開倉價、TP2 移 TP1、TP3 移 TP2、TP4 直接出場，逾時以最後收盤價平倉。
-    <b>限制：</b>只產生訊號、不下單；不含資金費率與滑價；每筆固定 $100 艙位、吃單 0.045%／邊已扣；樣本僅本次工作階段，不當勝率看。
-  </section>
 
 </main>
 
