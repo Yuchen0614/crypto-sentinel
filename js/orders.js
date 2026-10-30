@@ -411,14 +411,42 @@
   /* ══ localStorage（艙位／事件／K 線快取）══════════════ */
   function lsGet(k, def) { try { const v = JSON.parse(localStorage.getItem(k)); return (v === null || v === undefined) ? def : v; } catch (e) { return def; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  /* K 線快取的容量上限：宇宙上百檔時 localStorage 很快逼近 5MB 配額，
+     超過就把「最早寫入的」幾檔先丟掉；真的寫不進去就整個清掉再試，
+     免得連艙位紀錄都存不進去（那才是使用者真的會痛的地方）。 */
+  const KLCAP = 3.2e6, KLFLOOR = 2.7e6;
+  const klSize = new Map();                     // key → 位元組（Map 保有插入順序，最舊的在最前面）
+  function klTrack(key, bytes) { klSize.delete(key); klSize.set(key, bytes); }
+  function klPrune(force) {
+    let total = 0; klSize.forEach(v => { total += v; });
+    if (!force && total <= KLCAP) return;
+    for (const k of Array.from(klSize.keys())) {
+      if (total <= KLFLOOR) break;
+      total -= klSize.get(k) || 0; klSize.delete(k);
+      try { localStorage.removeItem(k); } catch (e) { }
+    }
+  }
+  function klScanSize() {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(LSK.kl) === 0) klSize.set(k, k.length + (localStorage.getItem(k) || '').length);
+      }
+    } catch (e) { }
+  }
   function loadStore() {
     const p = lsGet(LSK.pos, []);
     if (Array.isArray(p)) ST.pos = p.filter(x => x && x.coin && isFinite(x.entryPx) && isFinite(x.rAbs) && x.rAbs > 0);
     const e = lsGet(LSK.ev, []);
     if (Array.isArray(e)) ST.ev = e.filter(x => x && x.coin && x.kind);
     ST.pos.forEach(x => { if (x.new === undefined) x.new = false; });
+    klScanSize(); klPrune(false);
   }
-  function savePos() { lsSet(LSK.pos, ST.pos.slice(0, POS_CAP)); }
+  function savePos() {
+    if (lsSet(LSK.pos, ST.pos.slice(0, POS_CAP))) return;
+    klPrune(true);                              // 配額被 K 線快取吃光 → 清掉快取再存一次
+    lsSet(LSK.pos, ST.pos.slice(0, POS_CAP));
+  }
   function saveEv() { lsSet(LSK.ev, ST.ev.slice(0, EV_CAP)); }
   function klKey(coin, tf) { return LSK.kl + tf + '.' + coin; }
   function loadKL(coin, tf) {
@@ -432,16 +460,20 @@
   function saveKL(coin, tf, bars) {
     if (OD.net.klOff) return;
     const key = klKey(coin, tf), val = JSON.stringify({ t: Date.now(), b: bars });
-    try { localStorage.setItem(key, val); }
-    catch (e) {
+    try {
+      localStorage.setItem(key, val);
+      klTrack(key, key.length + val.length);
+      klPrune(false);
+    } catch (e) {
       // 配額滿了：清掉其他時間框的快取再試一次，還不行就整輪關掉快取（功能不受影響，只是每次重抓）
       try {
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const k = localStorage.key(i);
-          if (k && k.indexOf(LSK.kl) === 0 && k.indexOf(LSK.kl + tf + '.') !== 0) localStorage.removeItem(k);
+          if (k && k.indexOf(LSK.kl) === 0 && k.indexOf(LSK.kl + tf + '.') !== 0) { localStorage.removeItem(k); klSize.delete(k); }
         }
         localStorage.setItem(key, val);
-      } catch (e2) { OD.net.klOff = true; }
+        klTrack(key, key.length + val.length);
+      } catch (e2) { OD.net.klOff = true; klPrune(true); }
     }
   }
 
@@ -1231,6 +1263,7 @@
     seg('odTf', v => {
       if (v === ST.tf) return;
       ST.tf = v; ST.armFund = {};
+      for (const c in ST.ctxs) if (ST.ctxs[c].tf !== v) delete ST.ctxs[c];   // 換時間框就丟掉舊的指標包，別讓記憶體一直長
       KLQ.list = []; KLQ.i = 0; rebuildQueue(); pump(); renderAll();
     });
     seg('odMode', v => { ST.mode = v; renderAll(); });
