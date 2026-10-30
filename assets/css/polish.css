@@ -97,3 +97,152 @@ table.hl tbody td {
   .chart-stats b { font-size: 12px }
   .oc-note { max-height: 72px; overflow-y: auto; padding-block: 6px }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   2. 四頁介面一致性（看起來像同一個產品）
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── 面板標題：高度、字級、圖示對齊、右側 mini 色階四頁同一套 ────────── */
+.panel-head,
+.oc-col > .panel > .panel-head,
+.ps-block > .panel-head,
+.rp-page > .panel > .panel-head {
+  min-height: var(--cs-head-h);
+  padding: 7px var(--cs-pad-x) !important;
+  gap: 6px 10px;
+  align-items: center;
+}
+.panel-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px !important;
+  line-height: 1.25 !important;
+  letter-spacing: .045em !important;
+}
+.panel-head h2 i.ic { flex: 0 0 auto; align-self: center }
+.panel-head h2 .count { margin-left: 2px; line-height: 1.5 }
+/* 右側的補充說明：色階與字級一致，太長就省略而不是把標題列撐成兩行 */
+.panel-head .mini,
+.panel-head > .mini {
+  font-size: 10.5px !important;
+  color: var(--p-t3, #68717e) !important;
+  line-height: 1.35 !important;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* ── 間距節奏：面板內距／面板間距／KPI 磚間距共用同一組變數 ─────────────
+   四頁的容器 gap 本來就都是 10px（已實測），這裡把它固定下來，
+   未來調整只改 :root 一處。 */
+.layout,
+.oc-page,
+.sg-page,
+.rp-page,
+.entry-wrap,
+.row2,
+.ps-split,
+.ps-cols,
+.ps-cols > .ps-col,
+.oc-col { gap: var(--cs-gap) }
+.panel-foot { padding: 5px var(--cs-pad-x) }
+.kpi-grid .kpi,
+.kpi { padding: var(--cs-pad-y) var(--cs-pad-x) }
+
+/* ── 數字對齊：表格與數值欄一律等寬數字、靠右 ─────────────────────── */
+table { font-variant-numeric: tabular-nums }
+td, th { font-variant-numeric: tabular-nums }
+th.ta-r, td.ta-r, .ta-r { text-align: right }
+th.ta-c, td.ta-c, .ta-c { text-align: center }
+.kpi b, .stat b, .mini-stats b, .entry-stats b, .agg-stats b, .nf-item b,
+.liq-sum b, .ps-rhead, .rp-tk-sum, .sg-daily b, .hl td.ta-r, .book td.ta-r {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 掃描表篩選列：勾選框不要被搜尋框的最小寬度規則撐開 ────────────────
+   pro.css 的 `.scan-filter input { min-width: 80px }`（為了讓搜尋框縮得下去）
+   同時命中了「僅合約」的 checkbox，實測它被撐成 80px 寬，
+   把右邊的「★ 收藏」擠出面板外、被 .panel 的 overflow:hidden 裁掉。
+   勾選框另外給固定尺寸，篩選列本身允許換行當作保險（寧可換行也不要裁字）。 */
+.scan-filter { flex-wrap: wrap; row-gap: 6px }
+.scan-filter input[type="checkbox"],
+.scan-filter input[type="radio"],
+.rp-tools input[type="checkbox"],
+.rp-tools input[type="radio"] {
+  min-width: 0 !important;
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 auto;
+}
+
+/* ── 即時流水線的時間欄：欄寬要放得下 8 字元的等寬時間戳 ──────────────
+   實測 11px 等寬字的 "07:46:01" 需要 53px，但清算流是 46px（字被擠出格線
+   壓到「多殺／空軋」欄）、巨鯨列表是 52px（差 1px）。
+   四個頁面的即時流水都用同一組欄寬：時間 58px，與鏈上頁既有的 58px 一致。 */
+.tape-head, .trow { grid-template-columns: 58px 34px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) }
+.lrow { grid-template-columns: 58px 40px minmax(0, 1fr) minmax(0, 1fr) }
+.trow .t, .lrow .t, .ctrow .t, .hle .t { white-space: nowrap; font-variant-numeric: tabular-nums }
+
+/* ── Sticky 表頭：四頁同一套（底色、毛玻璃、底部髮絲線）────────────── */
+.scan thead th,
+table.hl thead th,
+table.sg thead th,
+.chain-tape-head,
+.tape-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: rgba(19, 23, 30, .95) !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--cs-line) !important;
+}
+
+/* ── 互動狀態：hover／鍵盤 focus-visible／active ─────────────────────
+   焦點框要看得出來但不明亮刺眼：2px 柔藍外框 + 極淡光暈。 */
+*:focus-visible {
+  outline: 2px solid rgba(122, 168, 255, .5) !important;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, .16) !important;
+  border-radius: var(--r6);
+}
+button, .seg button, .ghost, .chip-toggle, .entry-btn, .oc-back, .pagenav a { transition: color .15s, background-color .15s, border-color .15s, transform .09s }
+button:active, .seg button:active, .ghost:active, .chip-toggle:active,
+.entry-btn:active, .oc-back:active, .fstar:active, .fstar-big:active {
+  transform: translateY(.5px);
+}
+button:disabled, .ghost:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  transform: none;
+}
+/* 點得到但目前沒被選取的分段鈕／列：hover 一致 */
+.seg button:hover:not(.on) { color: var(--p-t1, #e6ebf2) }
+tbody tr:hover td { transition: background .12s }
+
+/* ── 空狀態與載入中文字：同一種寫法與色階 ─────────────────────────── */
+.empty {
+  color: var(--p-t4, #4c545f) !important;
+  font-size: 11.5px !important;
+  line-height: 1.5;
+  letter-spacing: .01em;
+  padding: 12px;
+  text-align: center;
+}
+td.empty, .rp-empty { line-height: 1.6 }
+
+/* ── 捲軸：四頁一致（細、深色、軌道透明）───────────────────────────── */
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .16) transparent }
+::-webkit-scrollbar { width: 9px; height: 9px }
+::-webkit-scrollbar-track { background: transparent }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .13) !important;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .22) !important; background-clip: padding-box }
+::-webkit-scrollbar-corner { background: transparent }

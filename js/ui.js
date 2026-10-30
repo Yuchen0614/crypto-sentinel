@@ -246,7 +246,10 @@
         er.textContent = m15.total > 0 ? `多 ${(m15.ratio * 100).toFixed(0)}% / 空 ${((1 - m15.ratio) * 100).toFixed(0)}%` : '—';
         er.style.color = m15.long > m15.short ? 'var(--rd)' : 'var(--gn)';
       }
-      U.text('#liqMeta', `Bybit 線性合約 · 涵蓋 ${S.stream.liqSymbols.length || 0} 個幣種 · 顯示 ≥$1K · 累計 ${this.count} 筆`);
+      /* 這串說明在窄欄位會被省略（標題列固定單行），完整內容放 title */
+      const liqMeta = `Bybit 線性合約 · 涵蓋 ${S.stream.liqSymbols.length || 0} 個幣種 · 顯示 ≥$1K · 累計 ${this.count} 筆`;
+      U.text('#liqMeta', liqMeta);
+      const lm = document.getElementById('liqMeta'); if (lm) lm.title = liqMeta;
     }
   };
 

@@ -21,7 +21,7 @@
   <div class="hud-brand">
     <h1><span class="dot"></span>CRYPTO SENTINEL <b>／ 大戶持倉方向 · 倉位異動</b></h1>
   </div>
-  <div class="oc-status" id="sgListMeta">大戶名單載入中…</div>
+  <div class="oc-status" id="sgListMeta">大戶名單正在取得…</div>
   <div class="oc-actions">
   <nav class="pagenav">
     <a href="index.html"><i class="nd"></i>行情總覽</a>
@@ -102,11 +102,11 @@
       </div>
       <div class="ps-box">
         <div class="ps-rhead">24 小時淨增倉排行 <span class="mini">條長以本清單最大值為基準</span><span class="mini" id="psChangeMeta">—</span></div>
-        <div class="ps-bars" id="psAddList"><div class="empty">載入中…</div></div>
+        <div class="ps-bars" id="psAddList"><div class="empty">正在取得…</div></div>
       </div>
       <div class="ps-box">
         <div class="ps-rhead">24 小時淨減倉排行 <span class="mini">錢包 × 幣種</span></div>
-        <div class="ps-bars" id="psCutList"><div class="empty">載入中…</div></div>
+        <div class="ps-bars" id="psCutList"><div class="empty">正在取得…</div></div>
       </div>
     </div>
   </section>
@@ -117,7 +117,7 @@
       <h2><i class="ic ic-book"></i>累積異動史（每日部位快照）</h2>
       <span class="mini" id="psHistMeta">—</span>
     </div>
-    <div class="ps-hist" id="psHist"><div class="empty">載入中…</div></div>
+    <div class="ps-hist" id="psHist"><div class="empty">正在取得…</div></div>
     <div class="ps-note">
       每個錢包的每日總淨名目（Σ多 − Σ空）由 <code>scripts/snapshot_positions.py</code> 寫入
       <code>data/positions-YYYY-MM-DD.json</code> 與 <code>data/positions-daily.json</code>，每天 00:10 UTC 由 GitHub Actions 執行一次。
@@ -191,7 +191,7 @@
               <th class="ta-r" title="這一回合從開倉到平倉經過多久">持有時間</th>
               <th title="成交＝以 Hyperliquid 成交配對出的批次（精確）；即時追蹤＝持倉快照差分（只有頁面開著時才觀察得到）">來源</th>
             </tr></thead>
-            <tbody id="psLedgerBody"><tr><td colspan="11" class="empty">載入中…</td></tr></tbody>
+            <tbody id="psLedgerBody"><tr><td colspan="11" class="empty">正在取得…</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -210,7 +210,7 @@
 
       <section class="panel ps-block">
         <div class="panel-head"><h2><i class="ic ic-book"></i>每日績效快照</h2><span class="mini" id="sgDailyMeta">由 GitHub Actions 每日寫入</span></div>
-        <div class="sg-daily" id="sgDaily"><div class="empty">載入中…</div></div>
+        <div class="sg-daily" id="sgDaily"><div class="empty">正在取得…</div></div>
         <div class="ps-note">
           近 24 小時每個大戶的已實現盈虧（<code>data/pnl-daily.json</code>，真實數字）。數字後的
           <span class="mini">*</span> 表示這次抓取失敗、沿用上一次快照，<span class="mini">⚠</span> 表示該期間成交超過單次上限、數字可能低估。

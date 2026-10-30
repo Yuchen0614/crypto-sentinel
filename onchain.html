@@ -21,7 +21,7 @@
   <div class="hud-brand">
     <h1><span class="dot"></span>CRYPTO SENTINEL <b>／ 鏈上聰明錢</b></h1>
   </div>
-  <div class="oc-status" id="ocListMeta">名單載入中…</div>
+  <div class="oc-status" id="ocListMeta">名單正在取得…</div>
   <div class="oc-actions">
   <nav class="pagenav">
     <a href="index.html"><i class="nd"></i>行情總覽</a>
@@ -131,7 +131,7 @@
   <section class="oc-col c">
     <div class="panel oc-bars">
       <div class="panel-head"><h2><i class="ic ic-book"></i>大戶最擁擠倉位</h2><span class="mini" id="coinMeta">依追蹤錢包的持倉名目排序</span></div>
-      <div class="chain-col"><div class="coin-bars" id="coinBars"><div class="empty">載入中…</div></div></div>
+      <div class="chain-col"><div class="coin-bars" id="coinBars"><div class="empty">正在取得…</div></div></div>
     </div>
 
     <div class="panel oc-wallets">
@@ -190,7 +190,7 @@
       if (!tk) return;
       const a = OC.hl.agg;
       const msgs = [
-        a && a.wallets ? '鏈上大戶 ' + a.wallets + ' 個錢包 / ' + a.positions + ' 個倉位：多 $' + U.money(a.longUsd) + '、空 $' + U.money(a.shortUsd) : '大戶持倉載入中…',
+        a && a.wallets ? '鏈上大戶 ' + a.wallets + ' 個錢包 / ' + a.positions + ' 個倉位：多 $' + U.money(a.longUsd) + '、空 $' + U.money(a.shortUsd) : '大戶持倉正在取得…',
         'DEX ' + OC.chainLabel(OC.dex.chain) + '：追蹤 ' + OC.dex.pools.length + ' 個熱門池 · 已收 ' + OC.dex.trades.length + ' 筆大額 · ' + OC.dex.wallets.size + ' 個錢包',
         '倉位變化事件 ' + OC.hl.events.length + ' 筆 · 錢包評分樣本 ' + OC.dex.wallets.size + ' 個'
       ];
