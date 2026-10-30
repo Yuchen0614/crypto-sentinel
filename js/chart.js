@@ -1052,6 +1052,7 @@
       }, 80);
       this._ro = new ResizeObserver(onResize);
       this._ro.observe(canvas.parentElement);
+      w.addEventListener('resize', onResize);          /* 與 RO 雙保險：同一輪的多次觸發由 80ms 去抖動收攏成一次重繪 */
     },
     fullscreen: false,
     /* 週期 → 毫秒（1M 用 30 天近似，僅用於把標記對到 K 線索引）*/
