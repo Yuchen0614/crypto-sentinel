@@ -1,0 +1,45 @@
+name: refresh oi snapshot
+
+# 每 15 分鐘抓一次全市場的未平倉（OI）與資金費率，累積成 data/oi/<date>.json。
+# 為什麼要留歷史：Hyperliquid 的 /info 沒有歷史 OI 端點，只能取當下值；
+# 前端「槓桿擁擠掃描（OI × 資費）」要靠這份歷史算 ΔOI(5m/1h/4h/24h) 與資費百分位。
+# 一天一檔、每筆只留必要欄位並用短鍵名，約 500~600 KB/日。
+# 累積幾週之後，同一份資料可再拿去做「OI 異動 × 資費極端」的回測。
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"     # 每 15 分鐘（UTC）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-oi
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 抓取 OI／資費快照（單一請求，內建節流與 429 退避）
+        run: python3 scripts/snapshot_oi.py
+
+      - name: 有變更才提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/oi/
+          if git diff --cached --quiet; then
+            echo "沒有變更，略過提交"
+          else
+            git commit -m "chore: snapshot oi/funding ($(date -u +%Y-%m-%dT%H:%MZ))"
+            git push
+          fi
