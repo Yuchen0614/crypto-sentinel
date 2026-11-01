@@ -62,6 +62,7 @@
   const OI_HIGH = 75;             // 「OI 在高位」＝ 近 24h 百分位 ≥ 75%（前 25%）
   const DELEV = -15;              // 規則 4：ΔOI(24h) ≤ −15%
   const MIN_SAMPLES = 12;         // 算百分位至少要 12 個樣本，否則回 null
+  const FUND_DISTINCT = 5;        // 資費樣本至少要有 5 個不同數值才算百分位（見 pctile 的說明）
   const BARS = 20;                // 突破判定用「最近 20 個觀測點」（歷史 15 分粒度 ≈ 5 小時）
 
   /* ══ 狀態 ══════════════════════════════════════════════ */
@@ -106,17 +107,27 @@
     return r;
   }
 
-  /* 百分位：回傳「這個值在樣本裡排第幾百分位」（0~100）；樣本太少回 null */
-  function pctile(arr, v, minN) {
-    const need = minN || MIN_SAMPLES;
-    let n = 0, c = 0;
+  /* 百分位：回傳「這個值在樣本裡排第幾百分位」（0~100）。
+     兩個防呆（都會誠實回 null 而不是給一個看起來很極端的假數字）：
+       1. 樣本數 < minN（預設 12）→ 不算。
+       2. 不同數值的個數 < minDistinct → 不算。
+          資金費率有一大票幣長期停在 Hyperliquid 的基準值 0.0000125，
+          樣本全部相同時「百分位 = 100%」在數學上成立、在交易上毫無意義，
+          會讓規則 2／3 對幾十檔幣同時亂發訊號。
+     回傳 {v, n, nd}：v 百分位、n 樣本數、nd 不同數值個數。 */
+  function pctile(arr, v, minN, minDistinct) {
+    const need = minN || MIN_SAMPLES, needD = minDistinct || 1;
+    let n = 0, c = 0, nd = 0;
+    const seen = needD > 1 ? Object.create(null) : null;
     for (let i = 0; i < arr.length; i++) {
       const x = arr[i];
       if (x === null || x === undefined || !isFinite(x)) continue;
       n++; if (x <= v) c++;
+      if (seen) { const k = '' + x; if (!seen[k]) { seen[k] = 1; nd++; } }
     }
     if (n < need) return null;
-    return c / n * 100;
+    if (seen && nd < needD) return null;
+    return { v: c / n * 100, n: n, nd: seen ? nd : null };
   }
 
   /* ══ 歷史：data/oi/<date>.json ═════════════════════════
@@ -257,7 +268,11 @@
     const i = lastLE(s.t, need);
     if (i < 0) return null;                                  // 沒有夠舊的點
     const span = nowT - s.t[i];
-    if (span < ms * 0.75) return null;                       // 差超過 25% 就當作沒有這個窗口
+    /* 窗口必須「真的存在」：太短（樣本還不到窗口）不算，
+       太長（最近的點比窗口舊太多）也不算 —— 否則會拿 53 分鐘前的樣本
+       冒充「ΔOI 5m」，數字看起來有值卻是錯的窗口。 */
+    if (span < ms * 0.75) return null;
+    if (span > ms * 1.6 + 60e3) return null;
     const a = s[field][i], b = s[field][last];
     if (a === null || b === null || !isFinite(a) || !isFinite(b) || a <= 0) return null;
     return { v: (b / a - 1) * 100, a: a, b: b, mins: span / 60000, n: last - i + 1 };
@@ -276,16 +291,40 @@
   C.dOI = (coin, ms) => change(coin, ms, 'o');
   C.dPx = (coin, ms) => change(coin, ms, 'p');
 
-  /* 資費百分位：現在的費率在最近 24 小時（或現有樣本）裡排第幾百分位 */
+  /* 四象限要用的窗口：優先用完整 1 小時；剛開頁、歷史還沒累積到 1 小時時，
+     退而用「目前真的存在的最長窗口」（30 分 → 15 分 → 10 分 → 5 分 → 3 分），
+     並且明白標示這是短窗暫代。寧可誠實縮窗，也不要整個面板卡在「資料不足」。 */
+  const QWINS = [3600e3, 1800e3, 900e3, 600e3, 300e3, 180e3];
+  function quadWin(coin) {
+    for (let i = 0; i < QWINS.length; i++) {
+      const ms = QWINS[i];
+      const o = C.dOI(coin, ms), p = C.dPx(coin, ms);
+      if (o && p) {
+        return { o: o, p: p, ms: ms, short: ms < 3600e3,
+          tag: ms >= 3600e3 ? '1h' : (ms % 3600e3 === 0 ? (ms / 3600e3) + 'h' : (ms / 60000) + ' 分') };
+      }
+    }
+    return null;
+  }
+  C.quadWin = quadWin;
+
+  /* 資費百分位：現在的費率在最近 24 小時（或現有樣本）裡排第幾百分位。
+     「哪一邊擁擠」一律看費率的正負號（正＝多方付錢＝多頭擁擠），
+     百分位只用來判斷「這個讀數對這檔幣來說算不算極端」——
+     兩者分開，才不會出現「負費率卻被百分位 97% 判成多頭擁擠」的相反方向。 */
   C.fundPct = function (coin) {
     const w = window24(coin);
     if (!w || w.n < MIN_SAMPLES) return null;
     const q = st.uni[coin];
     if (!q || q.fd === null) return null;
     const arr = w.s.f.slice(w.a);
-    const v = pctile(arr, q.fd);
-    if (v === null) return null;
-    return { v: v, n: arr.filter(x => x !== null && isFinite(x)).length, spanH: (w.nowT - w.from) / 3600e3 };
+    const p = pctile(arr, q.fd, MIN_SAMPLES, FUND_DISTINCT);
+    if (p === null) return null;
+    return {
+      v: p.v, n: p.n, nd: p.nd, spanH: (w.nowT - w.from) / 3600e3,
+      longPays: q.fd > 0,                                   // 正費率：多方付錢給空方
+      extreme: (p.v >= FUND_HI || p.v <= FUND_LO)
+    };
   };
 
   /* OI 高位判定：現在的美元 OI 在最近 24 小時裡排第幾百分位 */
@@ -295,9 +334,9 @@
     const q = st.uni[coin];
     if (!q || q.oiu === null) return null;
     const arr = w.s.o.slice(w.a);
-    const v = pctile(arr, q.oiu);
-    if (v === null) return null;
-    return { v: v, n: arr.filter(x => x !== null && isFinite(x)).length, spanH: (w.nowT - w.from) / 3600e3 };
+    const p = pctile(arr, q.oiu, MIN_SAMPLES, 4);
+    if (p === null) return null;
+    return { v: p.v, n: p.n, nd: p.nd, spanH: (w.nowT - w.from) / 3600e3 };
   };
 
   /* 迷你走勢用的資料點（最近 N 筆美元 OI，最少 3 筆才畫） */
@@ -475,7 +514,10 @@
     const br = (rg && isFinite(q.px)) ? {
       hi: rg.hi, lo: rg.lo, hours: rg.hours, up: q.px > rg.hi, dn: q.px < rg.lo
     } : null;
-    const quad = C.quadrant(d1h, p1h);
+    /* 四象限用的窗口：1 小時優先；歷史還沒累積到 1 小時時，
+       退到「目前真的存在的最長窗口」並明白標示是短窗暫代。 */
+    const qw = quadWin(coin);
+    const quad = qw ? C.quadrant(qw.o, qw.p) : QUAD.na;
     const full = (s && s.t.length >= 3) ? (s.t[s.t.length - 1] - s.t[0]) / 60000 : 0;
     const oiuPrev = (d1h && d1h.a) ? d1h.a : null;
 
@@ -483,7 +525,8 @@
     const sig = [];
     const pxTxt = U.px(q.px);
     const oiTxt = (a, b) => 'OI ' + U.usd(a) + '→' + U.usd(b);
-    const fundTxt = fp ? ('資費 ' + (q.fd * 100).toFixed(5) + '%/hr（近 24h 百分位 ' + fp.v.toFixed(0) + '%）') : null;
+    const fundTxt = fp ? ('資費 ' + (q.fd * 100).toFixed(5) + '%/hr（' + (fp.longPays ? '多方付錢' : '空方付錢') +
+      '，近 24h 百分位 ' + fp.v.toFixed(0) + '%、樣本 ' + fp.n + '／' + fp.nd + ' 個相異值）') : null;
 
     /* 1. OI 暴增突破：ΔOI(1h) ≥ +8% 且標記價突破近 5 小時高／低 */
     if (d1h && d1h.v >= OI_SURGE && br && (br.up || br.dn)) {
@@ -494,22 +537,23 @@
              U.px(up ? br.hi : br.lo) });
     }
 
-    /* 2. 軋空／軋多：資費極端 ＋ OI 在高位 ＋ 價格已經開始往被擠壓的方向突破 */
-    if (fp && op && op.v >= OI_HIGH && (fp.v <= FUND_LO || fp.v >= FUND_HI) && br && (br.up || br.dn)) {
-      const squeezeLong = fp.v <= FUND_LO;              // 空方付錢 → 軋空
+    /* 2. 軋空／軋多：資費極端 ＋ OI 在高位 ＋ 價格已經往「被擠壓那一邊認輸」的方向突破
+          方向一律由費率正負號決定：正＝多方付錢（多頭擁擠）→ 軋多偏空；負＝空方付錢 → 軋空偏多。 */
+    if (fp && fp.extreme && op && op.v >= OI_HIGH && br && (br.up || br.dn)) {
+      const squeezeLong = !fp.longPays;                 // 空方付錢 → 軋空（偏多）
       if ((squeezeLong && br.up) || (!squeezeLong && br.dn)) {
         sig.push({ id: 2, name: squeezeLong ? '軋空啟動' : '軋多啟動', dir: squeezeLong ? 'long' : 'short', boost: 15,
-          why: fundTxt + '（' + (squeezeLong ? '空方付錢、空頭擁擠' : '多方付錢、多頭擁擠') + '）· OI 百分位 ' +
-               op.v.toFixed(0) + '%（近 24h 高位）· 標記價 ' + pxTxt + ' 已' + (br.up ? '上破 ' + U.px(br.hi) : '下破 ' + U.px(br.lo)) });
+          why: fundTxt + '· OI 百分位 ' + op.v.toFixed(0) + '%（近 24h 高位）· 標記價 ' + pxTxt +
+               ' 已' + (br.up ? '上破 ' + U.px(br.hi) : '下破 ' + U.px(br.lo)) + '：' +
+               (squeezeLong ? '空方認輸回補，偏多' : '多方認輸出場，偏空') });
       }
     }
 
-    /* 3. 資費極端反轉：資費百分位 ≥95% 或 ≤5% ＋ OI 高 → 反向（門檻一律用相對百分位）*/
-    if (fp && op && op.v >= OI_HIGH && (fp.v <= FUND_LO || fp.v >= FUND_HI)) {
-      const crowdedLong = fp.v >= FUND_HI;
-      sig.push({ id: 3, name: '資費極端反轉', dir: crowdedLong ? 'short' : 'long', boost: 10,
+    /* 3. 資費極端反轉：資費百分位 ≥95% 或 ≤5% ＋ OI 高 → 反向（門檻一律用相對百分位，不寫死數值）*/
+    if (fp && fp.extreme && op && op.v >= OI_HIGH) {
+      sig.push({ id: 3, name: '資費極端反轉', dir: fp.longPays ? 'short' : 'long', boost: 10,
         why: fundTxt + '· OI 百分位 ' + op.v.toFixed(0) + '%（近 24h 高位）· ' +
-             (crowdedLong ? '多方擁擠且持續付費，反向偏空' : '空方擁擠且持續付費，反向偏多') });
+             (fp.longPays ? '多方擁擠且持續付費，反向偏空' : '空方擁擠且持續付費，反向偏多') });
     }
 
     /* 4. 去槓桿反轉：ΔOI(24h) ≤ −15% ＋ 價格急跌 */
@@ -532,19 +576,23 @@
       }
     }
 
-    /* ── 訊號強度（0~100）：OI 動能 45 ＋ 資費極端度 25 ＋ 價格動能 20 ＋ 象限 10 ── */
+    /* ── 訊號強度（0~100）：OI 動能 45 ＋ 資費極端度 25 ＋ 價格動能 20 ＋ 象限 10 ──
+       強度只用「真的 1 小時／4 小時」的窗口，短窗暫代不列入，避免把 5 分鐘的
+       小波動換算成看起來很強的分數。 */
     let base = 0;
     if (d1h) base += Math.min(45, Math.abs(d1h.v) / OI_SURGE * 45);
     if (fp) base += Math.min(25, Math.abs(fp.v - 50) / 50 * 25);
     if (p1h) base += Math.min(20, Math.abs(p1h.v) / 6 * 20);
-    if (quad.k !== 'flat' && quad.k !== 'na') base += 10;
+    if (qw && !qw.short && quad.k !== 'flat' && quad.k !== 'na') base += 10;
     const boost = sig.reduce((n, x) => Math.max(n, x.boost), 0);
     const strength = Math.round(Math.min(100, base + (sig.length ? boost * 0.6 : 0)));
 
     const main = sig.slice().sort((x, y) => y.boost - x.boost)[0] || null;
+    /* 短窗時給一個替代排序鍵：|ΔOI(win)|，讓候選清單至少照「動得最多的」排 */
+    const qwv = qw ? Math.abs(qw.o.v) : 0;
 
     return {
-      coin: coin, q: q, quad: quad, sig: sig, main: main, strength: strength,
+      coin: coin, q: q, quad: quad, sig: sig, main: main, strength: strength, qw: qw, qwv: qwv,
       d5: d5, d1h: d1h, d4h: d4h, d24h: d24h, p1h: p1h, fp: fp, op: op, br: br, rg: rg,
       oiu: q.oiu, oiuPrev: oiuPrev, chg: q.chg, vol: q.vol, px: q.px,
       small: (q.vol !== null && q.vol >= UNI_MIN && q.vol <= SMALL_MAX),
@@ -555,11 +603,17 @@
         a.push('ΔOI：5 分 ' + (d5 ? U.pct(d5.v, 2) : '—') + '、1 小時 ' + (d1h ? U.pct(d1h.v, 2) : '—') +
                '、4 小時 ' + (d4h ? U.pct(d4h.v, 2) : '—') + '、24 小時 ' + (d24h ? U.pct(d24h.v, 2) : '—'));
         if (d1h) a.push('OI 美元名目 ' + U.usd(d1h.a) + ' → ' + U.usd(d1h.b) + '（實際區間 ' + d1h.mins.toFixed(0) + ' 分）');
+        a.push('四象限窗口：' + (qw
+          ? (qw.short ? qw.tag + '（短窗暫代，1 小時窗口還在累積）' : '1 小時') +
+            '，ΔOI ' + U.pct(qw.o.v, 2) + '（' + U.usd(qw.o.a) + ' → ' + U.usd(qw.o.b) + '，實際區間 ' + qw.o.mins.toFixed(0) + ' 分）· Δ價 ' + U.pct(qw.p.v, 2)
+          : '兩邊都還算不出來（需要至少 3 分鐘以上的連續觀測）'));
         if (q.oiu !== null) a.push('現值 OI ' + U.usd(q.oiu) + (op ? '（近 24h 百分位 ' + op.v.toFixed(0) + '%，樣本 ' + op.n + '）' : '（近 24h 樣本不足，不給百分位）'));
-        if (fp) a.push('資費 ' + (q.fd * 100).toFixed(5) + '%/hr（近 24h 百分位 ' + fp.v.toFixed(0) + '%，樣本 ' + fp.n + '）');
-        else a.push('資費 ' + (q.fd !== null ? (q.fd * 100).toFixed(5) + '%/hr' : '—') + '（近 24h 樣本不足，不給百分位）');
+        if (fp) a.push('資費 ' + (q.fd * 100).toFixed(5) + '%/hr（' + (fp.longPays ? '多方付錢' : '空方付錢') +
+          '，近 24h 百分位 ' + fp.v.toFixed(0) + '%，樣本 ' + fp.n + '／' + fp.nd + ' 個相異值' + (fp.extreme ? '，屬極端' : '，不算極端') + '）');
+        else a.push('資費 ' + (q.fd !== null ? (q.fd * 100).toFixed(5) + '%/hr' : '—') +
+          '（近 24h 樣本不足 ' + MIN_SAMPLES + ' 個、或相異值不足 ' + FUND_DISTINCT + ' 個，不給百分位）');
         a.push('24h 價格 ' + (q.chg !== null ? U.pct(q.chg, 2) : '—') + (p1h ? '、1 小時 ' + U.pct(p1h.v, 2) : '、1 小時 —'));
-        a.push('象限：' + quad.t);
+        a.push('象限：' + quad.t + (qw && qw.short ? '（以 ' + qw.tag + ' 窗口判定）' : ''));
         if (sig.length) a.push('訊號：' + sig.map(x => '【' + x.name + '】' + x.why).join(' ／ '));
         else a.push('訊號：目前不符合五條規則中的任何一條（OI 暴增需 ΔOI(1h) ≥ +' + OI_SURGE + '%、資費極端需百分位 ≥' + FUND_HI + '% 或 ≤' + FUND_LO + '%）');
         return a.join(' · ');
@@ -577,7 +631,8 @@
       const a = C.analyse(coin);
       if (a) out.push(a);
     }
-    out.sort((x, y) => (y.strength - x.strength) || ((y.vol || 0) - (x.vol || 0)));
+    /* 預設排序：訊號強度 → 四象限動能 → 成交額（強度都是 0 時也不會變成隨機順序） */
+    out.sort((x, y) => (y.strength - x.strength) || (y.qwv - x.qwv) || ((y.vol || 0) - (x.vol || 0)));
     return out;
   };
 
@@ -585,7 +640,7 @@
      面板渲染（UI）
      ══════════════════════════════════════════════════════ */
   const $ = s => d.querySelector(s);
-  const ui = C.ui = { rows: [], list: [], filter: 'all', q: '', sort: null, drawn: 0, lastRender: 0 };
+  const ui = C.ui = { rows: [], list: [], filter: 'all', q: '', sort: null, evid: null, drawn: 0, lastRender: 0 };
 
   function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
@@ -615,21 +670,33 @@
   /* ── 暴漲暴跌候選（面板最上面，依訊號強度排序）────────── */
   function renderCands() {
     const host = $('#cwCands'); if (!host) return;
-    const cands = ui.list.filter(a => a.sig.length).slice(0, 12);
+    /* 候選一律照「訊號強度」排，不受表格的排序影響 */
+    const hits = ui.list.filter(a => a.sig.length).sort((x, y) => y.strength - x.strength);
+    /* 本輪沒有任何幣種命中規則時，改用「象限明確」的幣種照動能排出前幾名，
+       並明白寫出這是替代清單，而不是假裝有訊號。 */
+    const alt = !hits.length;
+    const cands = (alt
+      ? ui.list.filter(a => a.qw && a.quad.k !== 'flat' && a.quad.k !== 'na').sort((x, y) => y.qwv - x.qwv)
+      : hits).slice(0, 12);
+    const nD1 = ui.list.filter(a => a.d1h).length;
+    const nQ = ui.list.filter(a => a.qw).length;
+    const head = '<div class="cw-chead"><b>暴漲暴跌候選</b>' +
+      '<span class="mini">' + (alt
+        ? '本輪沒有幣種命中五條規則；下面列出四象限較明確、OI 動得最多的 ' + cands.length + ' 檔（依 |ΔOI| 排序）'
+        : '命中訊號 ' + hits.length + ' 檔，依訊號強度排序，只列前 ' + Math.min(12, hits.length) + ' 檔') +
+      ' · 能量到完整 1 小時窗口的有 ' + nD1 + ' 檔、能判四象限的有 ' + nQ + ' 檔</span></div>';
     if (!cands.length) {
-      const per = (() => {
-        const t = ui.list.filter(a => a.d1h).length;
-        return t ? t : 0;
-      })();
-      host.innerHTML = '<div class="empty">目前沒有符合門檻的訊號。<br>' +
-        'ΔOI(1h) 門檻 +' + OI_SURGE + '%；資費極端為「近 24h 百分位 ≥' + FUND_HI + '% 或 ≤' + FUND_LO + '%」＋ OI 在近 24h 高位；' +
-        '本輪能量到 ΔOI(1h) 的幣有 ' + per + ' 檔。</div>';
+      host.innerHTML = head + '<div class="empty">目前連四象限都還判不出來。<br>' +
+        'ΔOI 需要至少 3 分鐘的連續觀測（歷史 15 分粒度或本頁每 20 秒累積），' +
+        '本頁開啟時間越久、或 GitHub Actions 的 data/oi 累積越多格，可判定的幣種就越多。</div>';
+      ui.drawn = 0;
       return;
     }
-    let h = '';
+    let h = head;
     for (const a of cands) {
-      const dirTxt = { long: '偏多', short: '偏空', rev: '反轉', avoid: '勿追', warn: '警示', none: '觀察' }[a.main ? a.main.dir : 'none'] || '觀察';
-      const side = a.main ? a.main.dir : 'none';
+      /* 有命中規則就用規則的方向；替代清單（還沒命中規則）用四象限的方向 */
+      const side = a.main ? a.main.dir : a.quad.dir;
+      const dirTxt = { long: '偏多', short: '偏空', rev: '反轉', avoid: '勿追', warn: '警示', none: '觀察' }[side] || '觀察';
       h += '<div class="cw-c ' + (a.main && a.main.warn ? 'warn ' : '') + 'side-' + side + '" data-c="' + esc(a.coin) + '" tabindex="0" title="' + esc(a.evid) + '">' +
         '<div class="r1">' +
         '<b class="nm">' + esc(a.coin) + (a.small ? '<i class="cw-small" title="小幣：24h 成交額 $100K~$50M">小</i>' : '') + '</b>' +
@@ -639,8 +706,16 @@
         '<span class="st" title="訊號強度：OI 動能 45 ＋ 資費極端度 25 ＋ 價格動能 20 ＋ 象限 10，再加上命中的規則權重">強度 ' + a.strength + '</span>' +
         '</div>' +
         '<div class="r2">' +
-        '<span class="cell"><label>ΔOI 1h</label>' + dbar(a.d1h ? a.d1h.v : null, 20, 'ΔOI(1h) 相對 20% 為滿格') +
-        '<b class="' + cls(a.d1h) + '">' + pctCell(a.d1h) + '</b></span>' +
+        (function () {
+          /* 有真的 1 小時窗口就顯示 1h；否則顯示四象限暫代用的短窗並標明 */
+          const c = a.d1h || (a.qw && a.qw.short ? a.qw.o : null);
+          const lb = a.d1h ? 'ΔOI 1h' : (a.qw ? 'ΔOI ' + a.qw.tag + '*' : 'ΔOI 1h');
+          const tip = a.d1h
+            ? 'ΔOI(1h)（相對 20% 為滿格）'
+            : (a.qw ? 'ΔOI(' + a.qw.tag + ') 短窗暫代：1 小時窗口還在累積（相對 20% 為滿格）' : '還沒有可用的 ΔOI 窗口');
+          return '<span class="cell"><label' + (a.d1h ? '' : ' class="short"') + ' title="' + esc(tip) + '">' + lb + '</label>' +
+            dbar(c ? c.v : null, 20, tip) + '<b class="' + cls(c) + '">' + pctCell(c) + '</b></span>';
+        })() +
         '<span class="cell"><label>資費</label>' + dbar(a.q.fd !== null ? a.q.fd * 100 : null, 0.02, '資金費率，±0.02%/hr 為滿格') +
         '<b class="' + (a.q.fd > 0 ? 'up' : (a.q.fd < 0 ? 'down' : 'flat')) + '">' +
         (a.q.fd === null ? '—' : (a.q.fd > 0 ? '+' : '') + (a.q.fd * 100).toFixed(5) + '%') + '</b>' +
@@ -672,8 +747,7 @@
     { k: 'd5', t: 'ΔOI 5m', a: 'ta-r', tip: '5 分鐘的美元名目 OI 變化率' },
     { k: 'd1h', t: 'ΔOI 1h', a: 'ta-r', tip: '1 小時的美元名目 OI 變化率 —— 四象限與規則 1／5 都用這個窗口' },
     { k: 'd4h', t: 'ΔOI 4h', a: 'ta-r', tip: '4 小時的美元名目 OI 變化率' },
-    { k: 'fd', t: '資費', a: 'ta-r', tip: '資金費率（每小時）。正＝多方付錢給空方（多頭擁擠），負＝空方付錢（空頭擁擠）' },
-    { k: 'fp', t: '百分位', a: 'ta-r', tip: '現在的資費在近 24 小時樣本中的百分位。≥95% 或 ≤5% 才算「極端」，不寫死絕對數值' },
+    { k: 'fd', t: '資費（百分位）', a: 'ta-r', tip: '資金費率（每小時）＋ 現值在近 24 小時樣本中的百分位。正＝多方付錢給空方（多頭擁擠），負＝空方付錢（空頭擁擠）；百分位 ≥95% 或 ≤5% 才算「極端」，不寫死絕對數值' },
     { k: 'quad', t: '象限', a: 'ta-l', tip: 'OI 變化 × 價格變化：新多進場／新空進場／空頭回補／去槓桿（雜訊範圍內歸為盤整）' },
     { k: 'small', t: '小幣', a: 'ta-c', tip: '小幣 ＝ 24h 成交額 $100K ~ $50M' }
   ];
@@ -704,7 +778,6 @@
         '<td class="ta-r ' + cls(a.d1h) + '">' + pctCell(a.d1h) + dbar(a.d1h ? a.d1h.v : null, 20) + '</td>' +
         '<td class="ta-r ' + cls(a.d4h) + '">' + pctCell(a.d4h) + dbar(a.d4h ? a.d4h.v : null, 40) + '</td>' +
         '<td class="ta-r">' + fundCell(a) + '</td>' +
-        '<td class="ta-r">' + (a.fp ? a.fp.v.toFixed(0) + '%' : '—') + '</td>' +
         '<td class="ta-l">' + quadChip(a.quad) + '</td>' +
         '<td class="ta-c">' + (a.small ? '<span class="cw-small">小</span>' : '<span class="mini">—</span>') + '</td>' +
         '</tr>';
@@ -719,7 +792,8 @@
     for (const x of list) {
       if (x.d1h && x.oiu !== null) { sumOi += (x.oiu - (x.oiuPrev || 0)); nOi++; }
       if (x.fp && x.op) {
-        const sc = Math.abs(x.fp.v - 50) * (x.op.v / 100);
+        /* 最擁擠＝資費讀數對這檔幣來說越極端、且 OI 越靠高位；非極端的只給一半權重 */
+        const sc = Math.abs(x.fp.v - 50) * (x.op.v / 100) * (x.fp.extreme ? 1 : 0.5);
         if (sc > crowdScore) { crowdScore = sc; crowd = x; }
       }
     }
@@ -741,12 +815,17 @@
       ? ('每 ' + everySec + ' 秒更新一次' + (d.hidden ? '（分頁在背景，降頻不停更）' : ''))
       : '尚未取得資料');
 
-    /* 「已累積多久」必須誠實寫出來 */
-    const hist = a.histOk
-      ? ('歷史 ' + fmtMin(a.histSpanMin) + '（' + a.histPoints + ' 個 15 分時間點）')
-      : ('歷史：尚無 data/oi 檔案' + (a.histErr ? '（' + a.histErr + '）' : ''));
-    U.text('#cwWatch', 'ΔOI 觀測：' + hist + ' ＋ 本次開頁即時 ' + fmtMin(a.liveMin));
-    U.text('#cwMeta', hist + ' · 本次開頁 +' + fmtMin(a.liveMin));
+    /* 「已累積多久」必須誠實寫出來：逐字說明歷史有幾格、區間多長、本頁累積多久 */
+    const hist = !a.histOk
+      ? ('歷史：尚無 data/oi 檔案' + (a.histErr ? '（' + a.histErr + '）' : ''))
+      : (a.histPoints >= 2
+        ? ('歷史 ' + fmtMin(a.histSpanMin) + '（' + a.histPoints + ' 個 15 分時間點）')
+        : ('歷史僅 ' + a.histPoints + ' 個 15 分時間點（尚在累積）'));
+    const nD1 = list.filter(x => x.d1h).length, nQ = list.filter(x => x.qw).length;
+    U.text('#cwWatch', 'ΔOI 觀測：' + hist + ' ＋ 本次開頁即時 ' + fmtMin(a.liveMin) +
+      ' ｜ 1 小時窗口 ' + nD1 + ' 檔、四象限可判 ' + nQ + ' 檔');
+    U.text('#cwMeta', hist + ' · 本次開頁 +' + fmtMin(a.liveMin) +
+      (nQ > nD1 ? '（四象限暫以短窗判定）' : ''));
   }
 
   function fmtMin(m) {
@@ -760,27 +839,21 @@
     const nc = ui.list.filter(x => x.sig.length).length;
     const el = $('#cwFoot');
     if (!el) return;
+    const wq = ui.list.filter(x => x.qw);
+    const full1h = wq.filter(x => !x.qw.short).length;
+    const longest = wq.reduce((m, x) => Math.max(m, x.qw.ms), 0);
+    const tag = longest >= 3600e3 ? '1 小時' : (longest ? (longest / 60000) + ' 分鐘' : '—');
     el.innerHTML =
       '<span>規則：① ΔOI(1h) ≥ +' + OI_SURGE + '% 且突破近 ' + (BAR_MS / 3600e3) + ' 小時高低 ② 資費百分位極端 ＋ OI 近 24h 高位 ＋ 價格已突破 ③ 資費百分位 ≥' + FUND_HI + '% 或 ≤' + FUND_LO +
       '% ＋ OI 高 → 反向 ④ ΔOI(24h) ≤ ' + DELEV + '% ＋ 急跌 ⑤ 突破高低但 ΔOI 為負 → 禁止追價</span>' +
+      '<span>四象限窗口：' + (wq.length
+        ? (full1h ? '已用完整 1 小時（' + full1h + ' 檔）' : '目前以短窗暫代（最長 ' + tag + '）：1 小時窗口會隨本頁開啟時間與 data/oi 累積自動升級')
+        : '尚無可用窗口') + '</span>' +
       '<span>訊號 ' + nc + ' / ' + ui.list.length + ' 檔 · 請求 ' + C.net.polls + ' 次、失敗 ' + C.net.fails + ' 次' + extra + '</span>' +
       '<span>歷史由 GitHub Actions 每 15 分鐘蒐集，累積幾週後才有回測價值；OI 一律為美元名目（openInterest × markPx）</span>';
   }
 
-  function render() {
-    if (!$('#cwPanel')) return;
-    ui.rows = C.scanAll();
-    ui.list = filterList(ui.rows);
-    U.text('#cwCount', String(ui.list.length));
-    renderHead();
-    renderKpi();
-    renderCands();
-    renderTable();
-    renderFoot();
-    ui.lastRender = Date.now();
-  }
-
-  /* 篩選（④ 會接上分段鈕；這裡先把邏輯定好，預設＝全部） */
+  /* ── 篩選、搜尋、排序 ───────────────────────────────── */
   function filterList(rows) {
     const q = (ui.q || '').toUpperCase();
     return rows.filter(a => {
@@ -791,7 +864,145 @@
       return true;
     });
   }
+
+  /* 排序鍵：一律回傳可以直接比大小的值；缺值用 -Infinity 沉到底部，不假裝是 0 */
+  function sortVal(a, k) {
+    switch (k) {
+      case 'coin': return a.coin;
+      case 'px': return isFinite(a.px) ? a.px : -Infinity;
+      case 'chg': return a.chg === null ? -Infinity : a.chg;
+      case 'vol': return a.vol === null ? -Infinity : a.vol;
+      case 'oiu': return a.oiu === null ? -Infinity : a.oiu;
+      case 'd5': return a.d5 ? a.d5.v : -Infinity;
+      case 'd1h': return a.d1h ? a.d1h.v : -Infinity;
+      case 'd4h': return a.d4h ? a.d4h.v : -Infinity;
+      case 'fd': return a.q.fd === null ? -Infinity : a.q.fd;
+      case 'fp': return a.fp ? a.fp.v : -Infinity;
+      case 'quad': return a.quad.t;
+      case 'small': return a.small ? 1 : 0;
+      default: return a.strength;
+    }
+  }
+
+  function sortList(rows) {
+    if (!ui.sort) return rows;                 // 預設：訊號強度（C.scanAll 已經排好）
+    const k = ui.sort.k, dir = ui.sort.dir < 0 ? -1 : 1;
+    const arr = rows.slice();
+    arr.sort((x, y) => {
+      const a = sortVal(x, k), b = sortVal(y, k);
+      if (typeof a === 'string' || typeof b === 'string') {
+        return dir * String(a).localeCompare(String(b));
+      }
+      if (a === b) return (y.strength - x.strength) || String(x.coin).localeCompare(String(y.coin));
+      return dir * (a < b ? -1 : 1);
+    });
+    return arr;
+  }
+
+  C.setFilter = function (f) { ui.filter = f || 'all'; rebuildView(); paint(); };
+  C.setQuery = function (q) { ui.q = q || ''; rebuildView(); paint(); };
+  C.toggleSort = function (k) {
+    if (!k) return;
+    if (ui.sort && ui.sort.k === k) ui.sort.dir = -ui.sort.dir;
+    else ui.sort = { k: k, dir: (k === 'coin' || k === 'quad') ? 1 : -1 };   // 數字欄預設由大到小
+    rebuildView(); paint();
+  };
+
+  function rebuildView() { ui.list = sortList(filterList(ui.rows)); }
+
+  function paint() {
+    U.text('#cwCount', String(ui.list.length));
+    renderHead();
+    renderKpi();
+    renderCands();
+    renderTable();
+    renderFoot();
+    ui.lastRender = Date.now();
+  }
+
+  function render() {
+    if (!$('#cwPanel')) return;
+    ui.rows = C.scanAll();
+    rebuildView();
+    paint();
+  }
   C.render = render;
+
+  /* ── 依據文字：點候選列或表格列就展開，把每個數字的來源寫清楚 ──── */
+  function fmtWindow(c, label) {
+    if (!c) return '<b>' + label + '</b> <span class="k">—（窗口資料不足 75%，不給值）</span>';
+    return '<b>' + label + ' ' + U.pct(c.v, 2) + '</b>' +
+      '<span class="k">（實際區間 ' + c.mins.toFixed(0) + ' 分、' + c.n + ' 個觀測點，' +
+      U.usd(c.a) + ' → ' + U.usd(c.b) + '）</span>';
+  }
+
+  function showEvid(coin) {
+    const box = $('#cwEvid'); if (!box) return;
+    if (ui.evid === coin) { ui.evid = null; box.hidden = true; return; }
+    const a = ui.rows.filter(x => x.coin === coin)[0];
+    if (!a) return;
+    ui.evid = coin;
+    const rows = [];
+    rows.push(fmtWindow(a.d5, 'ΔOI 5m'));
+    rows.push(fmtWindow(a.d1h, 'ΔOI 1h'));
+    rows.push(fmtWindow(a.d4h, 'ΔOI 4h'));
+    rows.push(fmtWindow(a.d24h, 'ΔOI 24h'));
+    rows.push('<b>OI 美元名目</b> <span class="k">' + (a.oiu === null ? '—' : U.usd(a.oiu)) + '</span>' +
+      (a.op ? '<span class="k"> · 近 24h 百分位 ' + a.op.v.toFixed(0) + '%（樣本 ' + a.op.n + '、涵蓋 ' + a.op.spanH.toFixed(1) + ' 小時）</span>'
+        : '<span class="k"> · 近 24h 樣本不足（需 ≥' + MIN_SAMPLES + ' 個），不給百分位</span>'));
+    rows.push('<b>資金費率</b> <span class="k">' + (a.q.fd === null ? '—' : (a.q.fd * 100).toFixed(5) + '%/hr') + '</span>' +
+      (a.fp ? '<span class="k"> · ' + (a.fp.longPays ? '多方付錢（多頭擁擠）' : '空方付錢（空頭擁擠）') +
+        ' · 近 24h 百分位 ' + a.fp.v.toFixed(0) + '%' + (a.fp.extreme ? '（極端）' : '（未達極端門檻 ' + FUND_HI + '%／' + FUND_LO + '%）') +
+        '（樣本 ' + a.fp.n + '／相異值 ' + a.fp.nd + '、涵蓋 ' + a.fp.spanH.toFixed(1) + ' 小時）</span>'
+        : '<span class="k"> · 近 24h 樣本不足 ' + MIN_SAMPLES + ' 個或相異值不足 ' + FUND_DISTINCT + ' 個，不給百分位</span>'));
+    rows.push('<b>價格</b> <span class="k">標記價 ' + U.px(a.px) + ' · 24h ' + (a.chg === null ? '—' : U.pct(a.chg, 2)) +
+      (a.p1h ? ' · 1 小時 ' + U.pct(a.p1h.v, 2) : '') + '</span>');
+    rows.push('<b>突破基準</b> <span class="k">' + (a.br
+      ? ('近 ' + a.br.hours.toFixed(1) + ' 小時 高 ' + U.px(a.br.hi) + ' / 低 ' + U.px(a.br.lo) + '（最近 15 分不列入基準）')
+      : '樣本不足 ' + MIN_SAMPLES + ' 個，不做突破判定') + '</span>');
+    rows.push('<b>四象限</b> <span class="k">' + a.quad.t + ' —— ' + a.quad.note + '</span>');
+    if (a.sig.length) {
+      for (const s of a.sig) rows.push('<b>訊號 · ' + esc(s.name) + '</b> <span class="k">' + esc(s.why) + '</span>');
+    } else {
+      rows.push('<b>訊號</b> <span class="k">目前不符合五條規則中的任何一條（OI 暴增需 ΔOI(1h) ≥ +' + OI_SURGE +
+        '%；資費極端需百分位 ≥' + FUND_HI + '% 或 ≤' + FUND_LO + '% 且 OI 在近 24h 高位）</span>');
+    }
+    box.innerHTML = '<div><b>' + esc(coin) + '</b> <span class="k">· 訊號強度 ' + a.strength +
+      ' · 24h 成交額 $' + U.money(a.vol) + (a.small ? ' · 小幣' : '') + '</span></div>' +
+      rows.map(r => '<div>' + r + '</div>').join('');
+    box.hidden = false;
+  }
+
+  /* ── 事件綁定（只有行情總覽有這些節點）───────────────── */
+  function wire() {
+    const panel = $('#cwPanel'); if (!panel || panel.__cwWired) return;
+    panel.__cwWired = true;
+
+    panel.addEventListener('click', e => {
+      const head = e.target.closest ? e.target.closest('th[data-k]') : null;
+      if (head) { C.toggleSort(head.getAttribute('data-k')); return; }
+      const row = e.target.closest ? e.target.closest('.cw-c, tbody tr[data-c]') : null;
+      if (row) showEvid(row.getAttribute('data-c'));
+    });
+    panel.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest ? e.target.closest('.cw-c') : null;
+      if (row) { e.preventDefault(); showEvid(row.getAttribute('data-c')); }
+    });
+
+    const seg = $('#cwFilter');
+    if (seg) seg.addEventListener('click', e => {
+      const b = e.target.closest ? e.target.closest('button') : null;
+      if (!b) return;
+      Array.prototype.forEach.call(seg.children, x => x.classList.toggle('on', x === b));
+      C.setFilter(b.getAttribute('data-f'));
+    });
+
+    const s = $('#cwSearch');
+    if (s) s.addEventListener('input', U.debounce(() => C.setQuery(s.value.trim()), 160));
+  }
+
+  C.wire = wire;
 
   /* 診斷（驗證用）：SENTINEL.crowd.status() */
   C.status = function () {
@@ -823,7 +1034,8 @@
       try { render(); } catch (e) { S.errors.push('crowd render: ' + (e && e.message)); }
     }
     S.on('crowd-update', redraw);
-    /* 資料每 20 秒更新一次就重畫；再補一個每分鐘的保底重畫，
+    wire();                       // 篩選鈕／搜尋／表頭排序／點列看依據文字
+    /* 資料每 20 秒更新一次就重畫；再補一個每 20 秒的保底重畫，
        讓「已累積 X 分鐘」「最新更新時間」這種會隨時間變的文字不會停住。 */
     setInterval(function () { if (!d.hidden && Date.now() - ui.lastRender > 20000) redraw(); }, 20000);
     C.start().then(redraw);

@@ -24,6 +24,10 @@
 /* ── 暴漲暴跌候選（面板最上面，最重要）────────────────────────────── */
 .cw-cands { display: flex; flex-direction: column; gap: 4px; padding: 8px 11px 10px; border-bottom: 1px solid var(--p-line) }
 .cw-cands > .empty { padding: 14px 8px; line-height: 1.65 }
+.cw-chead { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding-bottom: 3px }
+.cw-chead b { font-size: 11.5px; color: var(--p-t1); font-weight: 600 }
+.cw-chead .mini { color: var(--p-t3); font-size: 10.5px }
+.cw-c .cell label.short { color: var(--p-warn) }
 .cw-c {
   border: 1px solid var(--p-line); border-left: 2px solid var(--p-t4);
   border-radius: var(--r6); background: rgba(255, 255, 255, .022);
@@ -47,16 +51,18 @@
 .cw-c .r1 .cw-sig { font-size: 10.5px; color: #cfe0ff; background: var(--p-ax-soft); border-radius: var(--r999); padding: 1px 8px; white-space: nowrap }
 .cw-c .r1 .st { margin-left: auto; font-size: 10.5px; color: var(--p-t3); font-variant-numeric: tabular-nums; white-space: nowrap }
 
-.cw-c .r2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.05fr) minmax(0, .8fr) minmax(0, .85fr) 78px; gap: 6px 10px; margin-top: 4px; align-items: center }
-.cw-c .cell { display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap }
+/* 用 flex + 換行而不是 grid + display:none：
+   先前版本在 ≤1760px 把最後一格（迷你 OI 走勢）整格藏起來，
+   等於最窄的常用視窗看不到走勢圖。改成不夠寬就換行，什麼都不藏。 */
+.cw-c .r2 { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; align-items: center }
+.cw-c .cell { display: inline-flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap }
 .cw-c .cell label { font-size: 9.5px; color: var(--p-t3); letter-spacing: .04em; flex: 0 0 auto }
 .cw-c .cell b { font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--p-t1) }
 .cw-c .cell b.up { color: var(--p-up) } .cw-c .cell b.down { color: var(--p-dn) }
 .cw-c .cw-pct { font-style: normal; font-size: 10px; color: var(--p-t3); font-variant-numeric: tabular-nums }
 .cw-c .cw-spark { display: block; width: 78px; height: 18px }
-@media (max-width: 1760px) {
-  .cw-c .r2 { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.05fr) minmax(0, .8fr) minmax(0, .85fr) }
-  .cw-c .r2 .cell:last-child { display: none }
+@media (max-width: 1500px) {
+  .cw-c .cw-spark { width: 62px; height: 16px }
 }
 
 /* ── 小幣標記 ───────────────────────────────────────────────────────── */
@@ -104,8 +110,10 @@
 .cw-tools input[type="search"] { flex: 1 1 150px; min-width: 110px; max-width: 240px }
 .cw-tools .mini { flex: 0 0 auto; margin-left: auto; white-space: nowrap }
 
-.cw-tw { overflow-x: auto; overflow-y: visible; padding: 6px 0 2px; margin-top: 2px }
-table.cw-table { width: 100%; min-width: 1010px; border-collapse: separate; border-spacing: 0; font-size: 11.5px }
+/* 表格自己捲（表頭 sticky 以它為基準）：面板不會因為 130 幾列而長到 6000px，
+   欄位塞不下時橫向捲動，不是把欄位壓成 0。 */
+.cw-tw { overflow-x: auto; overflow-y: auto; max-height: 400px; padding: 6px 0 2px; margin-top: 2px }
+table.cw-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11.5px }
 table.cw-table thead th {
   position: sticky; top: 0; z-index: 3; white-space: nowrap; cursor: pointer;
   padding: 6px 8px; font-size: 10px; letter-spacing: .06em; font-weight: 500;
@@ -117,7 +125,7 @@ table.cw-table thead th:hover { color: var(--p-t1) }
 table.cw-table thead th.ta-l { text-align: left }
 table.cw-table thead th .ar { color: var(--p-ax); font-size: 9px; margin-left: 3px }
 table.cw-table tbody td {
-  padding: 5px 8px; white-space: nowrap; vertical-align: middle;
+  padding: 5px 7px; white-space: nowrap; vertical-align: middle;
   border-bottom: 1px solid var(--p-line); color: var(--p-t2);
 }
 table.cw-table tbody tr { cursor: pointer; transition: background 120ms }
@@ -126,23 +134,25 @@ table.cw-table tbody td:first-child { color: var(--p-t1); font-weight: 600 }
 table.cw-table tbody td.up { color: var(--p-up) }
 table.cw-table tbody td.down { color: var(--p-dn) }
 table.cw-table tbody td .mini { display: block; font-size: 9.5px; color: var(--p-t3) }
-table.cw-table tbody td .cw-dbar { display: inline-block; margin-left: 6px }
+/* 表格內的 ΔOI 橫條比候選列的短：欄位要留給數字，不然會把「象限」推到看不見 */
+table.cw-table tbody td .cw-dbar { width: 30px; margin-left: 5px }
 .cw-n { color: var(--p-t3) }
 .cw-tw td.empty, .cw-tw .empty { white-space: normal }
 
-/* 欄寬：只給「一定需要」的下限，其餘留給內容，避免出現被裁掉的半截數字 */
-table.cw-table thead th:nth-child(1) { min-width: 108px }
-table.cw-table thead th:nth-child(2) { min-width: 84px }
-table.cw-table thead th:nth-child(3) { min-width: 66px }
-table.cw-table thead th:nth-child(4) { min-width: 84px }
-table.cw-table thead th:nth-child(5) { min-width: 84px }
+/* 欄寬：只給「一定需要」的下限（11 欄，總和約 890px）。
+   面板常見寬度 920~1000px 可以直接全部看到，包含「象限」與「小幣」；
+   更窄時才由 .cw-tw 橫向捲動，而不是把欄位壓成 0。 */
+table.cw-table thead th:nth-child(1) { min-width: 100px }
+table.cw-table thead th:nth-child(2) { min-width: 78px }
+table.cw-table thead th:nth-child(3) { min-width: 60px }
+table.cw-table thead th:nth-child(4) { min-width: 76px }
+table.cw-table thead th:nth-child(5) { min-width: 76px }
 table.cw-table thead th:nth-child(6),
 table.cw-table thead th:nth-child(7),
-table.cw-table thead th:nth-child(8) { min-width: 118px }
+table.cw-table thead th:nth-child(8) { min-width: 86px }
 table.cw-table thead th:nth-child(9) { min-width: 96px }
-table.cw-table thead th:nth-child(10) { min-width: 62px }
-table.cw-table thead th:nth-child(11) { min-width: 92px }
-table.cw-table thead th:nth-child(12) { min-width: 52px }
+table.cw-table thead th:nth-child(10) { min-width: 96px }
+table.cw-table thead th:nth-child(11) { min-width: 46px }
 
 /* ── 面板底：規則／統計／資料來源（一行小字，不佔高度）────────────── */
 .crowd-panel > .panel-foot { flex-wrap: wrap; row-gap: 3px; line-height: 1.55 }

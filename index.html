@@ -241,12 +241,23 @@
         <div class="kpi"><label>最新更新</label><b id="cwKUpd">—</b><span class="mini" id="cwKUpdSub">—</span></div>
       </div>
       <div class="cw-cands" id="cwCands"><div class="empty">正在取得全市場的未平倉與資金費率…</div></div>
+      <div class="cw-tools">
+        <div class="seg" id="cwFilter" title="篩選掃描範圍：小幣＝24h 成交額 $100K~$50M；活躍＝≥$20M；只看有訊號＝命中五條規則之一">
+          <button data-f="all" class="on">全部</button>
+          <button data-f="small">小幣</button>
+          <button data-f="active">活躍</button>
+          <button data-f="sig">只看有訊號</button>
+        </div>
+        <input id="cwSearch" type="search" placeholder="搜尋幣種…" spellcheck="false" title="輸入幣種名稱即可過濾（例如 PEPE、WIF、k 開頭的 kPEPE）">
+        <span class="mini" id="cwWatch">ΔOI 觀測：—</span>
+      </div>
       <div class="cw-tw" id="cwTableWrap">
         <table class="cw-table">
           <thead><tr id="cwHead"></tr></thead>
           <tbody id="cwBody"></tbody>
         </table>
       </div>
+      <div class="cw-evid" id="cwEvid" hidden></div>
       <div class="panel-foot mini" id="cwFoot">—</div>
     </section>
     </section><!-- /col-b -->
