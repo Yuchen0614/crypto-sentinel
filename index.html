@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="assets/css/v3.css">
 <link rel="stylesheet" href="assets/css/pro.css">
 <link rel="stylesheet" href="assets/css/chart-tools.css">
+<!-- 槓桿擁擠掃描面板：插在 pro.css 之後、polish.css 之前，維持 polish 是最後一層的慣例 -->
+<link rel="stylesheet" href="assets/css/crowd.css">
 <link rel="stylesheet" href="assets/css/polish.css">
 </head>
 <body>
@@ -224,6 +226,29 @@
       </div>
       <div class="alert-list" id="alertList"><div class="empty">尚未偵測到異常事件 — 系統持續掃描中</div></div>
     </section>
+
+    <!-- 槓桿擁擠掃描（OI × 資費）：抓暴漲暴跌小幣的四象限掃描。
+         放在訂單簿／深度熱圖這一區（市場結構面板）之後，不佔用即時報單頁。 -->
+    <section class="panel crowd-panel" id="cwPanel">
+      <div class="panel-head">
+        <h2><i class="ic ic-crowd"></i>槓桿擁擠掃描<span class="count" id="cwCount">0</span></h2>
+        <span class="mini" id="cwMeta">OI × 資費 · 正在連線 Hyperliquid…</span>
+      </div>
+      <div class="kpi-grid cw-kpis">
+        <div class="kpi"><label>掃描幣種</label><b id="cwKCoins">—</b><span class="mini">24h 成交額 ≥ $100K</span></div>
+        <div class="kpi"><label>OI 淨變化</label><b id="cwKOi">—</b><span class="mini" id="cwKOiSub">Σ ΔOI(1h) 美元名目</span></div>
+        <div class="kpi"><label>最擁擠幣種</label><b id="cwKCrowd">—</b><span class="mini" id="cwKCrowdSub">資費百分位 × OI 高位</span></div>
+        <div class="kpi"><label>最新更新</label><b id="cwKUpd">—</b><span class="mini" id="cwKUpdSub">—</span></div>
+      </div>
+      <div class="cw-cands" id="cwCands"><div class="empty">正在取得全市場的未平倉與資金費率…</div></div>
+      <div class="cw-tw" id="cwTableWrap">
+        <table class="cw-table">
+          <thead><tr id="cwHead"></tr></thead>
+          <tbody id="cwBody"></tbody>
+        </table>
+      </div>
+      <div class="panel-foot mini" id="cwFoot">—</div>
+    </section>
     </section><!-- /col-b -->
 
     <!-- 右：聰明錢 / 巨鯨 / 持倉 -->
@@ -322,6 +347,7 @@
 <script src="js/fx.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/chainui.js"></script>
+<script src="js/crowd.js"></script>
 <script src="js/app.js"></script>
 <script>
 /* ── 回測報表入口卡：三個數字直接讀 data/*.json ───────────────

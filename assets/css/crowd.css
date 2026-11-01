@@ -1,0 +1,160 @@
+/* ══════════════════════════════════════════════════════════════════════
+   crowd.css —「槓桿擁擠掃描（OI × 資費）」面板
+   ──────────────────────────────────────────────────────────────────────
+   載入順序：插在 pro.css 之後、polish.css 之前（polish 維持最後一層）。
+   只服務 index.html 的 #crowdPanel，配色沿用 --p-* 變數與既有 class
+   （.panel / .kpi-grid / .kpi / .seg / .mini / .empty）。
+   原則：文字一律不被裁切 —— 窄的時候整張表橫向捲動，而不是把欄位壓成 0。
+   ══════════════════════════════════════════════════════════════════════ */
+
+.crowd-panel { display: flex; flex-direction: column; min-width: 0 }
+
+/* 標題列圖示（沿用 .ic 的 mask 機制） */
+.ic-crowd {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M3 20V4M3 20h18'/%3E%3Cpath d='M7 16V9M12 16V5M17 16v-5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M3 20V4M3 20h18'/%3E%3Cpath d='M7 16V9M12 16V5M17 16v-5'/%3E%3C/svg%3E")
+}
+
+/* ── 頂列 KPI ───────────────────────────────────────────────────────── */
+.cw-kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important }
+.cw-kpis .kpi { min-width: 0 }
+.cw-kpis .kpi b { overflow: hidden; text-overflow: ellipsis }
+.cw-kpis .kpi .mini { white-space: normal !important; line-height: 1.35 }
+
+/* ── 暴漲暴跌候選（面板最上面，最重要）────────────────────────────── */
+.cw-cands { display: flex; flex-direction: column; gap: 4px; padding: 8px 11px 10px; border-bottom: 1px solid var(--p-line) }
+.cw-cands > .empty { padding: 14px 8px; line-height: 1.65 }
+.cw-c {
+  border: 1px solid var(--p-line); border-left: 2px solid var(--p-t4);
+  border-radius: var(--r6); background: rgba(255, 255, 255, .022);
+  padding: 5px 9px 6px; cursor: pointer;
+  transition: background 140ms, border-color 140ms;
+}
+.cw-c:hover, .cw-c:focus-visible { background: rgba(255, 255, 255, .05); border-color: var(--p-line-2) }
+.cw-c.side-long { border-left-color: var(--p-up) }
+.cw-c.side-short { border-left-color: var(--p-dn) }
+.cw-c.side-rev { border-left-color: var(--p-warn) }
+.cw-c.side-avoid { border-left-color: #8a93a3 }
+.cw-c.warn { background: rgba(246, 70, 93, .07) }
+.cw-c.warn:hover { background: rgba(246, 70, 93, .12) }
+
+.cw-c .r1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0 }
+.cw-c .r1 .nm {
+  font-size: 12.5px; font-weight: 600; color: var(--p-t1); letter-spacing: .01em;
+  display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+}
+.cw-c .r1 .dir { font-size: 10.5px; color: var(--p-t2); white-space: nowrap }
+.cw-c .r1 .cw-sig { font-size: 10.5px; color: #cfe0ff; background: var(--p-ax-soft); border-radius: var(--r999); padding: 1px 8px; white-space: nowrap }
+.cw-c .r1 .st { margin-left: auto; font-size: 10.5px; color: var(--p-t3); font-variant-numeric: tabular-nums; white-space: nowrap }
+
+.cw-c .r2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.05fr) minmax(0, .8fr) minmax(0, .85fr) 78px; gap: 6px 10px; margin-top: 4px; align-items: center }
+.cw-c .cell { display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap }
+.cw-c .cell label { font-size: 9.5px; color: var(--p-t3); letter-spacing: .04em; flex: 0 0 auto }
+.cw-c .cell b { font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--p-t1) }
+.cw-c .cell b.up { color: var(--p-up) } .cw-c .cell b.down { color: var(--p-dn) }
+.cw-c .cw-pct { font-style: normal; font-size: 10px; color: var(--p-t3); font-variant-numeric: tabular-nums }
+.cw-c .cw-spark { display: block; width: 78px; height: 18px }
+@media (max-width: 1760px) {
+  .cw-c .r2 { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.05fr) minmax(0, .8fr) minmax(0, .85fr) }
+  .cw-c .r2 .cell:last-child { display: none }
+}
+
+/* ── 小幣標記 ───────────────────────────────────────────────────────── */
+.cw-small {
+  font-style: normal; font-size: 9.5px; line-height: 1.5; margin-left: 4px;
+  padding: 0 5px; border-radius: var(--r999);
+  color: #ffd9a0; background: rgba(245, 165, 36, .16);
+  border: 1px solid rgba(245, 165, 36, .35);
+}
+
+/* ── 四象限標籤 ─────────────────────────────────────────────────────── */
+.cw-q {
+  display: inline-block; font-size: 10.5px; line-height: 1.5; padding: 0 7px;
+  border-radius: var(--r999); border: 1px solid var(--p-line); white-space: nowrap;
+  color: var(--p-t2); background: rgba(255, 255, 255, .05);
+}
+.cw-q.q-nl { color: #7ff0c0; background: rgba(14, 203, 129, .14); border-color: rgba(14, 203, 129, .34) }
+.cw-q.q-ns { color: #ff9db0; background: rgba(246, 70, 93, .14); border-color: rgba(246, 70, 93, .34) }
+.cw-q.q-sc { color: #ffd9a0; background: rgba(245, 165, 36, .14); border-color: rgba(245, 165, 36, .34) }
+.cw-q.q-dl { color: #b6c4ff; background: rgba(91, 140, 255, .16); border-color: rgba(91, 140, 255, .36) }
+.cw-q.q-flat, .cw-q.q-na { color: var(--p-t3); background: rgba(255, 255, 255, .04) }
+
+/* ── 置中發散橫條：正=綠（往右）、負=紅（往左）────────────────────── */
+.cw-dbar {
+  position: relative; display: inline-block; width: 46px; height: 5px;
+  margin-left: 5px; vertical-align: middle; border-radius: 3px;
+  background: rgba(255, 255, 255, .07); flex: 0 0 auto;
+}
+.cw-dbar::before {
+  content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px;
+  background: rgba(255, 255, 255, .28);
+}
+.cw-dbar > i { position: absolute; top: 0; bottom: 0; border-radius: 3px }
+.cw-dbar > i.p { left: 50%; background: var(--p-up) }
+.cw-dbar > i.n { right: 50%; background: var(--p-dn) }
+.cw-dbar.empty { background: rgba(255, 255, 255, .035) }
+.cw-dbar.empty::before { opacity: .35 }
+
+/* ── 完整掃描表：包在橫向捲動容器內，欄位不被壓成 0 ────────────────── */
+.cw-tools {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 7px 11px 0; row-gap: 6px;
+}
+.cw-tools .seg { flex: 0 0 auto }
+.cw-tools input[type="search"] { flex: 1 1 150px; min-width: 110px; max-width: 240px }
+.cw-tools .mini { flex: 0 0 auto; margin-left: auto; white-space: nowrap }
+
+.cw-tw { overflow-x: auto; overflow-y: visible; padding: 6px 0 2px; margin-top: 2px }
+table.cw-table { width: 100%; min-width: 1010px; border-collapse: separate; border-spacing: 0; font-size: 11.5px }
+table.cw-table thead th {
+  position: sticky; top: 0; z-index: 3; white-space: nowrap; cursor: pointer;
+  padding: 6px 8px; font-size: 10px; letter-spacing: .06em; font-weight: 500;
+  color: var(--p-t3); text-transform: uppercase;
+  background: rgba(19, 23, 30, .95);
+  border-bottom: 1px solid var(--p-line-2);
+}
+table.cw-table thead th:hover { color: var(--p-t1) }
+table.cw-table thead th.ta-l { text-align: left }
+table.cw-table thead th .ar { color: var(--p-ax); font-size: 9px; margin-left: 3px }
+table.cw-table tbody td {
+  padding: 5px 8px; white-space: nowrap; vertical-align: middle;
+  border-bottom: 1px solid var(--p-line); color: var(--p-t2);
+}
+table.cw-table tbody tr { cursor: pointer; transition: background 120ms }
+table.cw-table tbody tr:hover td { background: rgba(255, 255, 255, .028) }
+table.cw-table tbody td:first-child { color: var(--p-t1); font-weight: 600 }
+table.cw-table tbody td.up { color: var(--p-up) }
+table.cw-table tbody td.down { color: var(--p-dn) }
+table.cw-table tbody td .mini { display: block; font-size: 9.5px; color: var(--p-t3) }
+table.cw-table tbody td .cw-dbar { display: inline-block; margin-left: 6px }
+.cw-n { color: var(--p-t3) }
+.cw-tw td.empty, .cw-tw .empty { white-space: normal }
+
+/* 欄寬：只給「一定需要」的下限，其餘留給內容，避免出現被裁掉的半截數字 */
+table.cw-table thead th:nth-child(1) { min-width: 108px }
+table.cw-table thead th:nth-child(2) { min-width: 84px }
+table.cw-table thead th:nth-child(3) { min-width: 66px }
+table.cw-table thead th:nth-child(4) { min-width: 84px }
+table.cw-table thead th:nth-child(5) { min-width: 84px }
+table.cw-table thead th:nth-child(6),
+table.cw-table thead th:nth-child(7),
+table.cw-table thead th:nth-child(8) { min-width: 118px }
+table.cw-table thead th:nth-child(9) { min-width: 96px }
+table.cw-table thead th:nth-child(10) { min-width: 62px }
+table.cw-table thead th:nth-child(11) { min-width: 92px }
+table.cw-table thead th:nth-child(12) { min-width: 52px }
+
+/* ── 面板底：規則／統計／資料來源（一行小字，不佔高度）────────────── */
+.crowd-panel > .panel-foot { flex-wrap: wrap; row-gap: 3px; line-height: 1.55 }
+.crowd-panel > .panel-foot > span { display: block; width: 100%; color: var(--p-t3) }
+.crowd-panel > .panel-foot > span:first-child { color: var(--p-t2) }
+
+/* ── 依據文字（點列後展開）───────────────────────────────────────── */
+.cw-evid {
+  padding: 8px 11px 9px; border-top: 1px solid var(--p-line);
+  background: rgba(91, 140, 255, .05);
+  font-size: 11px; line-height: 1.75; color: var(--p-t2); word-break: break-word;
+}
+.cw-evid b { color: var(--p-t1) }
+.cw-evid .k { color: var(--p-t3) }
+.cw-evid[hidden] { display: none }
