@@ -1255,3 +1255,36 @@
     }
   };
 })(window);
+
+
+/* ══ 疊圖切換鈕（CVD／量能／VWAP／牆）══════════════════════════════════
+   按鈕在 index.html（[data-ov]），狀態在圖表實例的 ov 物件。
+   圖表重寫（縮放/平移/繪圖）時這段接線遺失，導致按鈕按了沒反應、牆也畫不出來
+   —— 疊圖本身的繪製程式一直都在，這裡只把接線補回來。
+   圖表實例用延遲取得（點擊當下才讀），所以不依賴載入順序。 */
+(function () {
+  function chart() {
+    return (window.SENTINEL && SENTINEL.chart) || null;
+  }
+  function bind() {
+    const btns = document.querySelectorAll('[data-ov]');
+    if (!btns.length) return;
+    btns.forEach(btn => {
+      const k = btn.dataset.ov;
+      const sync = () => {
+        const c = chart();
+        btn.classList.toggle('on', !!(c && c.ov && c.ov[k]));
+      };
+      sync();
+      btn.addEventListener('click', () => {
+        const c = chart();
+        if (!c || !c.ov) return;
+        c.ov[k] = !c.ov[k];
+        btn.classList.toggle('on', c.ov[k]);
+        if (typeof c.draw === 'function') c.draw();
+      });
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();

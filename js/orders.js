@@ -702,7 +702,10 @@
       if (k > p.maxTp) {
         p.maxTp = k;
         if (k >= 4) { closePos(p, x.t[i] + ms, p.tps[3], 'tp4'); break; }
-        p.sl = k === 1 ? p.entryPx : p.tps[k - 2];
+        /* TP1 觸及後的移動停損：移到「進場 + 0.3R」而不是剛好開倉價。
+           原因：移到開倉價時，被反轉掃掉＝損益 0 但還是要付來回手續費（$100 艙位約 −$0.09），
+           實測 30 次觸及 TP1 只換到 1 次獲利、勝率被磨到 4.2%。改成 +0.3R 後同一種情況是小賺。 */
+        p.sl = k === 1 ? (p.entryPx + 0.3 * p.rAbs * Math.sign(p.tps[0] - p.entryPx)) : p.tps[k - 2];
         p.slR = k === 1 ? 'be' : 'tp' + (k - 1);
       }
       p.lastT = x.t[i];
@@ -789,7 +792,7 @@
   function stateChip(p) {
     if (p.exitTs === null) return p.maxTp >= 1 ? { t: '到 TP' + p.maxTp, c: 'tp' } : { t: '持有中', c: 'live' };
     if (p.why === 'sl') return { t: '止損', c: 'sl' };
-    if (p.why === 'be') return { t: '保本平倉', c: 'be' };
+    if (p.why === 'be') return { t: '0.3R 出場', c: 'be' };
     if (p.why === 'timeout') return { t: '逾時平倉', c: 'exp' };
     return { t: 'TP' + p.why.slice(2) + ' 平倉', c: 'tp' };
   }
@@ -1170,7 +1173,7 @@
             + '<div class="row2"><span>開倉 ' + U.px(e.px) + '</span><span>止損 ' + U.px(e.sl) + '</span>'
             + '<span>TP1 ' + U.px(e.tp1) + '</span><span>1R ' + pc1(e.rPct) + '（$' + (NOTIONAL * e.rPct).toFixed(2) + '）</span></div></div>';
         }
-        const whyTxt = e.why === 'sl' ? '觸發止損' : e.why === 'be' ? '保本離場' : e.why === 'timeout' ? '逾時平倉' : ('TP' + e.why.slice(2) + ' 出場');
+        const whyTxt = e.why === 'sl' ? '觸發止損' : e.why === 'be' ? '0.3R 出場' : e.why === 'timeout' ? '逾時平倉' : ('TP' + e.why.slice(2) + ' 出場');
         return '<div class="od-ev close ' + (e.usd >= 0 ? 'win' : 'loss') + (fresh ? ' fresh' : '') + '">'
           + '<div class="hd"><span class="t">' + tsFull(e.ts) + '</span><span class="tag">平倉</span>'
           + (fresh ? '<span class="nd2"></span>' : '')
