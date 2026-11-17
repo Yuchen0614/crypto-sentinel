@@ -4,6 +4,3 @@ fontbuild.log
 .cache/
 __pycache__/
 *.pyc
-__pycache__/
-*.pyc
-.cache/

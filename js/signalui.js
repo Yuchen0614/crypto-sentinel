@@ -195,7 +195,7 @@
     const rows = d.wallets.slice().sort((a, b) => b.realized_usd - a.realized_usd).slice(0, 14);
     box.innerHTML = '<div class="dh"><span>錢包</span><span class="ta-r">已實現</span><span class="ta-r">交易</span><span class="ta-r">勝率</span></div>' +
       rows.map(x => `<div class="dr" data-addr="${x.addr}">
-        <span class="nm">${x.name || OC.short(x.addr)}<span class="mini">${OC.short(x.addr)}</span></span>
+        <span class="nm">${x.name || OC.short(x.addr)}${x.name ? '<span class="mini">' + OC.short(x.addr) + '</span>' : ''}</span>
         <span class="ta-r ${cls(x.realized_usd)}">${money2(x.realized_usd)}${x.stale ? ' <span class="mini" title="這次抓取失敗，沿用上一次快照">*</span>' : ''}${x.capped ? ' <span class="mini" title="該期間成交超過單次 2000 筆上限，數字可能低估">⚠</span>' : ''}</span>
         <span class="ta-r mini">${x.closes || 0}</span>
         <span class="ta-r mini">${isFinite(x.win_rate) ? (x.win_rate * 100).toFixed(0) + '%' : '—'}</span>
